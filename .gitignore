@@ -1,0 +1,25 @@
+# WordPress
+*.log
+.htaccess
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# Local development
+.claude/
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.local
+
+# Backup files
+*.bak
+*.swp
+*~

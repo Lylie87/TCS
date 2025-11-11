@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#1e3a5f" opacity="0.05"/>
+  
+  <!-- Main icon container -->
+  <g transform="translate(100, 100)">
+    <!-- Clipboard/board background -->
+    <rect x="-45" y="-55" width="90" height="100" rx="6" fill="#1e3a5f"/>
+    <rect x="-42" y="-52" width="84" height="94" rx="4" fill="#ffffff"/>
+    
+    <!-- Clip at top -->
+    <rect x="-15" y="-58" width="30" height="8" rx="2" fill="#2c5282"/>
+    
+    <!-- Calendar grid lines -->
+    <line x1="-35" y1="-35" x2="35" y2="-35" stroke="#1e3a5f" stroke-width="2"/>
+    <line x1="-35" y1="-15" x2="35" y2="-15" stroke="#e2e8f0" stroke-width="1.5"/>
+    <line x1="-35" y1="0" x2="35" y2="0" stroke="#e2e8f0" stroke-width="1.5"/>
+    <line x1="-35" y1="15" x2="35" y2="15" stroke="#e2e8f0" stroke-width="1.5"/>
+    
+    <!-- Checkmark boxes -->
+    <rect x="-30" y="-28" width="12" height="12" rx="2" fill="#f0f4f8" stroke="#1e3a5f" stroke-width="1.5"/>
+    <rect x="-30" y="-8" width="12" height="12" rx="2" fill="#f0f4f8" stroke="#1e3a5f" stroke-width="1.5"/>
+    <rect x="-30" y="7" width="12" height="12" rx="2" fill="#2563eb" stroke="#2563eb" stroke-width="1.5"/>
+    
+    <!-- Checkmark in completed box -->
+    <path d="M -27 13 L -24 16 L -21 10" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Job lines (representing text) -->
+    <line x1="-12" y1="-23" x2="28" y2="-23" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-12" y1="-3" x2="20" y2="-3" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-12" y1="12" x2="25" y2="12" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Small tool icon in corner -->
+    <g transform="translate(25, 32)">
+      <rect x="-3" y="-8" width="6" height="10" rx="1" fill="#f97316" transform="rotate(-45 0 0)"/>
+      <circle cx="0" cy="-9" r="2.5" fill="#ea580c"/>
+    </g>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="175" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" fill="#1e3a5f">STAFF DAILY</text>
+  <text x="100" y="192" font-family="Arial, sans-serif" font-size="14" font-weight="600" text-anchor="middle" fill="#2563eb">JOB PLANNER</text>
+</svg>
