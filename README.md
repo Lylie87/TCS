@@ -48,14 +48,6 @@ The plugin creates two custom tables:
 - **Managers/Admins**: Can view all staff job planners
 - **Admins**: Can delete any entry
 
-## Development
-
-See CLAUDE.md for detailed development documentation including:
-- Architecture overview
-- Database schema
-- AJAX API reference
-- Common development tasks
-
 ## License
 
 GPL-2.0+
