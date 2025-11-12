@@ -189,9 +189,17 @@ foreach ($entries_by_date as $date => $day_entries) {
                     <th><label for="status">Status</label></th>
                     <td>
                         <select id="status" name="status">
-                            <option value="pending">Pending</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="completed">Completed</option>
+                            <?php
+                            $statuses = get_option('wp_staff_diary_statuses', array(
+                                'pending' => 'Pending',
+                                'in-progress' => 'In Progress',
+                                'completed' => 'Completed',
+                                'cancelled' => 'Cancelled'
+                            ));
+                            foreach ($statuses as $key => $label) {
+                                echo '<option value="' . esc_attr($key) . '">' . esc_html($label) . '</option>';
+                            }
+                            ?>
                         </select>
                     </td>
                 </tr>
