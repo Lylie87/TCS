@@ -610,13 +610,13 @@ class WP_Staff_Diary_Admin {
      * AJAX: Add custom status
      */
     public function add_status() {
-        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => 'Permission denied'));
         }
 
-        $status_label = sanitize_text_field($_POST['status_label']);
+        $status_label = sanitize_text_field($_POST['label']);
 
         if (empty($status_label)) {
             wp_send_json_error(array('message' => 'Status name is required'));
@@ -653,7 +653,7 @@ class WP_Staff_Diary_Admin {
      * AJAX: Delete custom status
      */
     public function delete_status() {
-        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => 'Permission denied'));
@@ -698,13 +698,13 @@ class WP_Staff_Diary_Admin {
      * AJAX: Add payment method
      */
     public function add_payment_method() {
-        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => 'Permission denied'));
         }
 
-        $method_label = sanitize_text_field($_POST['method_label']);
+        $method_label = sanitize_text_field($_POST['label']);
 
         if (empty($method_label)) {
             wp_send_json_error(array('message' => 'Payment method name is required'));
@@ -740,7 +740,7 @@ class WP_Staff_Diary_Admin {
      * AJAX: Delete payment method
      */
     public function delete_payment_method() {
-        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => 'Permission denied'));

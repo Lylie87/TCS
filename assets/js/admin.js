@@ -300,6 +300,7 @@
         function displayCustomerSearchResults(customers) {
             if (customers.length === 0) {
                 $('#customer-search-results').html('<div class="search-result-item">No customers found</div>').show();
+                positionCustomerDropdown();
                 return;
             }
 
@@ -313,6 +314,27 @@
             });
 
             $('#customer-search-results').html(html).show();
+            positionCustomerDropdown();
+        }
+
+        /**
+         * Position the customer search dropdown relative to input field
+         */
+        function positionCustomerDropdown() {
+            const $input = $('#customer-search');
+            const $dropdown = $('#customer-search-results');
+
+            if ($input.length && $dropdown.is(':visible')) {
+                const inputOffset = $input.offset();
+                const inputHeight = $input.outerHeight();
+                const inputWidth = $input.outerWidth();
+
+                $dropdown.css({
+                    'top': (inputOffset.top + inputHeight) + 'px',
+                    'left': inputOffset.left + 'px',
+                    'width': inputWidth + 'px'
+                });
+            }
         }
 
         // Select customer from search results
