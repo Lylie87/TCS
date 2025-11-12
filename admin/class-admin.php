@@ -874,6 +874,77 @@ class WP_Staff_Diary_Admin {
         }
     }
 
+    // ==================== PDF GENERATION AJAX HANDLER ====================
+
+    /**
+     * AJAX: Generate PDF job sheet
+     */
+    public function generate_pdf() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+
+        // Verify permissions
+        $entry = $this->db->get_entry($entry_id);
+        $user_id = get_current_user_id();
+
+        if (!$entry || ($entry->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        // Create PDF generator
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_send_json_error(array(
+                'message' => 'PDF generation not available. TCPDF library not installed. Please see libs/README.md for installation instructions.'
+            ));
+        }
+
+        // Generate and save PDF
+        $result = $pdf_generator->generate_job_sheet($entry_id, 'F');
+
+        if ($result['success']) {
+            wp_send_json_success(array(
+                'message' => 'PDF generated successfully',
+                'url' => $result['url']
+            ));
+        } else {
+            wp_send_json_error(array('message' => $result['message']));
+        }
+    }
+
+    /**
+     * Download PDF (direct output)
+     */
+    public function download_pdf() {
+        if (!isset($_GET['entry_id']) || !isset($_GET['nonce'])) {
+            wp_die('Invalid request');
+        }
+
+        if (!wp_verify_nonce($_GET['nonce'], 'wp_staff_diary_pdf_' . $_GET['entry_id'])) {
+            wp_die('Invalid nonce');
+        }
+
+        $entry_id = intval($_GET['entry_id']);
+        $entry = $this->db->get_entry($entry_id);
+        $user_id = get_current_user_id();
+
+        if (!$entry || ($entry->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_die('Permission denied');
+        }
+
+        // Create PDF generator
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_die('PDF generation not available. Please install TCPDF library.');
+        }
+
+        // Generate and output PDF (D = download)
+        $pdf_generator->generate_job_sheet($entry_id, 'D');
+    }
+
     // ==================== CUSTOMER AJAX HANDLERS ====================
 
     /**

@@ -23,6 +23,7 @@ class WP_Staff_Diary {
     private function load_dependencies() {
         require_once WP_STAFF_DIARY_PATH . 'includes/class-loader.php';
         require_once WP_STAFF_DIARY_PATH . 'includes/class-database.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/class-pdf-generator.php';
         require_once WP_STAFF_DIARY_PATH . 'admin/class-admin.php';
         require_once WP_STAFF_DIARY_PATH . 'public/class-public.php';
 
@@ -70,6 +71,12 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer');
         $this->loader->add_action('wp_ajax_update_customer', $plugin_admin, 'update_customer');
         $this->loader->add_action('wp_ajax_delete_customer', $plugin_admin, 'delete_customer');
+
+        // AJAX handlers - PDF Generation
+        $this->loader->add_action('wp_ajax_generate_pdf', $plugin_admin, 'generate_pdf');
+
+        // Action for direct PDF download
+        $this->loader->add_action('admin_post_wp_staff_diary_download_pdf', $plugin_admin, 'download_pdf');
     }
 
     private function define_public_hooks() {
