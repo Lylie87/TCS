@@ -20,6 +20,15 @@ class WP_Staff_Diary_Upgrade {
     }
 
     /**
+     * Force run upgrades (for manual migration)
+     */
+    public static function force_upgrade() {
+        $current_version = get_option('wp_staff_diary_version', '0.0.0');
+        self::run_upgrades($current_version);
+        update_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);
+    }
+
+    /**
      * Run necessary upgrades
      */
     private static function run_upgrades($from_version) {

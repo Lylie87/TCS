@@ -16,6 +16,16 @@ if (!current_user_can('manage_options')) {
     wp_die('You do not have sufficient permissions to access this page.');
 }
 
+// Run database migration
+if (isset($_POST['wp_staff_diary_run_migration'])) {
+    check_admin_referer('wp_staff_diary_migration_nonce');
+
+    require_once WP_STAFF_DIARY_PATH . 'includes/class-upgrade.php';
+    WP_Staff_Diary_Upgrade::force_upgrade();
+
+    echo '<div class="notice notice-success is-dismissible"><p><strong>Database migration completed!</strong> All v2.0.0 tables have been created.</p></div>';
+}
+
 // Save general settings
 if (isset($_POST['wp_staff_diary_save_settings'])) {
     check_admin_referer('wp_staff_diary_settings_nonce');
@@ -613,6 +623,28 @@ $accessories = $db->get_all_accessories();
                         $payment_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_payments");
                         echo number_format($payment_count);
                         ?>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 style="margin-top: 40px;">Database Management</h2>
+        <table class="form-table" role="presentation">
+            <tbody>
+                <tr>
+                    <th scope="row">Database Migration</th>
+                    <td>
+                        <form method="post" action="" style="margin: 0;">
+                            <?php wp_nonce_field('wp_staff_diary_migration_nonce'); ?>
+                            <button type="submit" name="wp_staff_diary_run_migration" class="button button-secondary">
+                                <span class="dashicons dashicons-database" style="vertical-align: middle;"></span>
+                                Run Database Migration
+                            </button>
+                            <p class="description">
+                                Click this button to manually create or update all database tables for v2.0.0.<br>
+                                <strong>Use this if you're seeing "table doesn't exist" errors.</strong>
+                            </p>
+                        </form>
                     </td>
                 </tr>
             </tbody>
