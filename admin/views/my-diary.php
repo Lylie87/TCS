@@ -61,6 +61,49 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
         </div>
     </div>
 
+    <!-- Filters Section -->
+    <div class="diary-filters" style="background: #fff; padding: 15px; margin: 20px 0; border: 1px solid #ddd; border-radius: 3px;">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <div>
+                <label for="sort-date" style="margin-right: 5px; font-weight: 600;">Sort by Date:</label>
+                <select id="sort-date" style="min-width: 150px;">
+                    <option value="desc">Latest First</option>
+                    <option value="asc">Earliest First</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="filter-customer" style="margin-right: 5px; font-weight: 600;">Customer:</label>
+                <input type="text" id="filter-customer" placeholder="Filter by customer name..." style="min-width: 200px;">
+            </div>
+
+            <div>
+                <label for="filter-fitter" style="margin-right: 5px; font-weight: 600;">Fitter:</label>
+                <select id="filter-fitter" style="min-width: 150px;">
+                    <option value="">All Fitters</option>
+                    <option value="unassigned">Unassigned</option>
+                    <?php foreach ($fitters as $index => $fitter): ?>
+                        <option value="<?php echo esc_attr($index); ?>"><?php echo esc_html($fitter['name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div>
+                <label for="filter-balance" style="margin-right: 5px; font-weight: 600;">Balance:</label>
+                <select id="filter-balance" style="min-width: 150px;">
+                    <option value="">All Jobs</option>
+                    <option value="outstanding">Outstanding Balance</option>
+                    <option value="paid">Fully Paid</option>
+                    <option value="overpaid">Overpaid</option>
+                </select>
+            </div>
+
+            <button type="button" id="clear-filters" class="button" style="margin-left: auto;">
+                Clear Filters
+            </button>
+        </div>
+    </div>
+
     <div class="diary-entries">
         <table class="wp-list-table widefat fixed striped jobs-table">
             <thead>
@@ -107,8 +150,18 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         $is_cancelled = isset($entry->is_cancelled) ? $entry->is_cancelled : 0;
                         $status_class = $is_cancelled ? 'cancelled' : $entry->status;
                         $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
+
+                        // Prepare data attributes for filtering
+                        $customer_name = $customer ? $customer->customer_name : '';
+                        $fitter_attr = ($fitter_id !== null) ? $fitter_id : 'unassigned';
+                        $balance_status = ($balance > 0) ? 'outstanding' : (($balance < 0) ? 'overpaid' : 'paid');
                         ?>
-                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>" <?php echo $is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
+                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>"
+                            data-job-date="<?php echo esc_attr($entry->job_date); ?>"
+                            data-customer-name="<?php echo esc_attr(strtolower($customer_name)); ?>"
+                            data-fitter-id="<?php echo esc_attr($fitter_attr); ?>"
+                            data-balance="<?php echo esc_attr($balance_status); ?>"
+                            <?php echo $is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
                             <td><strong><?php echo esc_html($order_number); ?></strong></td>
                             <td>
                                 <?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?>
@@ -415,4 +468,101 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
     var currentMonth = '<?php echo esc_js($current_month); ?>';
     var vatEnabled = <?php echo $vat_enabled; ?>;
     var vatRate = <?php echo $vat_rate; ?>;
+
+    jQuery(document).ready(function($) {
+        // List View Filters
+        function applyFilters() {
+            const sortDate = $('#sort-date').val();
+            const filterCustomer = $('#filter-customer').val().toLowerCase();
+            const filterFitter = $('#filter-fitter').val();
+            const filterBalance = $('#filter-balance').val();
+
+            let $rows = $('.jobs-table tbody tr').not(':has(td[colspan])');
+            let visibleRows = [];
+
+            // First, filter rows
+            $rows.each(function() {
+                const $row = $(this);
+                const customerName = $row.data('customer-name') || '';
+                const fitterId = String($row.data('fitter-id'));
+                const balanceStatus = $row.data('balance');
+                let visible = true;
+
+                // Filter by customer
+                if (filterCustomer && !customerName.includes(filterCustomer)) {
+                    visible = false;
+                }
+
+                // Filter by fitter
+                if (filterFitter && fitterId !== filterFitter) {
+                    visible = false;
+                }
+
+                // Filter by balance
+                if (filterBalance && balanceStatus !== filterBalance) {
+                    visible = false;
+                }
+
+                if (visible) {
+                    visibleRows.push($row);
+                    $row.show();
+                } else {
+                    $row.hide();
+                }
+            });
+
+            // Then, sort visible rows
+            if (visibleRows.length > 0) {
+                visibleRows.sort(function(a, b) {
+                    const dateA = new Date($(a).data('job-date'));
+                    const dateB = new Date($(b).data('job-date'));
+
+                    if (sortDate === 'asc') {
+                        return dateA - dateB;
+                    } else {
+                        return dateB - dateA;
+                    }
+                });
+
+                // Reorder rows in DOM
+                const $tbody = $('.jobs-table tbody');
+                visibleRows.forEach(function($row) {
+                    $tbody.append($row);
+                });
+            }
+
+            // Show/hide "no results" message
+            if (visibleRows.length === 0) {
+                if ($('.jobs-table tbody .no-results-row').length === 0) {
+                    $('.jobs-table tbody').append(
+                        '<tr class="no-results-row"><td colspan="9" style="text-align: center; padding: 40px;">' +
+                        '<p style="color: #666; font-size: 16px;">No jobs match the selected filters.</p></td></tr>'
+                    );
+                }
+            } else {
+                $('.jobs-table tbody .no-results-row').remove();
+            }
+        }
+
+        // Filter event handlers
+        $('#sort-date').on('change', applyFilters);
+        $('#filter-customer').on('input', function() {
+            clearTimeout(window.filterCustomerTimeout);
+            window.filterCustomerTimeout = setTimeout(applyFilters, 300);
+        });
+        $('#filter-fitter').on('change', applyFilters);
+        $('#filter-balance').on('change', applyFilters);
+
+        // Clear filters
+        $('#clear-filters').on('click', function() {
+            $('#sort-date').val('desc');
+            $('#filter-customer').val('');
+            $('#filter-fitter').val('');
+            $('#filter-balance').val('');
+            applyFilters();
+        });
+
+        // Apply initial sort on page load
+        applyFilters();
+    });
 </script>
