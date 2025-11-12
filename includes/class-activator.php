@@ -19,13 +19,18 @@ class WP_Staff_Diary_Activator {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             customer_name varchar(255) NOT NULL,
             customer_address text DEFAULT NULL,
+            address_line_1 varchar(255) DEFAULT NULL,
+            address_line_2 varchar(255) DEFAULT NULL,
+            address_line_3 varchar(255) DEFAULT NULL,
+            postcode varchar(20) DEFAULT NULL,
             customer_phone varchar(50) DEFAULT NULL,
             customer_email varchar(255) DEFAULT NULL,
             notes text DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
-            KEY customer_name (customer_name)
+            KEY customer_name (customer_name),
+            KEY postcode (postcode)
         ) $charset_collate;";
 
         // Table for diary entries (jobs/orders)
@@ -36,10 +41,20 @@ class WP_Staff_Diary_Activator {
             order_number varchar(50) NOT NULL UNIQUE,
             user_id bigint(20) NOT NULL,
             customer_id bigint(20) DEFAULT NULL,
+            fitter_id int(11) DEFAULT NULL,
             job_date date DEFAULT NULL,
             job_time time DEFAULT NULL,
             fitting_date date DEFAULT NULL,
             fitting_time_period varchar(10) DEFAULT NULL,
+            billing_address_line_1 varchar(255) DEFAULT NULL,
+            billing_address_line_2 varchar(255) DEFAULT NULL,
+            billing_address_line_3 varchar(255) DEFAULT NULL,
+            billing_postcode varchar(20) DEFAULT NULL,
+            fitting_address_different tinyint(1) DEFAULT 0,
+            fitting_address_line_1 varchar(255) DEFAULT NULL,
+            fitting_address_line_2 varchar(255) DEFAULT NULL,
+            fitting_address_line_3 varchar(255) DEFAULT NULL,
+            fitting_postcode varchar(20) DEFAULT NULL,
             area varchar(255) DEFAULT NULL,
             size varchar(255) DEFAULT NULL,
             product_description text DEFAULT NULL,
@@ -54,7 +69,9 @@ class WP_Staff_Diary_Activator {
             UNIQUE KEY order_number (order_number),
             KEY user_id (user_id),
             KEY customer_id (customer_id),
+            KEY fitter_id (fitter_id),
             KEY job_date (job_date),
+            KEY fitting_date (fitting_date),
             KEY status (status)
         ) $charset_collate;";
 

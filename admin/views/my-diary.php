@@ -294,6 +294,59 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     </div>
                 </div>
 
+                <!-- Address Details Section -->
+                <div class="form-section">
+                    <h3>Address Details</h3>
+                    <div class="form-subsection">
+                        <h4>Billing Address</h4>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="billing-address-line-1">Address Line 1</label>
+                                <input type="text" id="billing-address-line-1" name="billing_address_line_1">
+                            </div>
+                            <div class="form-field">
+                                <label for="billing-address-line-2">Address Line 2</label>
+                                <input type="text" id="billing-address-line-2" name="billing_address_line_2">
+                            </div>
+                            <div class="form-field">
+                                <label for="billing-address-line-3">Address Line 3</label>
+                                <input type="text" id="billing-address-line-3" name="billing_address_line_3">
+                            </div>
+                            <div class="form-field">
+                                <label for="billing-postcode">Postcode</label>
+                                <input type="text" id="billing-postcode" name="billing_postcode">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-field" style="margin: 15px 0;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="fitting-address-different" name="fitting_address_different" value="1">
+                            <span>Fitting address is different from billing address</span>
+                        </label>
+                    </div>
+                    <div class="form-subsection" id="fitting-address-section" style="display: none;">
+                        <h4>Fitting Address</h4>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="fitting-address-line-1">Address Line 1</label>
+                                <input type="text" id="fitting-address-line-1" name="fitting_address_line_1">
+                            </div>
+                            <div class="form-field">
+                                <label for="fitting-address-line-2">Address Line 2</label>
+                                <input type="text" id="fitting-address-line-2" name="fitting_address_line_2">
+                            </div>
+                            <div class="form-field">
+                                <label for="fitting-address-line-3">Address Line 3</label>
+                                <input type="text" id="fitting-address-line-3" name="fitting_address_line_3">
+                            </div>
+                            <div class="form-field">
+                                <label for="fitting-postcode">Postcode</label>
+                                <input type="text" id="fitting-postcode" name="fitting_postcode">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Job Details Section -->
                 <div class="form-section">
                     <h3>Job Details</h3>

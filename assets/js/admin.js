@@ -170,6 +170,25 @@
                 $('#fitter-id').val('');
             }
 
+            // Addresses
+            $('#billing-address-line-1').val(entry.billing_address_line_1 || '');
+            $('#billing-address-line-2').val(entry.billing_address_line_2 || '');
+            $('#billing-address-line-3').val(entry.billing_address_line_3 || '');
+            $('#billing-postcode').val(entry.billing_postcode || '');
+
+            // Fitting address
+            if (entry.fitting_address_different == 1) {
+                $('#fitting-address-different').prop('checked', true);
+                $('#fitting-address-section').show();
+                $('#fitting-address-line-1').val(entry.fitting_address_line_1 || '');
+                $('#fitting-address-line-2').val(entry.fitting_address_line_2 || '');
+                $('#fitting-address-line-3').val(entry.fitting_address_line_3 || '');
+                $('#fitting-postcode').val(entry.fitting_postcode || '');
+            } else {
+                $('#fitting-address-different').prop('checked', false);
+                $('#fitting-address-section').hide();
+            }
+
             // Product
             $('#product-description').val(entry.product_description);
             $('#sq-mtr-qty').val(entry.sq_mtr_qty);
@@ -227,6 +246,15 @@
                 job_time: $('#job-time').val(),
                 fitting_date: $('#fitting-date').val(),
                 fitting_time_period: $('#fitting-time-period').val(),
+                billing_address_line_1: $('#billing-address-line-1').val(),
+                billing_address_line_2: $('#billing-address-line-2').val(),
+                billing_address_line_3: $('#billing-address-line-3').val(),
+                billing_postcode: $('#billing-postcode').val(),
+                fitting_address_different: $('#fitting-address-different').is(':checked') ? 1 : 0,
+                fitting_address_line_1: $('#fitting-address-line-1').val(),
+                fitting_address_line_2: $('#fitting-address-line-2').val(),
+                fitting_address_line_3: $('#fitting-address-line-3').val(),
+                fitting_postcode: $('#fitting-postcode').val(),
                 area: $('#area').val(),
                 size: $('#size').val(),
                 product_description: $('#product-description').val(),
@@ -413,6 +441,24 @@
                     alert('An error occurred while adding the customer.');
                 }
             });
+        });
+
+        // ===========================================
+        // ADDRESS HANDLING
+        // ===========================================
+
+        // Fitting address checkbox toggle
+        $(document).on('change', '#fitting-address-different', function() {
+            if ($(this).is(':checked')) {
+                $('#fitting-address-section').slideDown();
+            } else {
+                $('#fitting-address-section').slideUp();
+                // Clear fitting address fields when unchecked
+                $('#fitting-address-line-1').val('');
+                $('#fitting-address-line-2').val('');
+                $('#fitting-address-line-3').val('');
+                $('#fitting-postcode').val('');
+            }
         });
 
         // ===========================================
