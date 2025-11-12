@@ -595,7 +595,7 @@
             // Actions
             html += '<div class="detail-section detail-actions">';
             if (!entry.is_cancelled) {
-                html += `<button type="button" class="button" onclick="window.open('${wpStaffDiary.ajaxUrl.replace('admin-ajax.php', '')}admin-post.php?action=wp_staff_diary_download_pdf&entry_id=${entry.id}&nonce=' + '${wp.create_nonce('wp_staff_diary_pdf_' + entry.id)}')">
+                html += `<button type="button" class="button" onclick="window.open('${wpStaffDiary.ajaxUrl.replace('admin-ajax.php', '')}admin-post.php?action=wp_staff_diary_download_pdf&entry_id=${entry.id}&nonce=${wpStaffDiary.nonce}')">
                     <span class="dashicons dashicons-pdf"></span> Download PDF
                 </button>`;
                 html += `<button type="button" class="button edit-entry" data-id="${entry.id}">
@@ -655,17 +655,6 @@
             } else {
                 return uri + separator + key + "=" + value;
             }
-        }
-
-        /**
-         * Create nonce for PDF download
-         */
-        function wp.create_nonce(action) {
-            // WordPress provides this function, fallback for safety
-            if (typeof wp !== 'undefined' && typeof wp.ajax !== 'undefined') {
-                return wp.ajax.settings.nonce;
-            }
-            return wpStaffDiary.nonce;
         }
 
     });
