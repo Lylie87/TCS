@@ -158,6 +158,16 @@ class WP_Staff_Diary_Admin {
             array($this, 'display_overview_page')
         );
 
+        // Submenu - Customers (only for staff and above)
+        add_submenu_page(
+            'wp-staff-diary',
+            'Customers',
+            'Customers',
+            'read',
+            'wp-staff-diary-customers',
+            array($this, 'display_customers_page')
+        );
+
         // Submenu - Settings (only for admins)
         add_submenu_page(
             'wp-staff-diary',
@@ -190,6 +200,13 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * Display Customers page
+     */
+    public function display_customers_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/customers.php';
+    }
+
+    /**
      * Display Settings page
      */
     public function display_settings_page() {
@@ -205,33 +222,82 @@ class WP_Staff_Diary_Admin {
         $entry_id = isset($_POST['entry_id']) ? intval($_POST['entry_id']) : 0;
         $user_id = get_current_user_id();
 
-        // Prepare data
+        // Prepare data for main entry
         $data = array(
             'user_id' => $user_id,
+            'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
             'job_date' => sanitize_text_field($_POST['job_date']),
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
-            'client_name' => sanitize_text_field($_POST['client_name']),
-            'client_address' => sanitize_textarea_field($_POST['client_address']),
-            'client_phone' => sanitize_text_field($_POST['client_phone']),
-            'job_description' => sanitize_textarea_field($_POST['job_description']),
-            'plans' => sanitize_textarea_field($_POST['plans']),
-            'notes' => sanitize_textarea_field($_POST['notes']),
+            'fitting_date' => !empty($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null,
+            'fitting_time_period' => !empty($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null,
+            'area' => !empty($_POST['area']) ? sanitize_text_field($_POST['area']) : null,
+            'size' => !empty($_POST['size']) ? sanitize_text_field($_POST['size']) : null,
+            'product_description' => !empty($_POST['product_description']) ? sanitize_textarea_field($_POST['product_description']) : null,
+            'sq_mtr_qty' => !empty($_POST['sq_mtr_qty']) ? floatval($_POST['sq_mtr_qty']) : null,
+            'price_per_sq_mtr' => !empty($_POST['price_per_sq_mtr']) ? floatval($_POST['price_per_sq_mtr']) : null,
+            'notes' => !empty($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : null,
             'status' => sanitize_text_field($_POST['status'])
         );
 
         if ($entry_id > 0) {
-            // Update existing entry
+            // Update existing entry (don't change order number)
             $result = $this->db->update_entry($entry_id, $data);
+
             if ($result !== false) {
-                wp_send_json_success(array('entry_id' => $entry_id, 'message' => 'Entry updated successfully'));
+                // Update job accessories if provided
+                if (isset($_POST['accessories']) && is_array($_POST['accessories'])) {
+                    // Delete existing accessories for this job
+                    $this->db->delete_all_job_accessories($entry_id);
+
+                    // Add new accessories
+                    foreach ($_POST['accessories'] as $accessory) {
+                        if (!empty($accessory['accessory_id'])) {
+                            $this->db->add_job_accessory(
+                                $entry_id,
+                                intval($accessory['accessory_id']),
+                                sanitize_text_field($accessory['accessory_name']),
+                                floatval($accessory['quantity']),
+                                floatval($accessory['price_per_unit'])
+                            );
+                        }
+                    }
+                }
+
+                wp_send_json_success(array(
+                    'entry_id' => $entry_id,
+                    'message' => 'Entry updated successfully'
+                ));
             } else {
                 wp_send_json_error(array('message' => 'Failed to update entry'));
             }
         } else {
-            // Create new entry
+            // Create new entry - generate order number
+            $order_number = $this->db->generate_order_number();
+            $data['order_number'] = $order_number;
+
             $new_id = $this->db->create_entry($data);
+
             if ($new_id) {
-                wp_send_json_success(array('entry_id' => $new_id, 'message' => 'Entry created successfully'));
+                // Add job accessories if provided
+                if (isset($_POST['accessories']) && is_array($_POST['accessories'])) {
+                    foreach ($_POST['accessories'] as $accessory) {
+                        if (!empty($accessory['accessory_id'])) {
+                            $this->db->add_job_accessory(
+                                $new_id,
+                                intval($accessory['accessory_id']),
+                                sanitize_text_field($accessory['accessory_name']),
+                                floatval($accessory['quantity']),
+                                floatval($accessory['price_per_unit'])
+                            );
+                        }
+                    }
+                }
+
+                wp_send_json_success(array(
+                    'entry_id' => $new_id,
+                    'order_number' => $order_number,
+                    'message' => 'Entry created successfully'
+                ));
             } else {
                 wp_send_json_error(array('message' => 'Failed to create entry'));
             }
@@ -258,6 +324,29 @@ class WP_Staff_Diary_Admin {
             wp_send_json_success(array('message' => 'Entry deleted successfully'));
         } else {
             wp_send_json_error(array('message' => 'Failed to delete entry'));
+        }
+    }
+
+    /**
+     * AJAX: Cancel diary entry (soft delete)
+     */
+    public function cancel_diary_entry() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+        $user_id = get_current_user_id();
+
+        // Verify ownership or admin
+        $entry = $this->db->get_entry($entry_id);
+        if (!$entry || ($entry->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $result = $this->db->cancel_entry($entry_id);
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Entry cancelled successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to cancel entry'));
         }
     }
 
@@ -315,9 +404,19 @@ class WP_Staff_Diary_Admin {
         $entry = $this->db->get_entry($entry_id);
 
         if ($entry) {
+            // Get customer information if linked
+            if ($entry->customer_id) {
+                $customer = $this->db->get_customer($entry->customer_id);
+                $entry->customer = $customer;
+            }
+
             // Get images for this entry
             $images = $this->db->get_entry_images($entry_id);
             $entry->images = $images;
+
+            // Get job accessories
+            $accessories = $this->db->get_job_accessories($entry_id);
+            $entry->accessories = $accessories;
 
             // Get payments for this entry
             $payments = $this->db->get_entry_payments($entry_id);
@@ -333,12 +432,41 @@ class WP_Staff_Diary_Admin {
             }
 
             $entry->payments = $payments;
-            $entry->total_payments = $this->db->get_entry_total_payments($entry_id);
 
-            // Format date according to settings
+            // Calculate financial totals
+            $subtotal = $this->db->calculate_job_subtotal($entry_id);
+            $entry->subtotal = $subtotal;
+
+            // Calculate VAT
+            $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+            $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+            $vat_amount = 0;
+            $total = $subtotal;
+
+            if ($vat_enabled == '1') {
+                $vat_amount = $subtotal * ($vat_rate / 100);
+                $total = $subtotal + $vat_amount;
+            }
+
+            $entry->vat_rate = $vat_rate;
+            $entry->vat_amount = $vat_amount;
+            $entry->total = $total;
+
+            // Get total payments and calculate balance
+            $total_payments = $this->db->get_entry_total_payments($entry_id);
+            $entry->total_payments = $total_payments;
+            $entry->balance = $total - $total_payments;
+
+            // Format dates according to settings
             $date_format = get_option('wp_staff_diary_date_format', 'd/m/Y');
+
             if ($entry->job_date) {
                 $entry->job_date_formatted = date($date_format, strtotime($entry->job_date));
+            }
+
+            if ($entry->fitting_date) {
+                $entry->fitting_date_formatted = date($date_format, strtotime($entry->fitting_date));
             }
 
             // Format time according to settings
@@ -635,6 +763,249 @@ class WP_Staff_Diary_Admin {
             wp_send_json_success(array('message' => 'Payment method deleted successfully'));
         } else {
             wp_send_json_error(array('message' => 'Payment method not found'));
+        }
+    }
+
+    // ==================== ACCESSORY AJAX HANDLERS ====================
+
+    /**
+     * AJAX: Add accessory
+     */
+    public function add_accessory() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $accessory_name = sanitize_text_field($_POST['accessory_name']);
+        $price = floatval($_POST['price']);
+
+        if (empty($accessory_name)) {
+            wp_send_json_error(array('message' => 'Accessory name is required'));
+        }
+
+        $data = array(
+            'accessory_name' => $accessory_name,
+            'price' => $price,
+            'is_active' => 1,
+            'display_order' => 0
+        );
+
+        $accessory_id = $this->db->create_accessory($data);
+
+        if ($accessory_id) {
+            $accessory = $this->db->get_accessory($accessory_id);
+            wp_send_json_success(array(
+                'message' => 'Accessory added successfully',
+                'accessory' => $accessory
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to add accessory'));
+        }
+    }
+
+    /**
+     * AJAX: Update accessory
+     */
+    public function update_accessory() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $accessory_id = intval($_POST['accessory_id']);
+        $accessory_name = sanitize_text_field($_POST['accessory_name']);
+        $price = floatval($_POST['price']);
+        $is_active = isset($_POST['is_active']) ? 1 : 0;
+
+        if (empty($accessory_name)) {
+            wp_send_json_error(array('message' => 'Accessory name is required'));
+        }
+
+        $data = array(
+            'accessory_name' => $accessory_name,
+            'price' => $price,
+            'is_active' => $is_active
+        );
+
+        $result = $this->db->update_accessory($accessory_id, $data);
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Accessory updated successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update accessory'));
+        }
+    }
+
+    /**
+     * AJAX: Delete accessory
+     */
+    public function delete_accessory() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $accessory_id = intval($_POST['accessory_id']);
+
+        // Check if any jobs are using this accessory
+        global $wpdb;
+        $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_job_accessories WHERE accessory_id = %d",
+            $accessory_id
+        ));
+
+        if ($count > 0) {
+            wp_send_json_error(array(
+                'message' => "Cannot delete this accessory. It's being used in $count job(s)."
+            ));
+        }
+
+        $result = $this->db->delete_accessory($accessory_id);
+
+        if ($result) {
+            wp_send_json_success(array('message' => 'Accessory deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to delete accessory'));
+        }
+    }
+
+    // ==================== CUSTOMER AJAX HANDLERS ====================
+
+    /**
+     * AJAX: Search customers
+     */
+    public function search_customers() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $customers = $this->db->get_all_customers($search);
+
+        wp_send_json_success(array('customers' => $customers));
+    }
+
+    /**
+     * AJAX: Add customer
+     */
+    public function add_customer() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $customer_name = sanitize_text_field($_POST['customer_name']);
+        $customer_address = sanitize_textarea_field($_POST['customer_address']);
+        $customer_phone = sanitize_text_field($_POST['customer_phone']);
+        $customer_email = sanitize_email($_POST['customer_email']);
+        $notes = sanitize_textarea_field($_POST['notes']);
+
+        if (empty($customer_name)) {
+            wp_send_json_error(array('message' => 'Customer name is required'));
+        }
+
+        $data = array(
+            'customer_name' => $customer_name,
+            'customer_address' => $customer_address,
+            'customer_phone' => $customer_phone,
+            'customer_email' => $customer_email,
+            'notes' => $notes
+        );
+
+        $customer_id = $this->db->create_customer($data);
+
+        if ($customer_id) {
+            $customer = $this->db->get_customer($customer_id);
+            wp_send_json_success(array(
+                'message' => 'Customer added successfully',
+                'customer' => $customer
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to add customer'));
+        }
+    }
+
+    /**
+     * AJAX: Get customer
+     */
+    public function get_customer() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $customer_id = intval($_POST['customer_id']);
+        $customer = $this->db->get_customer($customer_id);
+
+        if ($customer) {
+            // Get job count for this customer
+            $job_count = $this->db->get_customer_jobs_count($customer_id);
+            $customer->job_count = $job_count;
+
+            wp_send_json_success(array('customer' => $customer));
+        } else {
+            wp_send_json_error(array('message' => 'Customer not found'));
+        }
+    }
+
+    /**
+     * AJAX: Update customer
+     */
+    public function update_customer() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $customer_id = intval($_POST['customer_id']);
+        $customer_name = sanitize_text_field($_POST['customer_name']);
+        $customer_address = sanitize_textarea_field($_POST['customer_address']);
+        $customer_phone = sanitize_text_field($_POST['customer_phone']);
+        $customer_email = sanitize_email($_POST['customer_email']);
+        $notes = sanitize_textarea_field($_POST['notes']);
+
+        if (empty($customer_name)) {
+            wp_send_json_error(array('message' => 'Customer name is required'));
+        }
+
+        $data = array(
+            'customer_name' => $customer_name,
+            'customer_address' => $customer_address,
+            'customer_phone' => $customer_phone,
+            'customer_email' => $customer_email,
+            'notes' => $notes
+        );
+
+        $result = $this->db->update_customer($customer_id, $data);
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Customer updated successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update customer'));
+        }
+    }
+
+    /**
+     * AJAX: Delete customer
+     */
+    public function delete_customer() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('delete_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $customer_id = intval($_POST['customer_id']);
+
+        // Check if customer has any jobs
+        $job_count = $this->db->get_customer_jobs_count($customer_id);
+
+        if ($job_count > 0) {
+            wp_send_json_error(array(
+                'message' => "Cannot delete this customer. They have $job_count job(s) associated with them."
+            ));
+        }
+
+        $result = $this->db->delete_customer($customer_id);
+
+        if ($result) {
+            wp_send_json_success(array('message' => 'Customer deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to delete customer'));
         }
     }
 }
