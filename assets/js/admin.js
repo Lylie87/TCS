@@ -617,6 +617,66 @@
             html += '</table>';
             html += '</div>';
 
+            // Photos Section
+            html += '<div class="detail-section">';
+            html += '<h3>Photos</h3>';
+            if (entry.images && entry.images.length > 0) {
+                html += '<div class="job-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">';
+                entry.images.forEach(function(image) {
+                    html += `<div class="job-image-item" style="position: relative;">
+                        <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                        ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
+                    </div>`;
+                });
+                html += '</div>';
+            } else {
+                html += '<p style="color: #999;">No photos uploaded yet.</p>';
+            }
+            if (!entry.is_cancelled) {
+                html += `<button type="button" class="button" id="upload-photo-btn" data-entry-id="${entry.id}">
+                    <span class="dashicons dashicons-camera"></span> Upload Photo
+                </button>`;
+                html += `<input type="file" id="photo-upload-input-${entry.id}" accept="image/*" style="display: none;">`;
+            }
+            html += '</div>';
+
+            // Record Payment Section
+            if (!entry.is_cancelled && entry.balance > 0) {
+                html += '<div class="detail-section">';
+                html += '<h3>Record Payment</h3>';
+                html += `<div class="payment-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px;"><strong>Amount (£):</strong></label>
+                            <input type="number" id="payment-amount-${entry.id}" step="0.01" min="0.01" max="${entry.balance}" value="${entry.balance.toFixed(2)}" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px;"><strong>Payment Method:</strong></label>
+                            <select id="payment-method-${entry.id}" style="width: 100%;">
+                                ${Object.entries(wpStaffDiary.paymentMethods || {'cash': 'Cash', 'bank-transfer': 'Bank Transfer', 'card-payment': 'Card Payment'}).map(([key, label]) => `<option value="${key}">${label}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px;"><strong>Payment Type:</strong></label>
+                        <select id="payment-type-${entry.id}" style="width: 100%;">
+                            <option value="deposit">Deposit</option>
+                            <option value="partial">Partial Payment</option>
+                            <option value="final">Final Payment</option>
+                            <option value="full">Full Payment</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px;"><strong>Notes:</strong></label>
+                        <textarea id="payment-notes-${entry.id}" rows="2" style="width: 100%;"></textarea>
+                    </div>
+                    <button type="button" class="button button-primary" id="record-payment-btn" data-entry-id="${entry.id}">
+                        <span class="dashicons dashicons-yes"></span> Record Payment
+                    </button>
+                </div>`;
+                html += '</div>';
+            }
+
             // Notes
             if (entry.notes) {
                 html += '<div class="detail-section">';
@@ -642,6 +702,99 @@
             $('#entry-details-content').html(html);
             $('#view-entry-modal').fadeIn();
         }
+
+        // ===========================================
+        // PHOTOS - Upload
+        // ===========================================
+
+        // Photo upload button click
+        $(document).on('click', '#upload-photo-btn', function() {
+            const entryId = $(this).data('entry-id');
+            $(`#photo-upload-input-${entryId}`).click();
+        });
+
+        // Photo file selected
+        $(document).on('change', '[id^="photo-upload-input-"]', function() {
+            const entryId = $(this).attr('id').replace('photo-upload-input-', '');
+            const file = this.files[0];
+
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'upload_job_image');
+            formData.append('nonce', wpStaffDiary.nonce);
+            formData.append('entry_id', entryId);
+            formData.append('image', file);
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        alert('Photo uploaded successfully!');
+                        viewEntryDetails(entryId); // Reload the view
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while uploading the photo.');
+                }
+            });
+        });
+
+        // ===========================================
+        // PAYMENTS - Record Payment
+        // ===========================================
+
+        // Record payment button click
+        $(document).on('click', '#record-payment-btn', function() {
+            const entryId = $(this).data('entry-id');
+            const amount = $(`#payment-amount-${entryId}`).val();
+            const method = $(`#payment-method-${entryId}`).val();
+            const type = $(`#payment-type-${entryId}`).val();
+            const notes = $(`#payment-notes-${entryId}`).val();
+
+            if (!amount || parseFloat(amount) <= 0) {
+                alert('Please enter a valid payment amount');
+                return;
+            }
+
+            if (confirm(`Record payment of £${parseFloat(amount).toFixed(2)}?`)) {
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'add_payment',
+                        nonce: wpStaffDiary.nonce,
+                        entry_id: entryId,
+                        amount: amount,
+                        payment_method: method,
+                        payment_type: type,
+                        notes: notes
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Payment recorded successfully!');
+                            viewEntryDetails(entryId); // Reload the view
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to record payment'));
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred while recording the payment.');
+                    }
+                });
+            }
+        });
 
         // ===========================================
         // DELETE ENTRY
