@@ -130,9 +130,41 @@ class WP_Staff_Diary_Upgrade {
         // Update diary entries table with new columns
         $table_diary = $wpdb->prefix . 'staff_diary_entries';
 
-        // Add new columns if they don't exist
+        // Handle order_number column specially (needs to populate existing rows)
+        $order_number_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'order_number'");
+        if (empty($order_number_exists)) {
+            // Add column as nullable first
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN order_number varchar(50) DEFAULT NULL AFTER id");
+
+            // Get current order number from settings
+            $current_order = get_option('wp_staff_diary_order_current', '01100');
+            $order_prefix = get_option('wp_staff_diary_order_prefix', '');
+
+            // Populate existing entries with unique order numbers
+            $existing_entries = $wpdb->get_results("SELECT id FROM $table_diary WHERE order_number IS NULL ORDER BY id ASC");
+            foreach ($existing_entries as $entry) {
+                $order_num = $order_prefix . str_pad($current_order, 5, '0', STR_PAD_LEFT);
+                $wpdb->update(
+                    $table_diary,
+                    array('order_number' => $order_num),
+                    array('id' => $entry->id)
+                );
+                $current_order++;
+            }
+
+            // Update the current order number
+            update_option('wp_staff_diary_order_current', $current_order);
+
+            // Now make it NOT NULL and add UNIQUE constraint
+            $wpdb->query("ALTER TABLE $table_diary MODIFY order_number varchar(50) NOT NULL");
+            $unique_check = $wpdb->get_results("SHOW INDEX FROM $table_diary WHERE Key_name = 'order_number'");
+            if (empty($unique_check)) {
+                $wpdb->query("ALTER TABLE $table_diary ADD UNIQUE KEY order_number (order_number)");
+            }
+        }
+
+        // Add other new columns if they don't exist
         $columns_to_add = array(
-            'order_number' => "ALTER TABLE $table_diary ADD COLUMN order_number varchar(50) NOT NULL UNIQUE AFTER id",
             'customer_id' => "ALTER TABLE $table_diary ADD COLUMN customer_id bigint(20) DEFAULT NULL AFTER user_id",
             'fitting_date' => "ALTER TABLE $table_diary ADD COLUMN fitting_date date DEFAULT NULL AFTER job_time",
             'fitting_time_period' => "ALTER TABLE $table_diary ADD COLUMN fitting_time_period varchar(10) DEFAULT NULL AFTER fitting_date",

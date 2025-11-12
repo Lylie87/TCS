@@ -35,6 +35,10 @@ if (isset($_POST['wp_staff_diary_save_settings'])) {
     update_option('wp_staff_diary_week_start', sanitize_text_field($_POST['week_start']));
     update_option('wp_staff_diary_default_status', sanitize_text_field($_POST['default_status']));
 
+    // Job time options
+    update_option('wp_staff_diary_job_time_type', sanitize_text_field($_POST['job_time_type']));
+    update_option('wp_staff_diary_fitting_time_length', isset($_POST['fitting_time_length']) ? '1' : '0');
+
     echo '<div class="notice notice-success is-dismissible"><p>General settings saved successfully!</p></div>';
 }
 
@@ -93,6 +97,10 @@ $date_format = get_option('wp_staff_diary_date_format', 'd/m/Y');
 $time_format = get_option('wp_staff_diary_time_format', 'H:i');
 $week_start = get_option('wp_staff_diary_week_start', 'monday');
 $default_status = get_option('wp_staff_diary_default_status', 'pending');
+
+// Job time options
+$job_time_type = get_option('wp_staff_diary_job_time_type', 'ampm'); // 'ampm' or 'time' or 'none'
+$fitting_time_length = get_option('wp_staff_diary_fitting_time_length', '0');
 
 // Company details
 $company_name = get_option('wp_staff_diary_company_name', '');
@@ -218,6 +226,33 @@ $accessories = $db->get_all_accessories();
                                 <?php endforeach; ?>
                             </select>
                             <p class="description">The default status for new job entries.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="job_time_type">Job Time Selection</label>
+                        </th>
+                        <td>
+                            <select name="job_time_type" id="job_time_type" class="regular-text">
+                                <option value="none" <?php selected($job_time_type, 'none'); ?>>No Time Selection</option>
+                                <option value="ampm" <?php selected($job_time_type, 'ampm'); ?>>AM/PM Only</option>
+                                <option value="time" <?php selected($job_time_type, 'time'); ?>>Specific Time</option>
+                            </select>
+                            <p class="description">Choose how users select job time: No time, AM/PM period only, or specific start time.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="fitting_time_length">Enable Fitting Time Length</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="fitting_time_length" id="fitting_time_length" value="1" <?php checked($fitting_time_length, '1'); ?>>
+                                Allow users to specify job duration (e.g., 3 hours)
+                            </label>
+                            <p class="description">When enabled, users can allocate a specific time length to each job.</p>
                         </td>
                     </tr>
                 </tbody>
@@ -712,6 +747,122 @@ jQuery(document).ready(function($) {
         var next = current + 1;
         var nextStr = String(next).padStart(start.length, '0');
         $('#order-preview').text(prefix + nextStr);
+    });
+
+    // Add Status
+    $('#add-status-btn').on('click', function() {
+        var label = $('#new-status-label').val().trim();
+        if (!label) {
+            alert('Please enter a status name');
+            return;
+        }
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_add_status',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                label: label
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to add status');
+                }
+            },
+            error: function() {
+                alert('Error adding status');
+            }
+        });
+    });
+
+    // Delete Status
+    $('.delete-status').on('click', function() {
+        if (!confirm('Are you sure you want to remove this status?')) {
+            return;
+        }
+
+        var statusKey = $(this).data('status-key');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_delete_status',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                status_key: statusKey
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to remove status');
+                }
+            },
+            error: function() {
+                alert('Error removing status');
+            }
+        });
+    });
+
+    // Add Payment Method
+    $('#add-payment-method-btn').on('click', function() {
+        var label = $('#new-payment-method-label').val().trim();
+        if (!label) {
+            alert('Please enter a payment method name');
+            return;
+        }
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_add_payment_method',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                label: label
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to add payment method');
+                }
+            },
+            error: function() {
+                alert('Error adding payment method');
+            }
+        });
+    });
+
+    // Delete Payment Method
+    $('.delete-payment-method').on('click', function() {
+        if (!confirm('Are you sure you want to remove this payment method?')) {
+            return;
+        }
+
+        var methodKey = $(this).data('method-key');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_delete_payment_method',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                method_key: methodKey
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to remove payment method');
+                }
+            },
+            error: function() {
+                alert('Error removing payment method');
+            }
+        });
     });
 });
 </script>
