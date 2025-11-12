@@ -37,7 +37,8 @@ class WP_Staff_Diary_Upgrade {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
         // Upgrade to v2.0.0 - Create all new tables
-        if (version_compare($from_version, '2.0.0', '<')) {
+        // Also run for 2.0.0 -> 2.0.1 to ensure migration completed
+        if (version_compare($from_version, '2.0.1', '<')) {
             self::upgrade_to_2_0_0();
         }
 
