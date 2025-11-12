@@ -992,8 +992,8 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // Delete Accessory
-    $('.delete-accessory').on('click', function() {
+    // Delete Accessory (using event delegation for dynamically loaded content)
+    $(document).on('click', '.delete-accessory', function() {
         if (!confirm('Are you sure you want to delete this accessory?')) {
             return;
         }
