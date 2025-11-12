@@ -29,10 +29,11 @@ $end_date_str = $end_date->format('Y-m-d');
 
 $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date_str);
 
-// Organize entries by date
+// Organize entries by fitting date (or job date if no fitting date)
 $entries_by_date = array();
 foreach ($entries as $entry) {
-    $date_key = $entry->job_date;
+    // Use fitting_date if set, otherwise fall back to job_date
+    $date_key = !empty($entry->fitting_date) ? $entry->fitting_date : $entry->job_date;
     if (!isset($entries_by_date[$date_key])) {
         $entries_by_date[$date_key] = array();
     }
@@ -238,6 +239,25 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             <button type="button" class="button button-small" id="clear-customer-btn" style="margin-left: 10px;">Change</button>
                         </div>
                         <button type="button" class="button button-small" id="add-new-customer-inline" style="margin-top: 5px;">+ Add New Customer</button>
+                    </div>
+                </div>
+
+                <!-- Fitter Selection -->
+                <div class="form-section">
+                    <h3>Assign Fitter</h3>
+                    <div class="form-field">
+                        <label for="fitter-id">Fitter</label>
+                        <select id="fitter-id" name="fitter_id">
+                            <option value="">None / Unassigned</option>
+                            <?php foreach ($fitters as $index => $fitter): ?>
+                                <option value="<?php echo esc_attr($index); ?>">
+                                    <?php echo esc_html($fitter['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (empty($fitters)): ?>
+                            <p class="description">No fitters available. <a href="<?php echo admin_url('admin.php?page=wp-staff-diary-settings#fitters'); ?>">Add fitters in settings</a></p>
+                        <?php endif; ?>
                     </div>
                 </div>
 
