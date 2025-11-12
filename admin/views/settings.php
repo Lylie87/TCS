@@ -827,6 +827,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    location.href = location.href.split('#')[0] + '#statuses';
                     location.reload();
                 } else {
                     alert(response.data || 'Failed to add status');
@@ -856,6 +857,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    location.href = location.href.split('#')[0] + '#statuses';
                     location.reload();
                 } else {
                     alert(response.data || 'Failed to remove status');
@@ -885,6 +887,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    location.href = location.href.split('#')[0] + '#payment-methods';
                     location.reload();
                 } else {
                     alert(response.data || 'Failed to add payment method');
@@ -914,6 +917,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    location.href = location.href.split('#')[0] + '#payment-methods';
                     location.reload();
                 } else {
                     alert(response.data || 'Failed to remove payment method');
@@ -946,6 +950,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    location.href = location.href.split('#')[0] + '#fitters';
                     location.reload();
                 } else {
                     alert(response.data || 'Failed to add fitter');
@@ -975,6 +980,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
+                    location.href = location.href.split('#')[0] + '#fitters';
                     location.reload();
                 } else {
                     alert(response.data || 'Failed to remove fitter');
