@@ -218,11 +218,12 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             <label for="status">Status <span class="required">*</span></label>
                             <select id="status" name="status" required>
                                 <?php foreach ($statuses as $key => $label): ?>
-                                    <?php if ($key !== 'cancelled'): ?>
-                                        <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
-                                    <?php endif; ?>
+                                    <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <p class="description" style="color: #d63638; margin-top: 5px;">
+                                <strong>Note:</strong> Setting status to "Cancelled" will remove this job from your diary.
+                            </p>
                         </div>
                     </div>
                 </div>

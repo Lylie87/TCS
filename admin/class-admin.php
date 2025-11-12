@@ -229,6 +229,24 @@ class WP_Staff_Diary_Admin {
 
         $entry_id = isset($_POST['entry_id']) ? intval($_POST['entry_id']) : 0;
         $user_id = get_current_user_id();
+        $status = sanitize_text_field($_POST['status']);
+
+        // If status is 'cancelled' and this is an existing entry, delete it
+        if ($status === 'cancelled' && $entry_id > 0) {
+            $result = $this->db->delete_entry($entry_id);
+            if ($result) {
+                wp_send_json_success(array('message' => 'Job cancelled and removed from diary'));
+            } else {
+                wp_send_json_error(array('message' => 'Failed to cancel job'));
+            }
+            return;
+        }
+
+        // Prevent creating new entries with cancelled status
+        if ($status === 'cancelled' && $entry_id === 0) {
+            wp_send_json_error(array('message' => 'Cannot create a new job with cancelled status'));
+            return;
+        }
 
         // Prepare data for main entry
         $data = array(
@@ -245,7 +263,7 @@ class WP_Staff_Diary_Admin {
             'sq_mtr_qty' => !empty($_POST['sq_mtr_qty']) ? floatval($_POST['sq_mtr_qty']) : null,
             'price_per_sq_mtr' => !empty($_POST['price_per_sq_mtr']) ? floatval($_POST['price_per_sq_mtr']) : null,
             'notes' => !empty($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : null,
-            'status' => sanitize_text_field($_POST['status'])
+            'status' => $status
         );
 
         if ($entry_id > 0) {
