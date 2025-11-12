@@ -212,6 +212,40 @@
             $('#notes').val(entry.notes);
             $('#status').val(entry.status);
 
+            // Photos section - show when editing existing entry
+            if (entry.id && entry.id > 0) {
+                $('#photos-section').show();
+
+                // Display existing photos
+                if (entry.images && entry.images.length > 0) {
+                    let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
+                    entry.images.forEach(function(image) {
+                        photosHtml += `<div style="position: relative;">
+                            <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                        </div>`;
+                    });
+                    photosHtml += '</div>';
+                    $('#job-photos-container').html(photosHtml);
+                } else {
+                    $('#job-photos-container').html('<p class="description">No photos uploaded yet.</p>');
+                }
+
+                // Store entry ID for photo upload
+                $('#upload-photo-form-btn').data('entry-id', entry.id);
+                $('#photo-upload-input-form').data('entry-id', entry.id);
+            } else {
+                $('#photos-section').hide();
+            }
+
+            // Payment section - show when editing and has balance
+            if (entry.id && entry.id > 0 && !entry.is_cancelled && entry.balance > 0) {
+                $('#payment-section').show();
+                $('#payment-amount-form').val(entry.balance.toFixed(2));
+                $('#record-payment-form-btn').data('entry-id', entry.id);
+            } else {
+                $('#payment-section').hide();
+            }
+
             // Update calculations
             updateCalculations();
 
@@ -841,6 +875,117 @@
                 });
             }
         });
+
+        // ===========================================
+        // PHOTOS & PAYMENTS - Edit Form
+        // ===========================================
+
+        // Photo upload button click in edit form
+        $(document).on('click', '#upload-photo-form-btn', function() {
+            $('#photo-upload-input-form').click();
+        });
+
+        // Photo file selected in edit form
+        $(document).on('change', '#photo-upload-input-form', function() {
+            const entryId = $(this).data('entry-id');
+            const file = this.files[0];
+
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'upload_job_image');
+            formData.append('nonce', wpStaffDiary.nonce);
+            formData.append('entry_id', entryId);
+            formData.append('image', file);
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        alert('Photo uploaded successfully!');
+                        // Reload entry to show new photo
+                        loadEntryForEdit(entryId);
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while uploading the photo.');
+                }
+            });
+
+            // Clear the file input
+            $(this).val('');
+        });
+
+        // Record payment button click in edit form
+        $(document).on('click', '#record-payment-form-btn', function() {
+            const entryId = $(this).data('entry-id');
+            const amount = $('#payment-amount-form').val();
+            const method = $('#payment-method-form').val();
+            const type = $('#payment-type-form').val();
+            const notes = $('#payment-notes-form').val();
+
+            if (!amount || parseFloat(amount) <= 0) {
+                alert('Please enter a valid payment amount');
+                return;
+            }
+
+            if (confirm(`Record payment of £${parseFloat(amount).toFixed(2)}?`)) {
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'add_payment',
+                        nonce: wpStaffDiary.nonce,
+                        entry_id: entryId,
+                        amount: amount,
+                        payment_method: method,
+                        payment_type: type,
+                        notes: notes
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Payment recorded successfully!');
+                            // Reload entry to update balance
+                            loadEntryForEdit(entryId);
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to record payment'));
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred while recording the payment.');
+                    }
+                });
+            }
+        });
+
+        // Helper function to reload entry in edit form
+        function loadEntryForEdit(entryId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        populateEntryForm(response.data.entry);
+                    }
+                }
+            });
+        }
 
         // ===========================================
         // DELETE ENTRY

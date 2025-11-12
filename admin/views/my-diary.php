@@ -456,6 +456,58 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     </table>
                 </div>
 
+                <!-- Photos Section -->
+                <div class="form-section" id="photos-section" style="display: none;">
+                    <h3>Photos</h3>
+                    <div id="job-photos-container">
+                        <p class="description">No photos uploaded yet.</p>
+                    </div>
+                    <button type="button" class="button" id="upload-photo-form-btn">
+                        <span class="dashicons dashicons-camera"></span> Upload Photo
+                    </button>
+                    <input type="file" id="photo-upload-input-form" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- Payment Recording Section -->
+                <div class="form-section" id="payment-section" style="display: none;">
+                    <h3>Record Payment</h3>
+                    <div id="payment-form-container" class="payment-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 5px;"><strong>Amount (£):</strong></label>
+                                <input type="number" id="payment-amount-form" step="0.01" min="0.01" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 5px;"><strong>Payment Method:</strong></label>
+                                <select id="payment-method-form" style="width: 100%;">
+                                    <?php
+                                    $payment_methods = get_option('wp_staff_diary_payment_methods', array());
+                                    foreach ($payment_methods as $key => $label):
+                                    ?>
+                                        <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;"><strong>Payment Type:</strong></label>
+                            <select id="payment-type-form" style="width: 100%;">
+                                <option value="deposit">Deposit</option>
+                                <option value="partial">Partial Payment</option>
+                                <option value="final">Final Payment</option>
+                                <option value="full">Full Payment</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;"><strong>Notes:</strong></label>
+                            <textarea id="payment-notes-form" rows="2" style="width: 100%;"></textarea>
+                        </div>
+                        <button type="button" class="button button-primary" id="record-payment-form-btn">
+                            <span class="dashicons dashicons-yes"></span> Record Payment
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Notes Section -->
                 <div class="form-section">
                     <h3>Additional Notes</h3>
