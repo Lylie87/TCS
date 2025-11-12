@@ -294,6 +294,59 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     </div>
                 </div>
 
+                <!-- Address Details Section -->
+                <div class="form-section">
+                    <h3>Address Details</h3>
+                    <div class="form-subsection">
+                        <h4>Billing Address</h4>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="billing-address-line-1">Address Line 1</label>
+                                <input type="text" id="billing-address-line-1" name="billing_address_line_1">
+                            </div>
+                            <div class="form-field">
+                                <label for="billing-address-line-2">Address Line 2</label>
+                                <input type="text" id="billing-address-line-2" name="billing_address_line_2">
+                            </div>
+                            <div class="form-field">
+                                <label for="billing-address-line-3">Address Line 3</label>
+                                <input type="text" id="billing-address-line-3" name="billing_address_line_3">
+                            </div>
+                            <div class="form-field">
+                                <label for="billing-postcode">Postcode</label>
+                                <input type="text" id="billing-postcode" name="billing_postcode">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-field" style="margin: 15px 0;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="fitting-address-different" name="fitting_address_different" value="1">
+                            <span>Fitting address is different from billing address</span>
+                        </label>
+                    </div>
+                    <div class="form-subsection" id="fitting-address-section" style="display: none;">
+                        <h4>Fitting Address</h4>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="fitting-address-line-1">Address Line 1</label>
+                                <input type="text" id="fitting-address-line-1" name="fitting_address_line_1">
+                            </div>
+                            <div class="form-field">
+                                <label for="fitting-address-line-2">Address Line 2</label>
+                                <input type="text" id="fitting-address-line-2" name="fitting_address_line_2">
+                            </div>
+                            <div class="form-field">
+                                <label for="fitting-address-line-3">Address Line 3</label>
+                                <input type="text" id="fitting-address-line-3" name="fitting_address_line_3">
+                            </div>
+                            <div class="form-field">
+                                <label for="fitting-postcode">Postcode</label>
+                                <input type="text" id="fitting-postcode" name="fitting_postcode">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Job Details Section -->
                 <div class="form-section">
                     <h3>Job Details</h3>
@@ -401,6 +454,58 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             <td class="amount"><strong>£<span id="total-display">0.00</span></strong></td>
                         </tr>
                     </table>
+                </div>
+
+                <!-- Photos Section -->
+                <div class="form-section" id="photos-section" style="display: none;">
+                    <h3>Photos</h3>
+                    <div id="job-photos-container">
+                        <p class="description">No photos uploaded yet.</p>
+                    </div>
+                    <button type="button" class="button" id="upload-photo-form-btn">
+                        <span class="dashicons dashicons-camera"></span> Upload Photo
+                    </button>
+                    <input type="file" id="photo-upload-input-form" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- Payment Recording Section -->
+                <div class="form-section" id="payment-section" style="display: none;">
+                    <h3>Record Payment</h3>
+                    <div id="payment-form-container" class="payment-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 5px;"><strong>Amount (£):</strong></label>
+                                <input type="number" id="payment-amount-form" step="0.01" min="0.01" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 5px;"><strong>Payment Method:</strong></label>
+                                <select id="payment-method-form" style="width: 100%;">
+                                    <?php
+                                    $payment_methods = get_option('wp_staff_diary_payment_methods', array());
+                                    foreach ($payment_methods as $key => $label):
+                                    ?>
+                                        <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;"><strong>Payment Type:</strong></label>
+                            <select id="payment-type-form" style="width: 100%;">
+                                <option value="deposit">Deposit</option>
+                                <option value="partial">Partial Payment</option>
+                                <option value="final">Final Payment</option>
+                                <option value="full">Full Payment</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;"><strong>Notes:</strong></label>
+                            <textarea id="payment-notes-form" rows="2" style="width: 100%;"></textarea>
+                        </div>
+                        <button type="button" class="button button-primary" id="record-payment-form-btn">
+                            <span class="dashicons dashicons-yes"></span> Record Payment
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Notes Section -->
