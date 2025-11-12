@@ -1,0 +1,580 @@
+/**
+ * WP Staff Diary v2.0.0 - Additional Styles
+ * New styles for order management system
+ *
+ * @since      2.0.0
+ * @package    WP_Staff_Diary
+ */
+
+/* ===========================================
+   FORM SECTIONS & STRUCTURE
+   =========================================== */
+
+.form-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-section {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.form-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1d2327;
+    border-bottom: 2px solid #2271b1;
+    padding-bottom: 8px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-field label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #1d2327;
+    font-size: 14px;
+}
+
+.form-field input[type="text"],
+.form-field input[type="date"],
+.form-field input[type="time"],
+.form-field input[type="number"],
+.form-field input[type="email"],
+.form-field input[type="tel"],
+.form-field select,
+.form-field textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    border-color: #2271b1;
+    outline: none;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.form-field textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.required {
+    color: #d63638;
+    font-weight: bold;
+}
+
+/* ===========================================
+   CUSTOMER SEARCH
+   =========================================== */
+
+#customer-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.search-result-item {
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: #f0f6fc;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #1d2327;
+    font-size: 14px;
+}
+
+#selected-customer-display {
+    background: #e8f5e9;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #81c784;
+}
+
+/* ===========================================
+   ACCESSORIES SELECTION
+   =========================================== */
+
+#accessories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.accessory-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.accessory-item label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin: 0;
+    font-weight: normal;
+}
+
+.accessory-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.accessory-item input[type="number"] {
+    width: 80px;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.accessory-item input[type="number"]:disabled {
+    background: #f0f0f0;
+    color: #999;
+}
+
+/* ===========================================
+   CALCULATIONS & FINANCIAL SUMMARY
+   =========================================== */
+
+.calculation-display {
+    background: #fff;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    margin-top: 15px;
+    font-size: 16px;
+    text-align: right;
+}
+
+.calculation-display strong {
+    color: #2271b1;
+}
+
+.financial-summary {
+    background: #fff;
+}
+
+.calculation-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.calculation-table tr {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.calculation-table tr:last-child {
+    border-bottom: none;
+}
+
+.calculation-table td {
+    padding: 10px;
+}
+
+.calculation-table td.amount {
+    text-align: right;
+    font-weight: 600;
+}
+
+.calculation-table .total-row {
+    background: #f0f6fc;
+    font-size: 18px;
+}
+
+.calculation-table .total-row td {
+    padding: 15px 10px;
+}
+
+/* ===========================================
+   MODAL FOOTER
+   =========================================== */
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 20px;
+}
+
+/* ===========================================
+   JOB SHEET VIEW
+   =========================================== */
+
+.job-sheet-content {
+    padding: 20px;
+}
+
+.job-sheet-header {
+    text-align: center;
+    border-bottom: 2px solid #2271b1;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+}
+
+.job-sheet-header h2 {
+    margin: 0 0 10px 0;
+    color: #2271b1;
+}
+
+.order-number-large {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2271b1;
+}
+
+.detail-section {
+    margin-bottom: 25px;
+}
+
+.detail-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1d2327;
+    margin: 0 0 12px 0;
+    border-bottom: 2px solid #2271b1;
+    padding-bottom: 6px;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.detail-item {
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.detail-item strong {
+    color: #5f6368;
+    font-weight: 600;
+}
+
+.financial-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.financial-table th,
+.financial-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.financial-table th {
+    background: #f0f0f0;
+    font-weight: 600;
+}
+
+.financial-table td:last-child,
+.financial-table th:last-child {
+    text-align: right;
+}
+
+.financial-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.financial-summary-table tr {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.financial-summary-table td {
+    padding: 12px;
+}
+
+.financial-summary-table td.amount {
+    text-align: right;
+    font-weight: 600;
+}
+
+.financial-summary-table .total-row {
+    background: #f0f6fc;
+    font-size: 18px;
+}
+
+.financial-summary-table .payment-row {
+    background: #e8f5e9;
+}
+
+.financial-summary-table .balance-due {
+    background: #fff3cd;
+    font-size: 18px;
+}
+
+.financial-summary-table .balance-paid {
+    background: #d4edda;
+    font-size: 18px;
+}
+
+.notes-content {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    line-height: 1.6;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 10px;
+}
+
+/* ===========================================
+   STATUS BADGES
+   =========================================== */
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.status-in-progress {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.status-badge.status-completed {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.status-badge.status-cancelled {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.status-badge-mini {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-badge-mini.status-pending {
+    background: #ffc107;
+}
+
+.status-badge-mini.status-in-progress {
+    background: #0d6efd;
+}
+
+.status-badge-mini.status-completed {
+    background: #198754;
+}
+
+.status-badge-mini.status-cancelled {
+    background: #dc3545;
+}
+
+/* ===========================================
+   JOBS TABLE (LIST VIEW)
+   =========================================== */
+
+.jobs-table td {
+    vertical-align: middle;
+}
+
+.jobs-table td.amount {
+    text-align: right;
+    font-weight: 600;
+}
+
+/* ===========================================
+   CALENDAR ENTRY CARDS
+   =========================================== */
+
+.calendar-entry {
+    padding: 8px;
+    margin-bottom: 6px;
+    border-left: 3px solid #ddd;
+    background: #f9f9f9;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.calendar-entry:hover {
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.calendar-entry.status-pending {
+    border-left-color: #ffc107;
+}
+
+.calendar-entry.status-in-progress {
+    border-left-color: #0d6efd;
+}
+
+.calendar-entry.status-completed {
+    border-left-color: #198754;
+}
+
+.calendar-entry.status-cancelled {
+    border-left-color: #dc3545;
+}
+
+.entry-order {
+    font-weight: 600;
+    font-size: 13px;
+    color: #2271b1;
+    margin-bottom: 4px;
+}
+
+.entry-time {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.entry-customer {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 4px;
+}
+
+.entry-product {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.entry-status-badge {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 6px;
+}
+
+.entry-actions {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+}
+
+/* ===========================================
+   RESPONSIVE DESIGN
+   =========================================== */
+
+@media screen and (max-width: 782px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .wp-staff-diary-modal-content {
+        width: 95%;
+        margin: 5% auto;
+    }
+
+    .financial-table,
+    .financial-summary-table {
+        font-size: 12px;
+    }
+
+    .financial-table th,
+    .financial-table td {
+        padding: 6px;
+    }
+
+    .calendar-grid {
+        grid-template-columns: repeat(7, 1fr);
+        grid-auto-rows: minmax(120px, auto);
+    }
+
+    .calendar-entry {
+        font-size: 10px;
+        padding: 4px;
+    }
+}
+
+/* ===========================================
+   PRINT STYLES
+   =========================================== */
+
+@media print {
+    .modal-footer,
+    .detail-actions,
+    .wp-staff-diary-modal-close {
+        display: none !important;
+    }
+
+    .job-sheet-content {
+        max-width: 100%;
+    }
+}

@@ -28,6 +28,14 @@ class WP_Staff_Diary_Admin {
             $this->version,
             'all'
         );
+
+        wp_enqueue_style(
+            $this->plugin_name . '-v2',
+            WP_STAFF_DIARY_URL . 'assets/css/admin-v2-additions.css',
+            array($this->plugin_name),
+            $this->version,
+            'all'
+        );
     }
 
     /**
