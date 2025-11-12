@@ -969,24 +969,6 @@
             }
         });
 
-        // Helper function to reload entry in edit form
-        function loadEntryForEdit(entryId) {
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'get_diary_entry',
-                    nonce: wpStaffDiary.nonce,
-                    entry_id: entryId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        populateEntryForm(response.data.entry);
-                    }
-                }
-            });
-        }
-
         // ===========================================
         // DELETE ENTRY
         // ===========================================
