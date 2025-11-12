@@ -127,14 +127,18 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     <?php else: ?>
                         <?php foreach ($day_entries as $entry): ?>
                             <?php
-                            $customer = $entry->customer_id ? $db->get_customer($entry->customer_id) : null;
-                            $status_class = $entry->is_cancelled ? 'cancelled' : $entry->status;
+                            $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
+                            $customer = $customer_id ? $db->get_customer($customer_id) : null;
+                            $is_cancelled = isset($entry->is_cancelled) ? $entry->is_cancelled : 0;
+                            $status_class = $is_cancelled ? 'cancelled' : $entry->status;
+                            $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
+                            $product_desc = isset($entry->product_description) ? $entry->product_description : '';
                             ?>
                             <div class="calendar-entry status-<?php echo esc_attr($status_class); ?>"
                                  data-entry-id="<?php echo esc_attr($entry->id); ?>"
-                                 <?php echo $entry->is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
+                                 <?php echo $is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
                                 <div class="entry-order">
-                                    <strong><?php echo esc_html($entry->order_number); ?></strong>
+                                    <strong><?php echo esc_html($order_number); ?></strong>
                                 </div>
                                 <div class="entry-time">
                                     <?php echo $entry->job_time ? esc_html(date('H:i', strtotime($entry->job_time))) : '<span style="color: #999;">No time</span>'; ?>
@@ -147,7 +151,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                     <?php endif; ?>
                                 </div>
                                 <div class="entry-product">
-                                    <?php echo $entry->product_description ? esc_html(wp_trim_words($entry->product_description, 5)) : '<span style="color: #999;">—</span>'; ?>
+                                    <?php echo $product_desc ? esc_html(wp_trim_words($product_desc, 5)) : '<span style="color: #999;">—</span>'; ?>
                                 </div>
                                 <div class="entry-status-badge">
                                     <span class="status-badge-mini status-<?php echo esc_attr($status_class); ?>"></span>
