@@ -37,8 +37,8 @@ class WP_Staff_Diary_Upgrade {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
         // Upgrade to v2.0.0 - Create all new tables
-        // Also run for 2.0.0 -> 2.0.1 to ensure migration completed
-        if (version_compare($from_version, '2.0.1', '<')) {
+        // Also run for 2.0.0 -> 2.0.2 to ensure migration completed
+        if (version_compare($from_version, '2.0.2', '<')) {
             self::upgrade_to_2_0_0();
         }
 
@@ -271,6 +271,14 @@ class WP_Staff_Diary_Upgrade {
                 'bank-transfer' => 'Bank Transfer',
                 'card-payment' => 'Card Payment'
             ));
+        }
+
+        // v2.0.2 options - Job time settings
+        if (get_option('wp_staff_diary_job_time_type') === false) {
+            add_option('wp_staff_diary_job_time_type', 'ampm');
+        }
+        if (get_option('wp_staff_diary_fitting_time_length') === false) {
+            add_option('wp_staff_diary_fitting_time_length', '0');
         }
     }
 }
