@@ -32,6 +32,9 @@ $statuses = get_option('wp_staff_diary_statuses', array(
 // Get accessories for selection
 $accessories = $db->get_all_accessories(true); // Active only
 
+// Get fitters
+$fitters = get_option('wp_staff_diary_fitters', array());
+
 // Get VAT settings
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
@@ -63,19 +66,20 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             <thead>
                 <tr>
                     <th style="width: 10%;">Order #</th>
-                    <th style="width: 12%;">Job Date</th>
-                    <th style="width: 20%;">Customer</th>
-                    <th style="width: 15%;">Product</th>
-                    <th style="width: 10%; text-align: right;">Total</th>
-                    <th style="width: 10%; text-align: right;">Balance</th>
-                    <th style="width: 13%;">Status</th>
-                    <th style="width: 10%;">Actions</th>
+                    <th style="width: 10%;">Job Date</th>
+                    <th style="width: 18%;">Customer</th>
+                    <th style="width: 12%;">Fitter</th>
+                    <th style="width: 13%;">Product</th>
+                    <th style="width: 9%; text-align: right;">Total</th>
+                    <th style="width: 9%; text-align: right;">Balance</th>
+                    <th style="width: 12%;">Status</th>
+                    <th style="width: 9%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($entries)): ?>
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px;">
+                        <td colspan="9" style="text-align: center; padding: 40px;">
                             <p style="color: #666; font-size: 16px;">No jobs found for this month. Click "Add New Job" to get started.</p>
                         </td>
                     </tr>
@@ -84,6 +88,14 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         <?php
                         $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
                         $customer = $customer_id ? $db->get_customer($customer_id) : null;
+
+                        // Get fitter info
+                        $fitter_id = isset($entry->fitter_id) ? $entry->fitter_id : null;
+                        $fitter = null;
+                        if ($fitter_id !== null && isset($fitters[$fitter_id])) {
+                            $fitter = $fitters[$fitter_id];
+                        }
+
                         $subtotal = $db->calculate_job_subtotal($entry->id);
                         $total = $subtotal;
                         if ($vat_enabled == '1') {
@@ -112,6 +124,15 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #999;">No customer</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($fitter): ?>
+                                    <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color']); ?>; color: white; font-size: 11px; font-weight: 600;">
+                                        <?php echo esc_html($fitter['name']); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color: #999;">Unassigned</span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -194,6 +215,25 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             <button type="button" class="button button-small" id="clear-customer-btn" style="margin-left: 10px;">Change</button>
                         </div>
                         <button type="button" class="button button-small" id="add-new-customer-inline" style="margin-top: 5px;">+ Add New Customer</button>
+                    </div>
+                </div>
+
+                <!-- Fitter Selection -->
+                <div class="form-section">
+                    <h3>Assign Fitter</h3>
+                    <div class="form-field">
+                        <label for="fitter-id">Fitter</label>
+                        <select id="fitter-id" name="fitter_id">
+                            <option value="">None / Unassigned</option>
+                            <?php foreach ($fitters as $index => $fitter): ?>
+                                <option value="<?php echo esc_attr($index); ?>">
+                                    <?php echo esc_html($fitter['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (empty($fitters)): ?>
+                            <p class="description">No fitters available. <a href="<?php echo admin_url('admin.php?page=wp-staff-diary-settings#fitters'); ?>">Add fitters in settings</a></p>
+                        <?php endif; ?>
                     </div>
                 </div>
 

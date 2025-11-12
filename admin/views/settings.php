@@ -142,6 +142,9 @@ $payment_methods = get_option('wp_staff_diary_payment_methods', array(
 // Accessories
 $db = new WP_Staff_Diary_Database();
 $accessories = $db->get_all_accessories();
+
+// Fitters
+$fitters = get_option('wp_staff_diary_fitters', array());
 ?>
 
 <div class="wrap wp-staff-diary-wrap">
@@ -156,6 +159,7 @@ $accessories = $db->get_all_accessories();
         <a href="#statuses" class="nav-tab" data-tab="statuses">Job Statuses</a>
         <a href="#payment-methods" class="nav-tab" data-tab="payment-methods">Payment Methods</a>
         <a href="#accessories" class="nav-tab" data-tab="accessories">Accessories</a>
+        <a href="#fitters" class="nav-tab" data-tab="fitters">Fitters</a>
         <a href="#terms" class="nav-tab" data-tab="terms">Terms & Conditions</a>
         <a href="#info" class="nav-tab" data-tab="info">Plugin Info</a>
     </nav>
@@ -570,6 +574,62 @@ $accessories = $db->get_all_accessories();
         </div>
     </div>
 
+    <!-- Fitters Tab -->
+    <div id="fitters-tab" class="settings-tab" style="display:none;">
+        <h2>Fitters</h2>
+        <p>Manage your team of fitters. Assign colors to each fitter for easy identification in the calendar view.</p>
+
+        <div id="fitters-management" class="wp-staff-diary-management-section">
+            <table class="wp-list-table widefat fixed striped" id="fitters-table">
+                <thead>
+                    <tr>
+                        <th>Fitter Name</th>
+                        <th style="width: 150px;">Color</th>
+                        <th style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($fitters)): ?>
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #666;">No fitters added yet. Add your first fitter below.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($fitters as $index => $fitter): ?>
+                            <tr data-fitter-index="<?php echo esc_attr($index); ?>">
+                                <td><?php echo esc_html($fitter['name']); ?></td>
+                                <td>
+                                    <span class="color-preview" style="display: inline-block; width: 30px; height: 30px; background-color: <?php echo esc_attr($fitter['color']); ?>; border: 1px solid #ddd; border-radius: 3px; vertical-align: middle;"></span>
+                                    <span style="margin-left: 10px;"><?php echo esc_html($fitter['color']); ?></span>
+                                </td>
+                                <td>
+                                    <button type="button" class="button button-small button-link-delete delete-fitter" data-index="<?php echo esc_attr($index); ?>">Delete</button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <div class="add-fitter-form" style="margin-top: 20px;">
+                <h3>Add New Fitter</h3>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="new-fitter-name">Fitter Name:</label></th>
+                        <td><input type="text" id="new-fitter-name" class="regular-text" placeholder="e.g., John Smith"></td>
+                    </tr>
+                    <tr>
+                        <th><label for="new-fitter-color">Color:</label></th>
+                        <td>
+                            <input type="color" id="new-fitter-color" value="#3498db">
+                            <p class="description">Choose a color to identify this fitter in the calendar view.</p>
+                        </td>
+                    </tr>
+                </table>
+                <button type="button" id="add-fitter-btn" class="button button-secondary">Add Fitter</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Terms & Conditions Tab -->
     <div id="terms-tab" class="settings-tab" style="display:none;">
         <h2>Terms & Conditions</h2>
@@ -861,6 +921,67 @@ jQuery(document).ready(function($) {
             },
             error: function() {
                 alert('Error removing payment method');
+            }
+        });
+    });
+
+    // Add Fitter
+    $('#add-fitter-btn').on('click', function() {
+        var name = $('#new-fitter-name').val().trim();
+        var color = $('#new-fitter-color').val();
+
+        if (!name) {
+            alert('Please enter a fitter name');
+            return;
+        }
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_add_fitter',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                name: name,
+                color: color
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to add fitter');
+                }
+            },
+            error: function() {
+                alert('Error adding fitter');
+            }
+        });
+    });
+
+    // Delete Fitter
+    $('.delete-fitter').on('click', function() {
+        if (!confirm('Are you sure you want to remove this fitter?')) {
+            return;
+        }
+
+        var index = $(this).data('index');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_delete_fitter',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                index: index
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to remove fitter');
+                }
+            },
+            error: function() {
+                alert('Error removing fitter');
             }
         });
     });

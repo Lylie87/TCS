@@ -234,6 +234,7 @@ class WP_Staff_Diary_Admin {
         $data = array(
             'user_id' => $user_id,
             'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+            'fitter_id' => !empty($_POST['fitter_id']) ? intval($_POST['fitter_id']) : null,
             'job_date' => sanitize_text_field($_POST['job_date']),
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
             'fitting_date' => !empty($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null,
@@ -772,6 +773,81 @@ class WP_Staff_Diary_Admin {
         } else {
             wp_send_json_error(array('message' => 'Payment method not found'));
         }
+    }
+
+    // ==================== FITTER AJAX HANDLERS ====================
+
+    /**
+     * AJAX: Add fitter
+     */
+    public function add_fitter() {
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $name = sanitize_text_field($_POST['name']);
+        $color = sanitize_hex_color($_POST['color']);
+
+        if (empty($name)) {
+            wp_send_json_error('Fitter name is required');
+        }
+
+        if (empty($color)) {
+            $color = '#3498db'; // Default color
+        }
+
+        // Get current fitters
+        $fitters = get_option('wp_staff_diary_fitters', array());
+
+        // Add new fitter
+        $fitters[] = array(
+            'name' => $name,
+            'color' => $color
+        );
+
+        update_option('wp_staff_diary_fitters', $fitters);
+        wp_send_json_success('Fitter added successfully');
+    }
+
+    /**
+     * AJAX: Delete fitter
+     */
+    public function delete_fitter() {
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $index = intval($_POST['index']);
+
+        // Get current fitters
+        $fitters = get_option('wp_staff_diary_fitters', array());
+
+        // Check if index exists
+        if (!isset($fitters[$index])) {
+            wp_send_json_error('Fitter not found');
+        }
+
+        // Check if any jobs are assigned to this fitter
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_diary WHERE fitter_id = %d",
+            $index
+        ));
+
+        if ($count > 0) {
+            wp_send_json_error("Cannot delete this fitter. There are $count job(s) assigned to them.");
+        }
+
+        // Remove the fitter
+        unset($fitters[$index]);
+        $fitters = array_values($fitters); // Re-index array
+        update_option('wp_staff_diary_fitters', $fitters);
+        wp_send_json_success('Fitter deleted successfully');
     }
 
     // ==================== ACCESSORY AJAX HANDLERS ====================

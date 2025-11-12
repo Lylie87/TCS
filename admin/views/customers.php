@@ -66,7 +66,15 @@ $customers = $db->get_all_customers();
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php echo $customer->customer_address ? nl2br(esc_html($customer->customer_address)) : '<span style="color: #999;">No address</span>'; ?>
+                            <?php
+                            $address_parts = array_filter(array(
+                                isset($customer->address_line_1) ? $customer->address_line_1 : '',
+                                isset($customer->address_line_2) ? $customer->address_line_2 : '',
+                                isset($customer->address_line_3) ? $customer->address_line_3 : '',
+                                isset($customer->postcode) ? $customer->postcode : ''
+                            ));
+                            echo !empty($address_parts) ? nl2br(esc_html(implode("\n", $address_parts))) : '<span style="color: #999;">No address</span>';
+                            ?>
                         </td>
                         <td style="text-align: center;">
                             <span class="customer-job-count"><?php echo $job_count; ?></span>
@@ -115,8 +123,23 @@ $customers = $db->get_all_customers();
             </div>
 
             <div class="form-row">
-                <label for="customer-address">Address</label>
-                <textarea id="customer-address" name="customer_address" rows="3" style="width: 100%;"></textarea>
+                <label for="address-line-1">Address Line 1</label>
+                <input type="text" id="address-line-1" name="address_line_1" style="width: 100%;">
+            </div>
+
+            <div class="form-row">
+                <label for="address-line-2">Address Line 2</label>
+                <input type="text" id="address-line-2" name="address_line_2" style="width: 100%;">
+            </div>
+
+            <div class="form-row">
+                <label for="address-line-3">Address Line 3</label>
+                <input type="text" id="address-line-3" name="address_line_3" style="width: 100%;">
+            </div>
+
+            <div class="form-row">
+                <label for="postcode">Postcode</label>
+                <input type="text" id="postcode" name="postcode" style="width: 200px;">
             </div>
 
             <div class="form-row">
@@ -271,7 +294,10 @@ jQuery(document).ready(function($) {
                     $('#customer-name').val(customer.customer_name);
                     $('#customer-phone').val(customer.customer_phone || '');
                     $('#customer-email').val(customer.customer_email || '');
-                    $('#customer-address').val(customer.customer_address || '');
+                    $('#address-line-1').val(customer.address_line_1 || '');
+                    $('#address-line-2').val(customer.address_line_2 || '');
+                    $('#address-line-3').val(customer.address_line_3 || '');
+                    $('#postcode').val(customer.postcode || '');
                     $('#customer-notes').val(customer.notes || '');
                     $('#customer-modal').fadeIn();
                 } else {
@@ -334,7 +360,10 @@ jQuery(document).ready(function($) {
             customer_name: $('#customer-name').val(),
             customer_phone: $('#customer-phone').val(),
             customer_email: $('#customer-email').val(),
-            customer_address: $('#customer-address').val(),
+            address_line_1: $('#address-line-1').val(),
+            address_line_2: $('#address-line-2').val(),
+            address_line_3: $('#address-line-3').val(),
+            postcode: $('#postcode').val(),
             notes: $('#customer-notes').val()
         };
 
@@ -425,7 +454,14 @@ jQuery(document).ready(function($) {
     function buildCustomerRow(customer) {
         let phone = customer.customer_phone ? '<div><span class="dashicons dashicons-phone"></span> ' + customer.customer_phone + '</div>' : '';
         let email = customer.customer_email ? '<div><span class="dashicons dashicons-email"></span> ' + customer.customer_email + '</div>' : '';
-        let address = customer.customer_address ? customer.customer_address.replace(/\n/g, '<br>') : '<span style="color: #999;">No address</span>';
+
+        // Build UK address from parts
+        let addressParts = [];
+        if (customer.address_line_1) addressParts.push(customer.address_line_1);
+        if (customer.address_line_2) addressParts.push(customer.address_line_2);
+        if (customer.address_line_3) addressParts.push(customer.address_line_3);
+        if (customer.postcode) addressParts.push(customer.postcode);
+        let address = addressParts.length > 0 ? addressParts.join('<br>') : '<span style="color: #999;">No address</span>';
 
         return '<tr data-customer-id="' + customer.id + '">' +
             '<td><strong>' + customer.customer_name + '</strong></td>' +
