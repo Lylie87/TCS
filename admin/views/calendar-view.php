@@ -57,6 +57,7 @@ $statuses = get_option('wp_staff_diary_statuses', array(
     'cancelled' => 'Cancelled'
 ));
 $accessories = $db->get_all_accessories(true);
+$fitters = get_option('wp_staff_diary_fitters', array());
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 ?>
@@ -129,6 +130,16 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             <?php
                             $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
                             $customer = $customer_id ? $db->get_customer($customer_id) : null;
+
+                            // Get fitter info
+                            $fitter_id = isset($entry->fitter_id) ? $entry->fitter_id : null;
+                            $fitter = null;
+                            $fitter_color = '#ddd';
+                            if ($fitter_id !== null && isset($fitters[$fitter_id])) {
+                                $fitter = $fitters[$fitter_id];
+                                $fitter_color = $fitter['color'];
+                            }
+
                             $is_cancelled = isset($entry->is_cancelled) ? $entry->is_cancelled : 0;
                             $status_class = $is_cancelled ? 'cancelled' : $entry->status;
                             $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
@@ -136,7 +147,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             ?>
                             <div class="calendar-entry status-<?php echo esc_attr($status_class); ?>"
                                  data-entry-id="<?php echo esc_attr($entry->id); ?>"
-                                 <?php echo $is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
+                                 style="border-left: 4px solid <?php echo esc_attr($fitter_color); ?>;<?php echo $is_cancelled ? ' opacity: 0.6;' : ''; ?>">
                                 <div class="entry-order">
                                     <strong><?php echo esc_html($order_number); ?></strong>
                                 </div>
@@ -150,6 +161,12 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                         <span style="color: #999;">No customer</span>
                                     <?php endif; ?>
                                 </div>
+                                <?php if ($fitter): ?>
+                                    <div class="entry-fitter" style="font-size: 11px; color: #666; margin-top: 2px;">
+                                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($fitter_color); ?>; margin-right: 4px;"></span>
+                                        <?php echo esc_html($fitter['name']); ?>
+                                    </div>
+                                <?php endif; ?>
                                 <div class="entry-product">
                                     <?php echo $product_desc ? esc_html(wp_trim_words($product_desc, 5)) : '<span style="color: #999;">—</span>'; ?>
                                 </div>

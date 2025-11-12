@@ -163,6 +163,13 @@
             $('#area').val(entry.area);
             $('#size').val(entry.size);
 
+            // Fitter
+            if (entry.fitter_id !== undefined && entry.fitter_id !== null) {
+                $('#fitter-id').val(entry.fitter_id);
+            } else {
+                $('#fitter-id').val('');
+            }
+
             // Product
             $('#product-description').val(entry.product_description);
             $('#sq-mtr-qty').val(entry.sq_mtr_qty);
@@ -215,6 +222,7 @@
                 nonce: wpStaffDiary.nonce,
                 entry_id: $('#entry-id').val(),
                 customer_id: $('#customer-id').val(),
+                fitter_id: $('#fitter-id').val(),
                 job_date: $('#job-date').val(),
                 job_time: $('#job-time').val(),
                 fitting_date: $('#fitting-date').val(),
