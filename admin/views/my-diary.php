@@ -1,14 +1,14 @@
 <?php
 /**
- * My Diary Page
+ * My Jobs Page - List View
  *
- * @since      1.0.0
+ * @since      2.0.0
  * @package    WP_Staff_Diary
  */
 
-// If this file is called directly, abort.
-if (!defined('WPINC')) {
-    die;
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
 }
 
 $current_user = wp_get_current_user();
@@ -20,10 +20,27 @@ $start_date = $current_month . '-01';
 $end_date = date('Y-m-t', strtotime($start_date));
 
 $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date);
+
+// Get statuses for dropdown
+$statuses = get_option('wp_staff_diary_statuses', array(
+    'pending' => 'Pending',
+    'in-progress' => 'In Progress',
+    'completed' => 'Completed',
+    'cancelled' => 'Cancelled'
+));
+
+// Get accessories for selection
+$accessories = $db->get_all_accessories(true); // Active only
+
+// Get VAT settings
+$vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+$vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 ?>
 
 <div class="wrap wp-staff-diary-wrap">
-    <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+    <h1>
+        <span class="dashicons dashicons-calendar-alt"></span> <?php echo esc_html(get_admin_page_title()); ?>
+    </h1>
 
     <div class="diary-header">
         <div class="date-selector">
@@ -32,48 +49,93 @@ $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date);
         </div>
 
         <div class="view-actions">
-            <a href="?page=wp-staff-diary" class="button">Calendar View</a>
+            <a href="?page=wp-staff-diary" class="button">
+                <span class="dashicons dashicons-calendar"></span> Calendar View
+            </a>
             <button type="button" class="button button-primary" id="add-new-entry">
-                Add New Job
+                <span class="dashicons dashicons-plus-alt"></span> Add New Job
             </button>
         </div>
     </div>
 
     <div class="diary-entries">
-        <table class="wp-list-table widefat fixed striped">
+        <table class="wp-list-table widefat fixed striped jobs-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Client Name</th>
-                    <th>Address</th>
-                    <th>Phone</th>
-                    <th>Job Description</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th style="width: 10%;">Order #</th>
+                    <th style="width: 12%;">Job Date</th>
+                    <th style="width: 20%;">Customer</th>
+                    <th style="width: 15%;">Product</th>
+                    <th style="width: 10%; text-align: right;">Total</th>
+                    <th style="width: 10%; text-align: right;">Balance</th>
+                    <th style="width: 13%;">Status</th>
+                    <th style="width: 10%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($entries)): ?>
                     <tr>
-                        <td colspan="7" style="text-align: center;">No entries found for this month.</td>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <p style="color: #666; font-size: 16px;">No jobs found for this month. Click "Add New Job" to get started.</p>
+                        </td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($entries as $entry): ?>
-                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>">
-                            <td><?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?></td>
-                            <td><?php echo esc_html($entry->client_name); ?></td>
-                            <td><?php echo esc_html($entry->client_address); ?></td>
-                            <td><?php echo esc_html($entry->client_phone); ?></td>
-                            <td><?php echo esc_html(wp_trim_words($entry->job_description, 10)); ?></td>
+                        <?php
+                        $customer = $entry->customer_id ? $db->get_customer($entry->customer_id) : null;
+                        $subtotal = $db->calculate_job_subtotal($entry->id);
+                        $total = $subtotal;
+                        if ($vat_enabled == '1') {
+                            $total = $subtotal * (1 + ($vat_rate / 100));
+                        }
+                        $payments = $db->get_entry_total_payments($entry->id);
+                        $balance = $total - $payments;
+
+                        $status_class = $entry->is_cancelled ? 'cancelled' : $entry->status;
+                        ?>
+                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>" <?php echo $entry->is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
+                            <td><strong><?php echo esc_html($entry->order_number); ?></strong></td>
                             <td>
-                                <span class="status-badge status-<?php echo esc_attr($entry->status); ?>">
-                                    <?php echo esc_html(ucfirst($entry->status)); ?>
+                                <?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?>
+                                <?php if ($entry->job_time): ?>
+                                    <br><small><?php echo esc_html(date('H:i', strtotime($entry->job_time))); ?></small>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($customer): ?>
+                                    <strong><?php echo esc_html($customer->customer_name); ?></strong>
+                                    <?php if ($customer->customer_phone): ?>
+                                        <br><small><?php echo esc_html($customer->customer_phone); ?></small>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span style="color: #999;">No customer</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php echo $entry->product_description ? esc_html(wp_trim_words($entry->product_description, 5)) : '<span style="color: #999;">—</span>'; ?>
+                            </td>
+                            <td style="text-align: right;">
+                                <strong>£<?php echo number_format($total, 2); ?></strong>
+                            </td>
+                            <td style="text-align: right;">
+                                <?php if ($balance > 0): ?>
+                                    <span style="color: #d63638; font-weight: bold;">£<?php echo number_format($balance, 2); ?></span>
+                                <?php elseif ($balance < 0): ?>
+                                    <span style="color: #00a32a; font-weight: bold;">-£<?php echo number_format(abs($balance), 2); ?></span>
+                                <?php else: ?>
+                                    <span style="color: #00a32a; font-weight: bold;">PAID</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <span class="status-badge status-<?php echo esc_attr($status_class); ?>">
+                                    <?php echo esc_html($statuses[$status_class] ?? ucfirst($status_class)); ?>
                                 </span>
                             </td>
                             <td>
                                 <button class="button button-small view-entry" data-id="<?php echo esc_attr($entry->id); ?>">View</button>
-                                <button class="button button-small edit-entry" data-id="<?php echo esc_attr($entry->id); ?>">Edit</button>
-                                <button class="button button-small delete-entry" data-id="<?php echo esc_attr($entry->id); ?>">Delete</button>
+                                <?php if (!$entry->is_cancelled): ?>
+                                    <button class="button button-small edit-entry" data-id="<?php echo esc_attr($entry->id); ?>">Edit</button>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -83,93 +145,217 @@ $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date);
     </div>
 </div>
 
-<!-- Entry Modal (for add/edit) -->
-<div id="entry-modal" class="entry-modal" style="display: none;">
-    <div class="entry-modal-content">
-        <span class="entry-modal-close">&times;</span>
-        <h2 id="modal-title">Add New Job Entry</h2>
+<!-- Add/Edit Entry Modal -->
+<div id="entry-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2 id="modal-title">Add New Job</h2>
 
         <form id="diary-entry-form">
             <input type="hidden" id="entry-id" name="entry_id" value="">
 
-            <table class="form-table">
-                <tr>
-                    <th><label for="job-date">Job Date *</label></th>
-                    <td><input type="date" id="job-date" name="job_date" required></td>
-                </tr>
-                <tr>
-                    <th><label for="job-time">Job Time</label></th>
-                    <td><input type="time" id="job-time" name="job_time" class="regular-text"></td>
-                </tr>
-                <tr>
-                    <th><label for="client-name">Client Name</label></th>
-                    <td><input type="text" id="client-name" name="client_name" class="regular-text"></td>
-                </tr>
-                <tr>
-                    <th><label for="client-address">Address</label></th>
-                    <td><textarea id="client-address" name="client_address" rows="3" class="large-text"></textarea></td>
-                </tr>
-                <tr>
-                    <th><label for="client-phone">Phone Number</label></th>
-                    <td><input type="tel" id="client-phone" name="client_phone" class="regular-text"></td>
-                </tr>
-                <tr>
-                    <th><label for="job-description">Job Description</label></th>
-                    <td><textarea id="job-description" name="job_description" rows="4" class="large-text"></textarea></td>
-                </tr>
-                <tr>
-                    <th><label for="plans">Plans/Notes</label></th>
-                    <td><textarea id="plans" name="plans" rows="4" class="large-text"></textarea></td>
-                </tr>
-                <tr>
-                    <th><label for="notes">Additional Notes</label></th>
-                    <td><textarea id="notes" name="notes" rows="3" class="large-text"></textarea></td>
-                </tr>
-                <tr>
-                    <th><label for="status">Status</label></th>
-                    <td>
-                        <select id="status" name="status">
-                            <?php
-                            $statuses = get_option('wp_staff_diary_statuses', array(
-                                'pending' => 'Pending',
-                                'in-progress' => 'In Progress',
-                                'completed' => 'Completed',
-                                'cancelled' => 'Cancelled'
-                            ));
-                            foreach ($statuses as $key => $label) {
-                                echo '<option value="' . esc_attr($key) . '">' . esc_html($label) . '</option>';
-                            }
-                            ?>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label>Job Images</label></th>
-                    <td>
-                        <div id="image-gallery"></div>
-                        <button type="button" class="button" id="upload-image-btn">Upload Image</button>
-                        <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
-                    </td>
-                </tr>
-            </table>
+            <div class="form-sections">
+                <!-- Order Info Section -->
+                <div class="form-section">
+                    <h3>Order Information</h3>
+                    <div class="form-grid">
+                        <div class="form-field" id="order-number-display" style="display: none;">
+                            <label>Order Number</label>
+                            <div><strong id="order-number-value" style="font-size: 18px; color: #2271b1;"></strong></div>
+                        </div>
+                        <div class="form-field">
+                            <label for="status">Status <span class="required">*</span></label>
+                            <select id="status" name="status" required>
+                                <?php foreach ($statuses as $key => $label): ?>
+                                    <?php if ($key !== 'cancelled'): ?>
+                                        <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
-            <p class="submit">
-                <button type="submit" class="button button-primary">Save Entry</button>
-                <button type="button" class="button button-secondary" id="cancel-entry">Cancel</button>
-            </p>
+                <!-- Customer Section -->
+                <div class="form-section">
+                    <h3>Customer Details</h3>
+                    <div class="form-field">
+                        <label for="customer-search">Search Customer</label>
+                        <input type="text" id="customer-search" placeholder="Type to search customers..." autocomplete="off">
+                        <input type="hidden" id="customer-id" name="customer_id" value="">
+                        <div id="customer-search-results" class="search-results"></div>
+                        <div id="selected-customer-display" style="display: none; margin-top: 10px; padding: 10px; background: #f0f0f1; border-radius: 4px;">
+                            <strong>Selected Customer:</strong> <span id="selected-customer-name"></span>
+                            <button type="button" class="button button-small" id="clear-customer-btn" style="margin-left: 10px;">Change</button>
+                        </div>
+                        <button type="button" class="button button-small" id="add-new-customer-inline" style="margin-top: 5px;">+ Add New Customer</button>
+                    </div>
+                </div>
+
+                <!-- Job Details Section -->
+                <div class="form-section">
+                    <h3>Job Details</h3>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="job-date">Job Date <span class="required">*</span></label>
+                            <input type="date" id="job-date" name="job_date" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="job-time">Job Time</label>
+                            <input type="time" id="job-time" name="job_time">
+                        </div>
+                        <div class="form-field">
+                            <label for="fitting-date">Fitting Date</label>
+                            <input type="date" id="fitting-date" name="fitting_date">
+                        </div>
+                        <div class="form-field">
+                            <label for="fitting-time-period">Fitting Time</label>
+                            <select id="fitting-time-period" name="fitting_time_period">
+                                <option value="">Select...</option>
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="area">Area</label>
+                            <input type="text" id="area" name="area">
+                        </div>
+                        <div class="form-field">
+                            <label for="size">Size</label>
+                            <input type="text" id="size" name="size">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Section -->
+                <div class="form-section">
+                    <h3>Product Details</h3>
+                    <div class="form-field">
+                        <label for="product-description">Product Description</label>
+                        <textarea id="product-description" name="product_description" rows="3"></textarea>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="sq-mtr-qty">Sq.Mtr / Quantity</label>
+                            <input type="number" id="sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0">
+                        </div>
+                        <div class="form-field">
+                            <label for="price-per-sq-mtr">Price per Sq.Mtr (£)</label>
+                            <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
+                        </div>
+                    </div>
+                    <div class="calculation-display">
+                        <strong>Product Total:</strong> £<span id="product-total-display">0.00</span>
+                    </div>
+                </div>
+
+                <!-- Accessories Section -->
+                <div class="form-section">
+                    <h3>Accessories</h3>
+                    <div id="accessories-list">
+                        <?php foreach ($accessories as $accessory): ?>
+                            <div class="accessory-item">
+                                <label>
+                                    <input type="checkbox" class="accessory-checkbox"
+                                           data-accessory-id="<?php echo esc_attr($accessory->id); ?>"
+                                           data-accessory-name="<?php echo esc_attr($accessory->accessory_name); ?>"
+                                           data-price="<?php echo esc_attr($accessory->price); ?>">
+                                    <?php echo esc_html($accessory->accessory_name); ?>
+                                    (£<?php echo number_format($accessory->price, 2); ?>)
+                                </label>
+                                <input type="number" class="accessory-quantity"
+                                       data-accessory-id="<?php echo esc_attr($accessory->id); ?>"
+                                       min="1" value="1" step="0.01"
+                                       style="width: 80px; margin-left: 10px;"
+                                       disabled>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="calculation-display">
+                        <strong>Accessories Total:</strong> £<span id="accessories-total-display">0.00</span>
+                    </div>
+                </div>
+
+                <!-- Financial Summary -->
+                <div class="form-section financial-summary">
+                    <h3>Financial Summary</h3>
+                    <table class="calculation-table">
+                        <tr>
+                            <td>Subtotal:</td>
+                            <td class="amount">£<span id="subtotal-display">0.00</span></td>
+                        </tr>
+                        <?php if ($vat_enabled == '1'): ?>
+                        <tr>
+                            <td>VAT (<?php echo $vat_rate; ?>%):</td>
+                            <td class="amount">£<span id="vat-display">0.00</span></td>
+                        </tr>
+                        <?php endif; ?>
+                        <tr class="total-row">
+                            <td><strong>Total:</strong></td>
+                            <td class="amount"><strong>£<span id="total-display">0.00</span></strong></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="form-section">
+                    <h3>Additional Notes</h3>
+                    <div class="form-field">
+                        <textarea id="notes" name="notes" rows="4" placeholder="Add any additional notes or special instructions..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="button button-primary button-large" id="save-entry-btn">
+                    <span class="dashicons dashicons-yes"></span> Save Job
+                </button>
+                <button type="button" class="button button-large" id="cancel-entry-btn">Cancel</button>
+            </div>
         </form>
     </div>
 </div>
 
 <!-- View Entry Modal -->
-<div id="view-entry-modal" class="entry-modal" style="display: none;">
-    <div class="entry-modal-content">
-        <span class="entry-modal-close">&times;</span>
-        <h2>Job Entry Details</h2>
+<div id="view-entry-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
         <div id="entry-details-content"></div>
+    </div>
+</div>
+
+<!-- Add New Customer Inline Modal -->
+<div id="quick-add-customer-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 500px;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2>Add New Customer</h2>
+        <form id="quick-add-customer-form">
+            <div class="form-field">
+                <label for="quick-customer-name">Customer Name <span class="required">*</span></label>
+                <input type="text" id="quick-customer-name" required>
+            </div>
+            <div class="form-field">
+                <label for="quick-customer-phone">Phone</label>
+                <input type="tel" id="quick-customer-phone">
+            </div>
+            <div class="form-field">
+                <label for="quick-customer-email">Email</label>
+                <input type="email" id="quick-customer-email">
+            </div>
+            <div class="form-field">
+                <label for="quick-customer-address">Address</label>
+                <textarea id="quick-customer-address" rows="3"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="button button-primary">Add Customer</button>
+                <button type="button" class="button" id="cancel-quick-customer">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script type="text/javascript">
     var currentMonth = '<?php echo esc_js($current_month); ?>';
+    var vatEnabled = <?php echo $vat_enabled; ?>;
+    var vatRate = <?php echo $vat_rate; ?>;
 </script>

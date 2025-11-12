@@ -1,7 +1,7 @@
 /**
- * WP Staff Diary - Admin JavaScript
+ * WP Staff Diary - Admin JavaScript v2.0.0
  *
- * @since      1.0.0
+ * @since      2.0.0
  * @package    WP_Staff_Diary
  */
 
@@ -12,6 +12,12 @@
 
         // Current entry ID being edited
         let currentEntryId = 0;
+        let selectedCustomerId = 0;
+        let customerSearchTimeout = null;
+
+        // ===========================================
+        // NAVIGATION & UI CONTROLS
+        // ===========================================
 
         // Month selector change
         $('#month-select, #month-select-overview').on('change', function() {
@@ -29,6 +35,22 @@
                 $(`.staff-section[data-staff-id="${staffId}"]`).show();
             }
         });
+
+        // Modal close handlers
+        $('.wp-staff-diary-modal-close, #cancel-entry-btn, #cancel-customer-btn, #cancel-quick-customer').on('click', function() {
+            $(this).closest('.wp-staff-diary-modal').fadeOut();
+        });
+
+        // Click outside modal to close
+        $(window).on('click', function(event) {
+            if ($(event.target).hasClass('wp-staff-diary-modal')) {
+                $('.wp-staff-diary-modal').fadeOut();
+            }
+        });
+
+        // ===========================================
+        // ENTRY MODAL & FORM
+        // ===========================================
 
         // Add new entry button
         $('#add-new-entry').on('click', function() {
@@ -50,20 +72,10 @@
         // Delete entry button
         $(document).on('click', '.delete-entry', function() {
             const entryId = $(this).data('id');
-            if (confirm('Are you sure you want to delete this entry?')) {
-                deleteEntry(entryId);
-            }
-        });
-
-        // Close modal
-        $('.entry-modal-close, #cancel-entry').on('click', function() {
-            closeModal();
-        });
-
-        // Click outside modal to close
-        $(window).on('click', function(event) {
-            if ($(event.target).hasClass('entry-modal')) {
-                closeModal();
+            if (confirm('Do you want to DELETE (permanently remove) or CANCEL this job?\n\nClick OK to DELETE permanently, or Cancel to go back and choose CANCEL instead.')) {
+                if (confirm('Are you absolutely sure you want to DELETE this entry? This action cannot be undone!')) {
+                    deleteEntry(entryId);
+                }
             }
         });
 
@@ -73,141 +85,34 @@
             saveEntry();
         });
 
-        // Upload image button
-        $('#upload-image-btn').on('click', function() {
-            $('#image-upload-input').click();
-        });
-
-        // Handle image upload
-        $('#image-upload-input').on('change', function() {
-            if (currentEntryId === 0) {
-                alert('Please save the entry first before uploading images.');
-                return;
-            }
-
-            const file = this.files[0];
-            if (file) {
-                uploadImage(file);
-            }
-        });
-
-        // Remove image
-        $(document).on('click', '.remove-image', function() {
-            if (confirm('Are you sure you want to remove this image?')) {
-                const imageId = $(this).data('image-id');
-                removeImage(imageId);
-            }
-        });
-
         /**
          * Open modal for new entry
          */
-        function openEntryModal(entryData = null) {
+        function openEntryModal() {
             currentEntryId = 0;
-            $('#modal-title').text('Add New Job Entry');
+            selectedCustomerId = 0;
+            $('#modal-title').text('Add New Job');
             $('#diary-entry-form')[0].reset();
             $('#entry-id').val('');
-            $('#image-gallery').html('');
-            $('#cancel-entry').text('Cancel'); // Reset to Cancel
+            $('#customer-id').val('');
+            $('#order-number-display').hide();
+            $('#selected-customer-display').hide();
+            $('#customer-search').val('').show();
 
-            if (entryData) {
-                // Populate form with data for editing
-                currentEntryId = entryData.id;
-                $('#modal-title').text('Edit Job Entry');
-                $('#entry-id').val(entryData.id);
-                $('#job-date').val(entryData.job_date);
-                $('#job-time').val(entryData.job_time);
-                $('#client-name').val(entryData.client_name);
-                $('#client-address').val(entryData.client_address);
-                $('#client-phone').val(entryData.client_phone);
-                $('#job-description').val(entryData.job_description);
-                $('#plans').val(entryData.plans);
-                $('#notes').val(entryData.notes);
-                $('#status').val(entryData.status);
+            // Reset accessories
+            $('.accessory-checkbox').prop('checked', false);
+            $('.accessory-quantity').prop('disabled', true).val(1);
 
-                // Enable upload button and set Close button
-                $('#upload-image-btn').prop('disabled', false).removeClass('disabled');
-                $('#cancel-entry').text('Close');
-
-                // Load images if any
-                loadEntryImages(entryData.id);
-            } else {
-                // Disable upload button for new entries
-                $('#upload-image-btn').prop('disabled', true).addClass('disabled');
-            }
+            // Reset calculations
+            updateCalculations();
 
             $('#entry-modal').fadeIn();
-        }
-
-        /**
-         * Close modal
-         */
-        function closeModal() {
-            $('.entry-modal').fadeOut();
-
-            // If an entry was saved (currentEntryId is set), reload the page
-            if (currentEntryId > 0) {
-                location.reload();
-            }
-
-            currentEntryId = 0;
-        }
-
-        /**
-         * Save entry via AJAX
-         */
-        function saveEntry() {
-            const formData = {
-                action: 'save_diary_entry',
-                nonce: wpStaffDiary.nonce,
-                entry_id: $('#entry-id').val(),
-                job_date: $('#job-date').val(),
-                job_time: $('#job-time').val(),
-                client_name: $('#client-name').val(),
-                client_address: $('#client-address').val(),
-                client_phone: $('#client-phone').val(),
-                job_description: $('#job-description').val(),
-                plans: $('#plans').val(),
-                notes: $('#notes').val(),
-                status: $('#status').val()
-            };
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                success: function(response) {
-                    if (response.success) {
-                        currentEntryId = response.data.entry_id;
-                        $('#entry-id').val(response.data.entry_id);
-                        $('#modal-title').text('Edit Job Entry');
-
-                        // Enable image upload button
-                        $('#upload-image-btn').prop('disabled', false).removeClass('disabled');
-
-                        // Change Cancel button to Close
-                        $('#cancel-entry').text('Close');
-
-                        // Show success message
-                        alert(response.data.message);
-
-                        // Don't reload - keep modal open for image uploads
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while saving the entry.');
-                }
-            });
         }
 
         /**
          * Load entry for editing
          */
         function loadEntryForEdit(entryId) {
-            // In a real implementation, this would fetch entry data via AJAX
-            // For now, we'll use a simplified approach
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
@@ -218,11 +123,335 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        openEntryModal(response.data);
+                        populateEntryForm(response.data);
+                    } else {
+                        alert('Error loading entry: ' + response.data.message);
                     }
+                },
+                error: function() {
+                    alert('An error occurred while loading the entry.');
                 }
             });
         }
+
+        /**
+         * Populate form with entry data
+         */
+        function populateEntryForm(entry) {
+            currentEntryId = entry.id;
+            $('#modal-title').text('Edit Job - ' + entry.order_number);
+            $('#entry-id').val(entry.id);
+
+            // Show order number
+            $('#order-number-value').text(entry.order_number);
+            $('#order-number-display').show();
+
+            // Customer
+            if (entry.customer) {
+                selectedCustomerId = entry.customer.id;
+                $('#customer-id').val(entry.customer.id);
+                $('#selected-customer-name').text(entry.customer.customer_name);
+                $('#selected-customer-display').show();
+                $('#customer-search').hide();
+            }
+
+            // Job details
+            $('#job-date').val(entry.job_date);
+            $('#job-time').val(entry.job_time);
+            $('#fitting-date').val(entry.fitting_date);
+            $('#fitting-time-period').val(entry.fitting_time_period);
+            $('#area').val(entry.area);
+            $('#size').val(entry.size);
+
+            // Product
+            $('#product-description').val(entry.product_description);
+            $('#sq-mtr-qty').val(entry.sq_mtr_qty);
+            $('#price-per-sq-mtr').val(entry.price_per_sq_mtr);
+
+            // Accessories
+            $('.accessory-checkbox').prop('checked', false);
+            $('.accessory-quantity').prop('disabled', true).val(1);
+
+            if (entry.accessories && entry.accessories.length > 0) {
+                entry.accessories.forEach(function(acc) {
+                    const checkbox = $(`.accessory-checkbox[data-accessory-id="${acc.accessory_id}"]`);
+                    const quantityInput = $(`.accessory-quantity[data-accessory-id="${acc.accessory_id}"]`);
+
+                    checkbox.prop('checked', true);
+                    quantityInput.prop('disabled', false).val(acc.quantity);
+                });
+            }
+
+            // Notes and status
+            $('#notes').val(entry.notes);
+            $('#status').val(entry.status);
+
+            // Update calculations
+            updateCalculations();
+
+            $('#entry-modal').fadeIn();
+        }
+
+        /**
+         * Save entry
+         */
+        function saveEntry() {
+            // Gather accessories data
+            const accessories = [];
+            $('.accessory-checkbox:checked').each(function() {
+                const accessoryId = $(this).data('accessory-id');
+                const quantityInput = $(`.accessory-quantity[data-accessory-id="${accessoryId}"]`);
+
+                accessories.push({
+                    accessory_id: accessoryId,
+                    accessory_name: $(this).data('accessory-name'),
+                    quantity: parseFloat(quantityInput.val()) || 1,
+                    price_per_unit: parseFloat($(this).data('price'))
+                });
+            });
+
+            const formData = {
+                action: 'save_diary_entry',
+                nonce: wpStaffDiary.nonce,
+                entry_id: $('#entry-id').val(),
+                customer_id: $('#customer-id').val(),
+                job_date: $('#job-date').val(),
+                job_time: $('#job-time').val(),
+                fitting_date: $('#fitting-date').val(),
+                fitting_time_period: $('#fitting-time-period').val(),
+                area: $('#area').val(),
+                size: $('#size').val(),
+                product_description: $('#product-description').val(),
+                sq_mtr_qty: $('#sq-mtr-qty').val(),
+                price_per_sq_mtr: $('#price-per-sq-mtr').val(),
+                notes: $('#notes').val(),
+                status: $('#status').val(),
+                accessories: accessories
+            };
+
+            $('#save-entry-btn').prop('disabled', true).html('<span class="dashicons dashicons-update"></span> Saving...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                        $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while saving the entry.');
+                    $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
+                }
+            });
+        }
+
+        // ===========================================
+        // CUSTOMER MANAGEMENT
+        // ===========================================
+
+        // Customer search with debounce
+        $('#customer-search').on('keyup', function() {
+            const searchTerm = $(this).val();
+
+            clearTimeout(customerSearchTimeout);
+
+            if (searchTerm.length < 2) {
+                $('#customer-search-results').html('').hide();
+                return;
+            }
+
+            customerSearchTimeout = setTimeout(function() {
+                searchCustomers(searchTerm);
+            }, 300);
+        });
+
+        /**
+         * Search customers
+         */
+        function searchCustomers(searchTerm) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'search_customers',
+                    nonce: wpStaffDiary.nonce,
+                    search: searchTerm
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayCustomerSearchResults(response.data.customers);
+                    }
+                },
+                error: function() {
+                    console.error('Error searching customers');
+                }
+            });
+        }
+
+        /**
+         * Display customer search results
+         */
+        function displayCustomerSearchResults(customers) {
+            if (customers.length === 0) {
+                $('#customer-search-results').html('<div class="search-result-item">No customers found</div>').show();
+                return;
+            }
+
+            let html = '';
+            customers.forEach(function(customer) {
+                html += `<div class="search-result-item" data-customer-id="${customer.id}">
+                    <strong>${customer.customer_name}</strong><br>
+                    ${customer.customer_phone ? customer.customer_phone : ''}
+                    ${customer.customer_email ? ' | ' + customer.customer_email : ''}
+                </div>`;
+            });
+
+            $('#customer-search-results').html(html).show();
+        }
+
+        // Select customer from search results
+        $(document).on('click', '.search-result-item', function() {
+            const customerId = $(this).data('customer-id');
+            if (customerId) {
+                selectCustomer(customerId, $(this).find('strong').text());
+            }
+        });
+
+        /**
+         * Select customer
+         */
+        function selectCustomer(customerId, customerName) {
+            selectedCustomerId = customerId;
+            $('#customer-id').val(customerId);
+            $('#selected-customer-name').text(customerName);
+            $('#selected-customer-display').show();
+            $('#customer-search').val('').hide();
+            $('#customer-search-results').html('').hide();
+        }
+
+        // Clear customer selection
+        $('#clear-customer-btn').on('click', function() {
+            selectedCustomerId = 0;
+            $('#customer-id').val('');
+            $('#selected-customer-display').hide();
+            $('#customer-search').val('').show();
+        });
+
+        // Add new customer inline
+        $('#add-new-customer-inline').on('click', function() {
+            $('#quick-add-customer-modal').fadeIn();
+        });
+
+        // Quick add customer form
+        $('#quick-add-customer-form').on('submit', function(e) {
+            e.preventDefault();
+
+            const customerData = {
+                action: 'add_customer',
+                nonce: wpStaffDiary.nonce,
+                customer_name: $('#quick-customer-name').val(),
+                customer_phone: $('#quick-customer-phone').val(),
+                customer_email: $('#quick-customer-email').val(),
+                customer_address: $('#quick-customer-address').val(),
+                notes: ''
+            };
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: customerData,
+                success: function(response) {
+                    if (response.success) {
+                        selectCustomer(response.data.customer.id, response.data.customer.customer_name);
+                        $('#quick-add-customer-modal').fadeOut();
+                        $('#quick-add-customer-form')[0].reset();
+                        alert(response.data.message);
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while adding the customer.');
+                }
+            });
+        });
+
+        // ===========================================
+        // ACCESSORIES & CALCULATIONS
+        // ===========================================
+
+        // Accessory checkbox change
+        $('.accessory-checkbox').on('change', function() {
+            const accessoryId = $(this).data('accessory-id');
+            const quantityInput = $(`.accessory-quantity[data-accessory-id="${accessoryId}"]`);
+
+            if ($(this).is(':checked')) {
+                quantityInput.prop('disabled', false);
+            } else {
+                quantityInput.prop('disabled', true).val(1);
+            }
+
+            updateCalculations();
+        });
+
+        // Quantity input change
+        $('.accessory-quantity').on('input', function() {
+            updateCalculations();
+        });
+
+        // Product fields change
+        $('#sq-mtr-qty, #price-per-sq-mtr').on('input', function() {
+            updateCalculations();
+        });
+
+        /**
+         * Update all calculations
+         */
+        function updateCalculations() {
+            // Product total
+            const sqMtrQty = parseFloat($('#sq-mtr-qty').val()) || 0;
+            const pricePerSqMtr = parseFloat($('#price-per-sq-mtr').val()) || 0;
+            const productTotal = sqMtrQty * pricePerSqMtr;
+
+            $('#product-total-display').text(productTotal.toFixed(2));
+
+            // Accessories total
+            let accessoriesTotal = 0;
+            $('.accessory-checkbox:checked').each(function() {
+                const accessoryId = $(this).data('accessory-id');
+                const price = parseFloat($(this).data('price'));
+                const quantity = parseFloat($(`.accessory-quantity[data-accessory-id="${accessoryId}"]`).val()) || 1;
+                accessoriesTotal += price * quantity;
+            });
+
+            $('#accessories-total-display').text(accessoriesTotal.toFixed(2));
+
+            // Subtotal
+            const subtotal = productTotal + accessoriesTotal;
+            $('#subtotal-display').text(subtotal.toFixed(2));
+
+            // VAT
+            if (typeof vatEnabled !== 'undefined' && vatEnabled == 1) {
+                const vatAmount = subtotal * (vatRate / 100);
+                $('#vat-display').text(vatAmount.toFixed(2));
+
+                // Total
+                const total = subtotal + vatAmount;
+                $('#total-display').text(total.toFixed(2));
+            } else {
+                $('#total-display').text(subtotal.toFixed(2));
+            }
+        }
+
+        // ===========================================
+        // VIEW ENTRY DETAILS
+        // ===========================================
 
         /**
          * View entry details
@@ -239,136 +468,151 @@
                 success: function(response) {
                     if (response.success) {
                         displayEntryDetails(response.data);
+                    } else {
+                        alert('Error loading entry: ' + response.data.message);
                     }
+                },
+                error: function() {
+                    alert('An error occurred while loading the entry.');
                 }
             });
         }
 
         /**
-         * Display entry details in modal
+         * Display entry details in view modal
          */
         function displayEntryDetails(entry) {
-            let html = `
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Date:</div>
-                    <div class="entry-detail-value">${entry.job_date_formatted || entry.job_date}</div>
+            let html = '<div class="job-sheet-content">';
+
+            // Header
+            html += `<div class="job-sheet-header">
+                <h2>Job Sheet</h2>
+                <div class="order-number-large">Order #${entry.order_number}</div>
+            </div>`;
+
+            // Customer Section
+            html += '<div class="detail-section">';
+            html += '<h3>Customer Details</h3>';
+            if (entry.customer) {
+                html += `<div class="detail-grid">
+                    <div class="detail-item"><strong>Name:</strong> ${entry.customer.customer_name}</div>
+                    ${entry.customer.customer_phone ? `<div class="detail-item"><strong>Phone:</strong> ${entry.customer.customer_phone}</div>` : ''}
+                    ${entry.customer.customer_email ? `<div class="detail-item"><strong>Email:</strong> ${entry.customer.customer_email}</div>` : ''}
+                    ${entry.customer.customer_address ? `<div class="detail-item full-width"><strong>Address:</strong> ${entry.customer.customer_address.replace(/\n/g, '<br>')}</div>` : ''}
                 </div>`;
-
-            // Add time if available
-            if (entry.job_time) {
-                html += `
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Time:</div>
-                    <div class="entry-detail-value">${entry.job_time_formatted || entry.job_time}</div>
-                </div>`;
-            }
-
-            html += `
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Client Name:</div>
-                    <div class="entry-detail-value">${entry.client_name || 'N/A'}</div>
-                </div>
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Address:</div>
-                    <div class="entry-detail-value">${entry.client_address || 'N/A'}</div>
-                </div>
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Phone:</div>
-                    <div class="entry-detail-value">${entry.client_phone || 'N/A'}</div>
-                </div>
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Job Description:</div>
-                    <div class="entry-detail-value">${entry.job_description || 'N/A'}</div>
-                </div>
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Plans:</div>
-                    <div class="entry-detail-value">${entry.plans || 'N/A'}</div>
-                </div>
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Notes:</div>
-                    <div class="entry-detail-value">${entry.notes || 'N/A'}</div>
-                </div>
-                <div class="entry-detail-row">
-                    <div class="entry-detail-label">Status:</div>
-                    <div class="entry-detail-value"><span class="status-badge status-${entry.status}">${entry.status}</span></div>
-                </div>
-            `;
-
-            if (entry.images && entry.images.length > 0) {
-                html += '<div class="entry-detail-row"><div class="entry-detail-label">Images:</div><div class="entry-images">';
-                entry.images.forEach(function(image) {
-                    html += `<img src="${image.image_url}" alt="Job image">`;
-                });
-                html += '</div></div>';
-            }
-
-            // Add payments section
-            html += '<div class="entry-detail-row payments-section">';
-            html += '<div class="entry-detail-label">Payments:</div>';
-            html += '<div class="payments-container">';
-
-            if (entry.payments && entry.payments.length > 0) {
-                html += '<div class="payments-list" id="payments-list">';
-                entry.payments.forEach(function(payment) {
-                    html += `
-                        <div class="payment-item" data-payment-id="${payment.id}">
-                            <div class="payment-info">
-                                <strong>£${parseFloat(payment.amount).toFixed(2)}</strong>
-                                <span class="payment-type">${payment.payment_type || 'Payment'}</span>
-                                <span class="payment-method">(${payment.payment_method})</span>
-                            </div>
-                            <div class="payment-meta">
-                                Recorded by <strong>${payment.recorded_by_name}</strong> on ${payment.recorded_at_formatted}
-                            </div>
-                            ${payment.notes ? `<div class="payment-notes">${payment.notes}</div>` : ''}
-                            <button class="button-link delete-payment" data-payment-id="${payment.id}">Delete</button>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                html += `<div class="payments-total">Total Paid: <strong>£${parseFloat(entry.total_payments).toFixed(2)}</strong></div>`;
             } else {
-                html += '<p id="no-payments-msg">No payments recorded yet.</p>';
+                html += '<p style="color: #999;">No customer assigned</p>';
+            }
+            html += '</div>';
+
+            // Job Details Section
+            html += '<div class="detail-section">';
+            html += '<h3>Job Details</h3>';
+            html += '<div class="detail-grid">';
+            if (entry.job_date) {
+                html += `<div class="detail-item"><strong>Job Date:</strong> ${entry.job_date_formatted}${entry.job_time_formatted ? ' at ' + entry.job_time_formatted : ''}</div>`;
+            }
+            if (entry.fitting_date) {
+                html += `<div class="detail-item"><strong>Fitting Date:</strong> ${entry.fitting_date_formatted}${entry.fitting_time_period ? ' (' + entry.fitting_time_period + ')' : ''}</div>`;
+            }
+            if (entry.area) {
+                html += `<div class="detail-item"><strong>Area:</strong> ${entry.area}</div>`;
+            }
+            if (entry.size) {
+                html += `<div class="detail-item"><strong>Size:</strong> ${entry.size}</div>`;
+            }
+            html += `<div class="detail-item"><strong>Status:</strong> <span class="status-badge status-${entry.status}">${wpStaffDiary.statuses[entry.status] || entry.status}</span></div>`;
+            html += '</div>';
+            html += '</div>';
+
+            // Product Section
+            if (entry.product_description || entry.sq_mtr_qty) {
+                html += '<div class="detail-section">';
+                html += '<h3>Product & Services</h3>';
+                html += '<table class="financial-table">';
+                html += '<thead><tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>';
+                html += '<tbody>';
+
+                if (entry.product_description) {
+                    const productTotal = (entry.sq_mtr_qty || 0) * (entry.price_per_sq_mtr || 0);
+                    html += `<tr>
+                        <td>${entry.product_description.replace(/\n/g, '<br>')}</td>
+                        <td>${entry.sq_mtr_qty || '-'}</td>
+                        <td>£${entry.price_per_sq_mtr ? parseFloat(entry.price_per_sq_mtr).toFixed(2) : '-'}</td>
+                        <td>£${productTotal.toFixed(2)}</td>
+                    </tr>`;
+                }
+
+                if (entry.accessories && entry.accessories.length > 0) {
+                    entry.accessories.forEach(function(acc) {
+                        html += `<tr>
+                            <td>${acc.accessory_name}</td>
+                            <td>${parseFloat(acc.quantity).toFixed(2)}</td>
+                            <td>£${parseFloat(acc.price_per_unit).toFixed(2)}</td>
+                            <td>£${parseFloat(acc.total_price).toFixed(2)}</td>
+                        </tr>`;
+                    });
+                }
+
+                html += '</tbody></table>';
+                html += '</div>';
             }
 
-            // Add payment form
-            html += `
-                <div class="add-payment-form">
-                    <h4>Record Payment</h4>
-                    <div class="payment-form-row">
-                        <label>Amount (£):</label>
-                        <input type="number" id="payment-amount" step="0.01" min="0" placeholder="500.00">
-                    </div>
-                    <div class="payment-form-row">
-                        <label>Payment Type:</label>
-                        <select id="payment-type">
-                            <option value="Deposit">Deposit</option>
-                            <option value="Part Payment">Part Payment</option>
-                            <option value="Final Payment">Final Payment</option>
-                            <option value="Full Payment">Full Payment</option>
-                        </select>
-                    </div>
-                    <div class="payment-form-row">
-                        <label>Payment Method:</label>
-                        <select id="payment-method">
-                            ${generatePaymentMethodOptions()}
-                        </select>
-                    </div>
-                    <div class="payment-form-row">
-                        <label>Notes (optional):</label>
-                        <textarea id="payment-notes" rows="2"></textarea>
-                    </div>
-                    <button type="button" class="button button-primary" id="add-payment-btn" data-entry-id="${entry.id}">
-                        Record Payment
-                    </button>
-                </div>
-            `;
+            // Financial Summary
+            html += '<div class="detail-section">';
+            html += '<h3>Financial Summary</h3>';
+            html += '<table class="financial-summary-table">';
+            html += `<tr><td><strong>Subtotal:</strong></td><td class="amount">£${parseFloat(entry.subtotal).toFixed(2)}</td></tr>`;
+            if (entry.vat_amount > 0) {
+                html += `<tr><td><strong>VAT (${entry.vat_rate}%):</strong></td><td class="amount">£${parseFloat(entry.vat_amount).toFixed(2)}</td></tr>`;
+            }
+            html += `<tr class="total-row"><td><strong>Total:</strong></td><td class="amount"><strong>£${parseFloat(entry.total).toFixed(2)}</strong></td></tr>`;
 
-            html += '</div></div>';
+            // Payments
+            if (entry.payments && entry.payments.length > 0) {
+                entry.payments.forEach(function(payment) {
+                    html += `<tr class="payment-row">
+                        <td>${payment.payment_type} (${payment.payment_method}) - ${payment.recorded_at_formatted}</td>
+                        <td class="amount">-£${parseFloat(payment.amount).toFixed(2)}</td>
+                    </tr>`;
+                });
+            }
+
+            // Balance
+            const balanceClass = entry.balance > 0 ? 'balance-due' : 'balance-paid';
+            html += `<tr class="${balanceClass}"><td><strong>Balance Due:</strong></td><td class="amount"><strong>£${parseFloat(entry.balance).toFixed(2)}</strong></td></tr>`;
+            html += '</table>';
+            html += '</div>';
+
+            // Notes
+            if (entry.notes) {
+                html += '<div class="detail-section">';
+                html += '<h3>Additional Notes</h3>';
+                html += `<div class="notes-content">${entry.notes.replace(/\n/g, '<br>')}</div>`;
+                html += '</div>';
+            }
+
+            // Actions
+            html += '<div class="detail-section detail-actions">';
+            if (!entry.is_cancelled) {
+                html += `<button type="button" class="button" onclick="window.open('${wpStaffDiary.ajaxUrl.replace('admin-ajax.php', '')}admin-post.php?action=wp_staff_diary_download_pdf&entry_id=${entry.id}&nonce=' + '${wp.create_nonce('wp_staff_diary_pdf_' + entry.id)}')">
+                    <span class="dashicons dashicons-pdf"></span> Download PDF
+                </button>`;
+                html += `<button type="button" class="button edit-entry" data-id="${entry.id}">
+                    <span class="dashicons dashicons-edit"></span> Edit Job
+                </button>`;
+            }
+            html += '</div>';
+
+            html += '</div>'; // Close job-sheet-content
 
             $('#entry-details-content').html(html);
             $('#view-entry-modal').fadeIn();
         }
+
+        // ===========================================
+        // DELETE ENTRY
+        // ===========================================
 
         /**
          * Delete entry
@@ -396,333 +640,9 @@
             });
         }
 
-        /**
-         * Upload image
-         */
-        function uploadImage(file) {
-            const formData = new FormData();
-            formData.append('action', 'upload_job_image');
-            formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('entry_id', currentEntryId);
-            formData.append('image', file);
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        loadEntryImages(currentEntryId);
-                    } else {
-                        alert('Error uploading image: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while uploading the image.');
-                }
-            });
-        }
-
-        /**
-         * Load images for an entry
-         */
-        function loadEntryImages(entryId) {
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'get_diary_entry',
-                    nonce: wpStaffDiary.nonce,
-                    entry_id: entryId
-                },
-                success: function(response) {
-                    if (response.success && response.data.images) {
-                        displayImages(response.data.images);
-                    }
-                }
-            });
-        }
-
-        /**
-         * Display images in gallery
-         */
-        function displayImages(images) {
-            let html = '';
-            images.forEach(function(image) {
-                html += `
-                    <div class="gallery-item" data-image-id="${image.id}">
-                        <img src="${image.image_url}" alt="${image.image_caption || 'Job image'}">
-                        <button type="button" class="remove-image" data-image-id="${image.id}">&times;</button>
-                    </div>
-                `;
-            });
-            $('#image-gallery').html(html);
-        }
-
-        /**
-         * Remove image
-         */
-        function removeImage(imageId) {
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'delete_diary_image',
-                    nonce: wpStaffDiary.nonce,
-                    image_id: imageId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $(`.gallery-item[data-image-id="${imageId}"]`).fadeOut(300, function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        alert('Error removing image: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while removing the image.');
-                }
-            });
-        }
-
-        /**
-         * Add payment
-         */
-        $(document).on('click', '#add-payment-btn', function() {
-            const entryId = $(this).data('entry-id');
-            const amount = $('#payment-amount').val();
-            const paymentMethod = $('#payment-method').val();
-            const paymentType = $('#payment-type').val();
-            const notes = $('#payment-notes').val();
-
-            if (!amount || parseFloat(amount) <= 0) {
-                alert('Please enter a valid amount.');
-                return;
-            }
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'add_payment',
-                    nonce: wpStaffDiary.nonce,
-                    entry_id: entryId,
-                    amount: amount,
-                    payment_method: paymentMethod,
-                    payment_type: paymentType,
-                    notes: notes
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        // Reload the entry to show updated payments
-                        viewEntryDetails(entryId);
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while recording the payment.');
-                }
-            });
-        });
-
-        /**
-         * Delete payment
-         */
-        $(document).on('click', '.delete-payment', function() {
-            if (!confirm('Are you sure you want to delete this payment record?')) {
-                return;
-            }
-
-            const paymentId = $(this).data('payment-id');
-            const entryId = $('#add-payment-btn').data('entry-id');
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'delete_payment',
-                    nonce: wpStaffDiary.nonce,
-                    payment_id: paymentId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Reload the entry to show updated payments
-                        viewEntryDetails(entryId);
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while deleting the payment.');
-                }
-            });
-        });
-
-        /**
-         * Generate payment method options
-         */
-        function generatePaymentMethodOptions() {
-            if (!wpStaffDiary.paymentMethods) {
-                return '<option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="Card Payment">Card Payment</option>';
-            }
-
-            let options = '';
-            for (const [key, label] of Object.entries(wpStaffDiary.paymentMethods)) {
-                options += `<option value="${key}">${label}</option>`;
-            }
-            return options;
-        }
-
-        /**
-         * Generate status options
-         */
-        function generateStatusOptions(selectedStatus) {
-            if (!wpStaffDiary.statuses) {
-                return '<option value="pending">Pending</option><option value="in-progress">In Progress</option><option value="completed">Completed</option>';
-            }
-
-            let options = '';
-            for (const [key, label] of Object.entries(wpStaffDiary.statuses)) {
-                const selected = key === selectedStatus ? 'selected' : '';
-                options += `<option value="${key}" ${selected}>${label}</option>`;
-            }
-            return options;
-        }
-
-        /**
-         * Settings Page: Add Status
-         */
-        $('#add-status-btn').on('click', function() {
-            const statusLabel = $('#new-status-label').val().trim();
-
-            if (!statusLabel) {
-                alert('Please enter a status name.');
-                return;
-            }
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'add_status',
-                    nonce: wpStaffDiary.nonce,
-                    status_label: statusLabel
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while adding the status.');
-                }
-            });
-        });
-
-        /**
-         * Settings Page: Delete Status
-         */
-        $(document).on('click', '.delete-status', function() {
-            const statusKey = $(this).data('status-key');
-
-            if (!confirm('Are you sure you want to delete this status?')) {
-                return;
-            }
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'delete_status',
-                    nonce: wpStaffDiary.nonce,
-                    status_key: statusKey
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while deleting the status.');
-                }
-            });
-        });
-
-        /**
-         * Settings Page: Add Payment Method
-         */
-        $('#add-payment-method-btn').on('click', function() {
-            const methodLabel = $('#new-payment-method-label').val().trim();
-
-            if (!methodLabel) {
-                alert('Please enter a payment method name.');
-                return;
-            }
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'add_payment_method',
-                    nonce: wpStaffDiary.nonce,
-                    method_label: methodLabel
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while adding the payment method.');
-                }
-            });
-        });
-
-        /**
-         * Settings Page: Delete Payment Method
-         */
-        $(document).on('click', '.delete-payment-method', function() {
-            const methodKey = $(this).data('method-key');
-
-            if (!confirm('Are you sure you want to delete this payment method?')) {
-                return;
-            }
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'delete_payment_method',
-                    nonce: wpStaffDiary.nonce,
-                    method_key: methodKey
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while deleting the payment method.');
-                }
-            });
-        });
+        // ===========================================
+        // UTILITY FUNCTIONS
+        // ===========================================
 
         /**
          * Update query string parameter
@@ -735,6 +655,17 @@
             } else {
                 return uri + separator + key + "=" + value;
             }
+        }
+
+        /**
+         * Create nonce for PDF download
+         */
+        function wp.create_nonce(action) {
+            // WordPress provides this function, fallback for safety
+            if (typeof wp !== 'undefined' && typeof wp.ajax !== 'undefined') {
+                return wp.ajax.settings.nonce;
+            }
+            return wpStaffDiary.nonce;
         }
 
     });
