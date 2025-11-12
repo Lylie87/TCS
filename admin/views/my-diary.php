@@ -184,9 +184,11 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     <h3>Customer Details</h3>
                     <div class="form-field">
                         <label for="customer-search">Search Customer</label>
-                        <input type="text" id="customer-search" placeholder="Type to search customers..." autocomplete="off">
-                        <input type="hidden" id="customer-id" name="customer_id" value="">
-                        <div id="customer-search-results" class="search-results"></div>
+                        <div style="position: relative;">
+                            <input type="text" id="customer-search" placeholder="Type to search customers..." autocomplete="off" style="width: 100%;">
+                            <input type="hidden" id="customer-id" name="customer_id" value="">
+                            <div id="customer-search-results" class="search-results"></div>
+                        </div>
                         <div id="selected-customer-display" style="display: none; margin-top: 10px; padding: 10px; background: #f0f0f1; border-radius: 4px;">
                             <strong>Selected Customer:</strong> <span id="selected-customer-name"></span>
                             <button type="button" class="button button-small" id="clear-customer-btn" style="margin-left: 10px;">Change</button>
@@ -346,8 +348,20 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <input type="email" id="quick-customer-email">
             </div>
             <div class="form-field">
-                <label for="quick-customer-address">Address</label>
-                <textarea id="quick-customer-address" rows="3"></textarea>
+                <label for="quick-address-line-1">Address Line 1</label>
+                <input type="text" id="quick-address-line-1">
+            </div>
+            <div class="form-field">
+                <label for="quick-address-line-2">Address Line 2</label>
+                <input type="text" id="quick-address-line-2">
+            </div>
+            <div class="form-field">
+                <label for="quick-address-line-3">Address Line 3</label>
+                <input type="text" id="quick-address-line-3">
+            </div>
+            <div class="form-field">
+                <label for="quick-postcode">Postcode</label>
+                <input type="text" id="quick-postcode" style="max-width: 150px;">
             </div>
             <div class="modal-footer">
                 <button type="submit" class="button button-primary">Add Customer</button>

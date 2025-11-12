@@ -974,10 +974,13 @@ class WP_Staff_Diary_Admin {
         check_ajax_referer('wp_staff_diary_nonce', 'nonce');
 
         $customer_name = sanitize_text_field($_POST['customer_name']);
-        $customer_address = sanitize_textarea_field($_POST['customer_address']);
-        $customer_phone = sanitize_text_field($_POST['customer_phone']);
-        $customer_email = sanitize_email($_POST['customer_email']);
-        $notes = sanitize_textarea_field($_POST['notes']);
+        $address_line_1 = isset($_POST['address_line_1']) ? sanitize_text_field($_POST['address_line_1']) : '';
+        $address_line_2 = isset($_POST['address_line_2']) ? sanitize_text_field($_POST['address_line_2']) : '';
+        $address_line_3 = isset($_POST['address_line_3']) ? sanitize_text_field($_POST['address_line_3']) : '';
+        $postcode = isset($_POST['postcode']) ? sanitize_text_field($_POST['postcode']) : '';
+        $customer_phone = isset($_POST['customer_phone']) ? sanitize_text_field($_POST['customer_phone']) : '';
+        $customer_email = isset($_POST['customer_email']) ? sanitize_email($_POST['customer_email']) : '';
+        $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
 
         if (empty($customer_name)) {
             wp_send_json_error(array('message' => 'Customer name is required'));
@@ -985,7 +988,10 @@ class WP_Staff_Diary_Admin {
 
         $data = array(
             'customer_name' => $customer_name,
-            'customer_address' => $customer_address,
+            'address_line_1' => $address_line_1,
+            'address_line_2' => $address_line_2,
+            'address_line_3' => $address_line_3,
+            'postcode' => $postcode,
             'customer_phone' => $customer_phone,
             'customer_email' => $customer_email,
             'notes' => $notes
@@ -1032,10 +1038,13 @@ class WP_Staff_Diary_Admin {
 
         $customer_id = intval($_POST['customer_id']);
         $customer_name = sanitize_text_field($_POST['customer_name']);
-        $customer_address = sanitize_textarea_field($_POST['customer_address']);
-        $customer_phone = sanitize_text_field($_POST['customer_phone']);
-        $customer_email = sanitize_email($_POST['customer_email']);
-        $notes = sanitize_textarea_field($_POST['notes']);
+        $address_line_1 = isset($_POST['address_line_1']) ? sanitize_text_field($_POST['address_line_1']) : '';
+        $address_line_2 = isset($_POST['address_line_2']) ? sanitize_text_field($_POST['address_line_2']) : '';
+        $address_line_3 = isset($_POST['address_line_3']) ? sanitize_text_field($_POST['address_line_3']) : '';
+        $postcode = isset($_POST['postcode']) ? sanitize_text_field($_POST['postcode']) : '';
+        $customer_phone = isset($_POST['customer_phone']) ? sanitize_text_field($_POST['customer_phone']) : '';
+        $customer_email = isset($_POST['customer_email']) ? sanitize_email($_POST['customer_email']) : '';
+        $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
 
         if (empty($customer_name)) {
             wp_send_json_error(array('message' => 'Customer name is required'));
@@ -1043,7 +1052,10 @@ class WP_Staff_Diary_Admin {
 
         $data = array(
             'customer_name' => $customer_name,
-            'customer_address' => $customer_address,
+            'address_line_1' => $address_line_1,
+            'address_line_2' => $address_line_2,
+            'address_line_3' => $address_line_3,
+            'postcode' => $postcode,
             'customer_phone' => $customer_phone,
             'customer_email' => $customer_email,
             'notes' => $notes
