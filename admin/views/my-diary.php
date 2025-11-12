@@ -82,7 +82,8 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <?php else: ?>
                     <?php foreach ($entries as $entry): ?>
                         <?php
-                        $customer = $entry->customer_id ? $db->get_customer($entry->customer_id) : null;
+                        $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
+                        $customer = $customer_id ? $db->get_customer($customer_id) : null;
                         $subtotal = $db->calculate_job_subtotal($entry->id);
                         $total = $subtotal;
                         if ($vat_enabled == '1') {
@@ -91,10 +92,12 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         $payments = $db->get_entry_total_payments($entry->id);
                         $balance = $total - $payments;
 
-                        $status_class = $entry->is_cancelled ? 'cancelled' : $entry->status;
+                        $is_cancelled = isset($entry->is_cancelled) ? $entry->is_cancelled : 0;
+                        $status_class = $is_cancelled ? 'cancelled' : $entry->status;
+                        $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
                         ?>
-                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>" <?php echo $entry->is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
-                            <td><strong><?php echo esc_html($entry->order_number); ?></strong></td>
+                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>" <?php echo $is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
+                            <td><strong><?php echo esc_html($order_number); ?></strong></td>
                             <td>
                                 <?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?>
                                 <?php if ($entry->job_time): ?>

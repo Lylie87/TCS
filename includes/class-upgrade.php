@@ -42,6 +42,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_0_0();
         }
 
+        // Upgrade to v2.0.3 - UK address fields and fitters
+        if (version_compare($from_version, '2.0.3', '<')) {
+            self::upgrade_to_2_0_3();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist
         $table_diary = $wpdb->prefix . 'staff_diary_entries';
@@ -279,6 +284,48 @@ class WP_Staff_Diary_Upgrade {
         }
         if (get_option('wp_staff_diary_fitting_time_length') === false) {
             add_option('wp_staff_diary_fitting_time_length', '0');
+        }
+    }
+
+    /**
+     * Upgrade to version 2.0.3
+     * Convert customer address to UK format and add fitters support
+     */
+    private static function upgrade_to_2_0_3() {
+        global $wpdb;
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+
+        $table_customers = $wpdb->prefix . 'staff_diary_customers';
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Check if customer_address column exists (old format)
+        $old_address_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_customers LIKE 'customer_address'");
+
+        if (!empty($old_address_exists)) {
+            // Add new UK address columns
+            $wpdb->query("ALTER TABLE $table_customers
+                ADD COLUMN address_line_1 varchar(255) DEFAULT NULL AFTER customer_name,
+                ADD COLUMN address_line_2 varchar(255) DEFAULT NULL AFTER address_line_1,
+                ADD COLUMN address_line_3 varchar(255) DEFAULT NULL AFTER address_line_2,
+                ADD COLUMN postcode varchar(20) DEFAULT NULL AFTER address_line_3");
+
+            // Migrate existing data: put old address into address_line_1
+            $wpdb->query("UPDATE $table_customers SET address_line_1 = customer_address WHERE customer_address IS NOT NULL");
+
+            // Drop old column
+            $wpdb->query("ALTER TABLE $table_customers DROP COLUMN customer_address");
+        }
+
+        // Add fitter_id column to diary entries
+        $fitter_column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'fitter_id'");
+        if (empty($fitter_column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitter_id bigint(20) DEFAULT NULL AFTER user_id");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY fitter_id (fitter_id)");
+        }
+
+        // Add fitters option if it doesn't exist
+        if (get_option('wp_staff_diary_fitters') === false) {
+            add_option('wp_staff_diary_fitters', array());
         }
     }
 }
