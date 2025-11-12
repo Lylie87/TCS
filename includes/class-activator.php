@@ -176,26 +176,30 @@ class WP_Staff_Diary_Activator {
             'card-payment' => 'Card Payment'
         ));
 
-        // Insert default accessories
-        $default_accessories = array(
-            array('name' => 'U/Lay', 'price' => 0.00),
-            array('name' => 'S/Edge', 'price' => 0.00),
-            array('name' => 'Plates', 'price' => 0.00),
-            array('name' => 'Adhesive', 'price' => 4.99),
-            array('name' => 'Screed', 'price' => 0.00),
-            array('name' => 'Plyboard', 'price' => 0.00),
-        );
+        // Insert default accessories (only if table is empty)
+        $accessory_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_accessories");
 
-        foreach ($default_accessories as $index => $accessory) {
-            $wpdb->insert(
-                $table_accessories,
-                array(
-                    'accessory_name' => $accessory['name'],
-                    'price' => $accessory['price'],
-                    'is_active' => 1,
-                    'display_order' => $index
-                )
+        if ($accessory_count == 0) {
+            $default_accessories = array(
+                array('name' => 'U/Lay', 'price' => 0.00),
+                array('name' => 'S/Edge', 'price' => 0.00),
+                array('name' => 'Plates', 'price' => 0.00),
+                array('name' => 'Adhesive', 'price' => 4.99),
+                array('name' => 'Screed', 'price' => 0.00),
+                array('name' => 'Plyboard', 'price' => 0.00),
             );
+
+            foreach ($default_accessories as $index => $accessory) {
+                $wpdb->insert(
+                    $table_accessories,
+                    array(
+                        'accessory_name' => $accessory['name'],
+                        'price' => $accessory['price'],
+                        'is_active' => 1,
+                        'display_order' => $index
+                    )
+                );
+            }
         }
     }
 }
