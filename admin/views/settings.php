@@ -111,6 +111,76 @@ $default_status = get_option('wp_staff_diary_default_status', 'pending');
 
     <hr>
 
+    <!-- Status Management Section -->
+    <h2>Job Statuses</h2>
+    <p>Manage available job statuses. Default statuses (Pending, In Progress, Completed, Cancelled) cannot be removed.</p>
+
+    <div id="status-management" class="wp-staff-diary-management-section">
+        <div class="status-list">
+            <?php
+            $statuses = get_option('wp_staff_diary_statuses', array(
+                'pending' => 'Pending',
+                'in-progress' => 'In Progress',
+                'completed' => 'Completed',
+                'cancelled' => 'Cancelled'
+            ));
+
+            $default_statuses = array('pending', 'in-progress', 'completed', 'cancelled');
+
+            foreach ($statuses as $key => $label) {
+                $is_default = in_array($key, $default_statuses);
+                echo '<div class="status-item" data-status-key="' . esc_attr($key) . '">';
+                echo '<span class="status-label">' . esc_html($label) . '</span>';
+                if (!$is_default) {
+                    echo '<button type="button" class="button button-small delete-status" data-status-key="' . esc_attr($key) . '">Remove</button>';
+                } else {
+                    echo '<span class="status-default-badge">(Default)</span>';
+                }
+                echo '</div>';
+            }
+            ?>
+        </div>
+
+        <div class="add-status-form">
+            <h3>Add New Status</h3>
+            <input type="text" id="new-status-label" class="regular-text" placeholder="Enter status name (e.g., Awaiting Approval)">
+            <button type="button" id="add-status-btn" class="button button-secondary">Add Status</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- Payment Methods Management Section -->
+    <h2>Payment Methods</h2>
+    <p>Manage available payment methods for recording payments.</p>
+
+    <div id="payment-methods-management" class="wp-staff-diary-management-section">
+        <div class="payment-methods-list">
+            <?php
+            $payment_methods = get_option('wp_staff_diary_payment_methods', array(
+                'cash' => 'Cash',
+                'bank-transfer' => 'Bank Transfer',
+                'card-payment' => 'Card Payment'
+            ));
+
+            foreach ($payment_methods as $key => $label) {
+                echo '<div class="payment-method-item" data-method-key="' . esc_attr($key) . '">';
+                echo '<span class="payment-method-label">' . esc_html($label) . '</span>';
+                echo '<button type="button" class="button button-small delete-payment-method" data-method-key="' . esc_attr($key) . '">Remove</button>';
+                echo '</div>';
+            }
+            ?>
+        </div>
+
+        <div class="add-payment-method-form">
+            <h3>Add New Payment Method</h3>
+            <input type="text" id="new-payment-method-label" class="regular-text" placeholder="Enter payment method name (e.g., Check, PayPal)">
+            <button type="button" id="add-payment-method-btn" class="button button-secondary">Add Payment Method</button>
+        </div>
+    </div>
+
+    <hr>
+
     <h2>Plugin Information</h2>
     <table class="form-table" role="presentation">
         <tbody>

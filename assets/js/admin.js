@@ -351,10 +351,7 @@
                     <div class="payment-form-row">
                         <label>Payment Method:</label>
                         <select id="payment-method">
-                            <option value="Card">Card Payment</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Cheque">Cheque</option>
+                            ${generatePaymentMethodOptions()}
                         </select>
                     </div>
                     <div class="payment-form-row">
@@ -562,6 +559,167 @@
                 },
                 error: function() {
                     alert('An error occurred while deleting the payment.');
+                }
+            });
+        });
+
+        /**
+         * Generate payment method options
+         */
+        function generatePaymentMethodOptions() {
+            if (!wpStaffDiary.paymentMethods) {
+                return '<option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="Card Payment">Card Payment</option>';
+            }
+
+            let options = '';
+            for (const [key, label] of Object.entries(wpStaffDiary.paymentMethods)) {
+                options += `<option value="${key}">${label}</option>`;
+            }
+            return options;
+        }
+
+        /**
+         * Generate status options
+         */
+        function generateStatusOptions(selectedStatus) {
+            if (!wpStaffDiary.statuses) {
+                return '<option value="pending">Pending</option><option value="in-progress">In Progress</option><option value="completed">Completed</option>';
+            }
+
+            let options = '';
+            for (const [key, label] of Object.entries(wpStaffDiary.statuses)) {
+                const selected = key === selectedStatus ? 'selected' : '';
+                options += `<option value="${key}" ${selected}>${label}</option>`;
+            }
+            return options;
+        }
+
+        /**
+         * Settings Page: Add Status
+         */
+        $('#add-status-btn').on('click', function() {
+            const statusLabel = $('#new-status-label').val().trim();
+
+            if (!statusLabel) {
+                alert('Please enter a status name.');
+                return;
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'add_status',
+                    nonce: wpStaffDiary.nonce,
+                    status_label: statusLabel
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while adding the status.');
+                }
+            });
+        });
+
+        /**
+         * Settings Page: Delete Status
+         */
+        $(document).on('click', '.delete-status', function() {
+            const statusKey = $(this).data('status-key');
+
+            if (!confirm('Are you sure you want to delete this status?')) {
+                return;
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'delete_status',
+                    nonce: wpStaffDiary.nonce,
+                    status_key: statusKey
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the status.');
+                }
+            });
+        });
+
+        /**
+         * Settings Page: Add Payment Method
+         */
+        $('#add-payment-method-btn').on('click', function() {
+            const methodLabel = $('#new-payment-method-label').val().trim();
+
+            if (!methodLabel) {
+                alert('Please enter a payment method name.');
+                return;
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'add_payment_method',
+                    nonce: wpStaffDiary.nonce,
+                    method_label: methodLabel
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while adding the payment method.');
+                }
+            });
+        });
+
+        /**
+         * Settings Page: Delete Payment Method
+         */
+        $(document).on('click', '.delete-payment-method', function() {
+            const methodKey = $(this).data('method-key');
+
+            if (!confirm('Are you sure you want to delete this payment method?')) {
+                return;
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'delete_payment_method',
+                    nonce: wpStaffDiary.nonce,
+                    method_key: methodKey
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the payment method.');
                 }
             });
         });

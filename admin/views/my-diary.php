@@ -129,9 +129,17 @@ $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date);
                     <th><label for="status">Status</label></th>
                     <td>
                         <select id="status" name="status">
-                            <option value="pending">Pending</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="completed">Completed</option>
+                            <?php
+                            $statuses = get_option('wp_staff_diary_statuses', array(
+                                'pending' => 'Pending',
+                                'in-progress' => 'In Progress',
+                                'completed' => 'Completed',
+                                'cancelled' => 'Cancelled'
+                            ));
+                            foreach ($statuses as $key => $label) {
+                                echo '<option value="' . esc_attr($key) . '">' . esc_html($label) . '</option>';
+                            }
+                            ?>
                         </select>
                     </td>
                 </tr>
@@ -150,6 +158,15 @@ $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date);
                 <button type="button" class="button button-secondary" id="cancel-entry">Cancel</button>
             </p>
         </form>
+    </div>
+</div>
+
+<!-- View Entry Modal -->
+<div id="view-entry-modal" class="entry-modal" style="display: none;">
+    <div class="entry-modal-content">
+        <span class="entry-modal-close">&times;</span>
+        <h2>Job Entry Details</h2>
+        <div id="entry-details-content"></div>
     </div>
 </div>
 

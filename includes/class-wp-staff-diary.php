@@ -45,6 +45,10 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_delete_diary_image', $plugin_admin, 'delete_diary_image');
         $this->loader->add_action('wp_ajax_add_payment', $plugin_admin, 'add_payment');
         $this->loader->add_action('wp_ajax_delete_payment', $plugin_admin, 'delete_payment');
+        $this->loader->add_action('wp_ajax_add_status', $plugin_admin, 'add_status');
+        $this->loader->add_action('wp_ajax_delete_status', $plugin_admin, 'delete_status');
+        $this->loader->add_action('wp_ajax_add_payment_method', $plugin_admin, 'add_payment_method');
+        $this->loader->add_action('wp_ajax_delete_payment_method', $plugin_admin, 'delete_payment_method');
     }
 
     private function define_public_hooks() {

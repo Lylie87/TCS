@@ -42,10 +42,26 @@ class WP_Staff_Diary_Admin {
             false
         );
 
+        // Get statuses and payment methods from settings
+        $statuses = get_option('wp_staff_diary_statuses', array(
+            'pending' => 'Pending',
+            'in-progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled'
+        ));
+
+        $payment_methods = get_option('wp_staff_diary_payment_methods', array(
+            'cash' => 'Cash',
+            'bank-transfer' => 'Bank Transfer',
+            'card-payment' => 'Card Payment'
+        ));
+
         // Localize script for AJAX
         wp_localize_script($this->plugin_name, 'wpStaffDiary', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('wp_staff_diary_nonce')
+            'nonce' => wp_create_nonce('wp_staff_diary_nonce'),
+            'statuses' => $statuses,
+            'paymentMethods' => $payment_methods
         ));
 
         // Enqueue WordPress media uploader
@@ -451,5 +467,174 @@ class WP_Staff_Diary_Admin {
         }
 
         return $payment;
+    }
+
+    /**
+     * AJAX: Add custom status
+     */
+    public function add_status() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $status_label = sanitize_text_field($_POST['status_label']);
+
+        if (empty($status_label)) {
+            wp_send_json_error(array('message' => 'Status name is required'));
+        }
+
+        // Get current statuses
+        $statuses = get_option('wp_staff_diary_statuses', array(
+            'pending' => 'Pending',
+            'in-progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled'
+        ));
+
+        // Create key from label
+        $status_key = sanitize_title($status_label);
+
+        // Check if status already exists
+        if (isset($statuses[$status_key])) {
+            wp_send_json_error(array('message' => 'Status already exists'));
+        }
+
+        // Add new status
+        $statuses[$status_key] = $status_label;
+        update_option('wp_staff_diary_statuses', $statuses);
+
+        wp_send_json_success(array(
+            'message' => 'Status added successfully',
+            'status_key' => $status_key,
+            'status_label' => $status_label
+        ));
+    }
+
+    /**
+     * AJAX: Delete custom status
+     */
+    public function delete_status() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $status_key = sanitize_text_field($_POST['status_key']);
+
+        // Prevent deletion of default statuses
+        $default_statuses = array('pending', 'in-progress', 'completed', 'cancelled');
+        if (in_array($status_key, $default_statuses)) {
+            wp_send_json_error(array('message' => 'Cannot delete default statuses'));
+        }
+
+        // Check if any jobs are using this status (excluding completed and cancelled)
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_diary WHERE status = %s AND status NOT IN ('completed', 'cancelled')",
+            $status_key
+        ));
+
+        if ($count > 0) {
+            wp_send_json_error(array(
+                'message' => "Cannot delete this status. There are $count active job(s) using it. Please change the status of these jobs first or complete/cancel them."
+            ));
+        }
+
+        // Get current statuses
+        $statuses = get_option('wp_staff_diary_statuses', array());
+
+        // Remove the status
+        if (isset($statuses[$status_key])) {
+            unset($statuses[$status_key]);
+            update_option('wp_staff_diary_statuses', $statuses);
+            wp_send_json_success(array('message' => 'Status deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Status not found'));
+        }
+    }
+
+    /**
+     * AJAX: Add payment method
+     */
+    public function add_payment_method() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $method_label = sanitize_text_field($_POST['method_label']);
+
+        if (empty($method_label)) {
+            wp_send_json_error(array('message' => 'Payment method name is required'));
+        }
+
+        // Get current payment methods
+        $payment_methods = get_option('wp_staff_diary_payment_methods', array(
+            'cash' => 'Cash',
+            'bank-transfer' => 'Bank Transfer',
+            'card-payment' => 'Card Payment'
+        ));
+
+        // Create key from label
+        $method_key = sanitize_title($method_label);
+
+        // Check if method already exists
+        if (isset($payment_methods[$method_key])) {
+            wp_send_json_error(array('message' => 'Payment method already exists'));
+        }
+
+        // Add new payment method
+        $payment_methods[$method_key] = $method_label;
+        update_option('wp_staff_diary_payment_methods', $payment_methods);
+
+        wp_send_json_success(array(
+            'message' => 'Payment method added successfully',
+            'method_key' => $method_key,
+            'method_label' => $method_label
+        ));
+    }
+
+    /**
+     * AJAX: Delete payment method
+     */
+    public function delete_payment_method() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $method_key = sanitize_text_field($_POST['method_key']);
+
+        // Check if any payments are using this method
+        global $wpdb;
+        $table_payments = $wpdb->prefix . 'staff_diary_payments';
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_payments WHERE payment_method = %s",
+            $method_key
+        ));
+
+        if ($count > 0) {
+            wp_send_json_error(array(
+                'message' => "Cannot delete this payment method. There are $count payment(s) using it."
+            ));
+        }
+
+        // Get current payment methods
+        $payment_methods = get_option('wp_staff_diary_payment_methods', array());
+
+        // Remove the payment method
+        if (isset($payment_methods[$method_key])) {
+            unset($payment_methods[$method_key]);
+            update_option('wp_staff_diary_payment_methods', $payment_methods);
+            wp_send_json_success(array('message' => 'Payment method deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Payment method not found'));
+        }
     }
 }
