@@ -991,5 +991,35 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // Delete Accessory
+    $('.delete-accessory').on('click', function() {
+        if (!confirm('Are you sure you want to delete this accessory?')) {
+            return;
+        }
+
+        var accessoryId = $(this).data('id');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'delete_accessory',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                accessory_id: accessoryId
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.href = location.href.split('#')[0] + '#accessories';
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to delete accessory');
+                }
+            },
+            error: function() {
+                alert('Error deleting accessory');
+            }
+        });
+    });
 });
 </script>

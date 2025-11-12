@@ -59,6 +59,7 @@ $statuses = get_option('wp_staff_diary_statuses', array(
 ));
 $accessories = $db->get_all_accessories(true);
 $fitters = get_option('wp_staff_diary_fitters', array());
+$job_time_type = get_option('wp_staff_diary_job_time_type', 'none');
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 ?>
@@ -269,14 +270,17 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             <label for="job-date">Job Date <span class="required">*</span></label>
                             <input type="date" id="job-date" name="job_date" required>
                         </div>
+                        <?php if ($job_time_type === 'time'): ?>
                         <div class="form-field">
                             <label for="job-time">Job Time</label>
                             <input type="time" id="job-time" name="job_time">
                         </div>
+                        <?php endif; ?>
                         <div class="form-field">
                             <label for="fitting-date">Fitting Date</label>
                             <input type="date" id="fitting-date" name="fitting_date">
                         </div>
+                        <?php if ($job_time_type === 'ampm'): ?>
                         <div class="form-field">
                             <label for="fitting-time-period">Fitting Time</label>
                             <select id="fitting-time-period" name="fitting_time_period">
@@ -285,6 +289,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                 <option value="PM">PM</option>
                             </select>
                         </div>
+                        <?php endif; ?>
                         <div class="form-field">
                             <label for="area">Area</label>
                             <input type="text" id="area" name="area">

@@ -927,7 +927,7 @@ class WP_Staff_Diary_Admin {
      * AJAX: Delete accessory
      */
     public function delete_accessory() {
-        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => 'Permission denied'));
