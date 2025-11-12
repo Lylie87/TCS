@@ -210,9 +210,18 @@ class WP_Staff_Diary_PDF_Generator {
             $html .= '<h2>Customer Details</h2>';
             $html .= '<table class="info-table">';
             $html .= '<tr><td width="20%"><strong>Name:</strong></td><td>' . htmlspecialchars($customer->customer_name) . '</td></tr>';
-            if ($customer->customer_address) {
-                $html .= '<tr><td><strong>Address:</strong></td><td>' . nl2br(htmlspecialchars($customer->customer_address)) . '</td></tr>';
+
+            // Build UK address from parts
+            $address_parts = array_filter(array(
+                isset($customer->address_line_1) ? $customer->address_line_1 : '',
+                isset($customer->address_line_2) ? $customer->address_line_2 : '',
+                isset($customer->address_line_3) ? $customer->address_line_3 : '',
+                isset($customer->postcode) ? $customer->postcode : ''
+            ));
+            if (!empty($address_parts)) {
+                $html .= '<tr><td><strong>Address:</strong></td><td>' . nl2br(htmlspecialchars(implode("\n", $address_parts))) . '</td></tr>';
             }
+
             if ($customer->customer_phone) {
                 $html .= '<tr><td><strong>Phone:</strong></td><td>' . htmlspecialchars($customer->customer_phone) . '</td></tr>';
             }

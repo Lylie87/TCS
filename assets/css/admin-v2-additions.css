@@ -7,6 +7,54 @@
  */
 
 /* ===========================================
+   MODAL STYLES
+   =========================================== */
+
+.wp-staff-diary-modal {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.wp-staff-diary-modal-content {
+    background-color: #fefefe;
+    margin: 3% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 900px;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.wp-staff-diary-modal-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.wp-staff-diary-modal-close:hover,
+.wp-staff-diary-modal-close:focus {
+    color: #000;
+}
+
+.wp-staff-diary-modal h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* ===========================================
    FORM SECTIONS & STRUCTURE
    =========================================== */
 

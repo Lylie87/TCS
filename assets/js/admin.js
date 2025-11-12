@@ -358,7 +358,10 @@
                 customer_name: $('#quick-customer-name').val(),
                 customer_phone: $('#quick-customer-phone').val(),
                 customer_email: $('#quick-customer-email').val(),
-                customer_address: $('#quick-customer-address').val(),
+                address_line_1: $('#quick-address-line-1').val(),
+                address_line_2: $('#quick-address-line-2').val(),
+                address_line_3: $('#quick-address-line-3').val(),
+                postcode: $('#quick-postcode').val(),
                 notes: ''
             };
 

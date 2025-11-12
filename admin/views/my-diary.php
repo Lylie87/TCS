@@ -32,6 +32,9 @@ $statuses = get_option('wp_staff_diary_statuses', array(
 // Get accessories for selection
 $accessories = $db->get_all_accessories(true); // Active only
 
+// Get fitters
+$fitters = get_option('wp_staff_diary_fitters', array());
+
 // Get VAT settings
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
@@ -58,31 +61,84 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
         </div>
     </div>
 
+    <!-- Filters Section -->
+    <div class="diary-filters" style="background: #fff; padding: 15px; margin: 20px 0; border: 1px solid #ddd; border-radius: 3px;">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <div>
+                <label for="sort-date" style="margin-right: 5px; font-weight: 600;">Sort by Date:</label>
+                <select id="sort-date" style="min-width: 150px;">
+                    <option value="desc">Latest First</option>
+                    <option value="asc">Earliest First</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="filter-customer" style="margin-right: 5px; font-weight: 600;">Customer:</label>
+                <input type="text" id="filter-customer" placeholder="Filter by customer name..." style="min-width: 200px;">
+            </div>
+
+            <div>
+                <label for="filter-fitter" style="margin-right: 5px; font-weight: 600;">Fitter:</label>
+                <select id="filter-fitter" style="min-width: 150px;">
+                    <option value="">All Fitters</option>
+                    <option value="unassigned">Unassigned</option>
+                    <?php foreach ($fitters as $index => $fitter): ?>
+                        <option value="<?php echo esc_attr($index); ?>"><?php echo esc_html($fitter['name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div>
+                <label for="filter-balance" style="margin-right: 5px; font-weight: 600;">Balance:</label>
+                <select id="filter-balance" style="min-width: 150px;">
+                    <option value="">All Jobs</option>
+                    <option value="outstanding">Outstanding Balance</option>
+                    <option value="paid">Fully Paid</option>
+                    <option value="overpaid">Overpaid</option>
+                </select>
+            </div>
+
+            <button type="button" id="clear-filters" class="button" style="margin-left: auto;">
+                Clear Filters
+            </button>
+        </div>
+    </div>
+
     <div class="diary-entries">
         <table class="wp-list-table widefat fixed striped jobs-table">
             <thead>
                 <tr>
                     <th style="width: 10%;">Order #</th>
-                    <th style="width: 12%;">Job Date</th>
-                    <th style="width: 20%;">Customer</th>
-                    <th style="width: 15%;">Product</th>
-                    <th style="width: 10%; text-align: right;">Total</th>
-                    <th style="width: 10%; text-align: right;">Balance</th>
-                    <th style="width: 13%;">Status</th>
-                    <th style="width: 10%;">Actions</th>
+                    <th style="width: 10%;">Job Date</th>
+                    <th style="width: 18%;">Customer</th>
+                    <th style="width: 12%;">Fitter</th>
+                    <th style="width: 13%;">Product</th>
+                    <th style="width: 9%; text-align: right;">Total</th>
+                    <th style="width: 9%; text-align: right;">Balance</th>
+                    <th style="width: 12%;">Status</th>
+                    <th style="width: 9%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($entries)): ?>
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px;">
+                        <td colspan="9" style="text-align: center; padding: 40px;">
                             <p style="color: #666; font-size: 16px;">No jobs found for this month. Click "Add New Job" to get started.</p>
                         </td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($entries as $entry): ?>
                         <?php
-                        $customer = $entry->customer_id ? $db->get_customer($entry->customer_id) : null;
+                        $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
+                        $customer = $customer_id ? $db->get_customer($customer_id) : null;
+
+                        // Get fitter info
+                        $fitter_id = isset($entry->fitter_id) ? $entry->fitter_id : null;
+                        $fitter = null;
+                        if ($fitter_id !== null && isset($fitters[$fitter_id])) {
+                            $fitter = $fitters[$fitter_id];
+                        }
+
                         $subtotal = $db->calculate_job_subtotal($entry->id);
                         $total = $subtotal;
                         if ($vat_enabled == '1') {
@@ -91,10 +147,22 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         $payments = $db->get_entry_total_payments($entry->id);
                         $balance = $total - $payments;
 
-                        $status_class = $entry->is_cancelled ? 'cancelled' : $entry->status;
+                        $is_cancelled = isset($entry->is_cancelled) ? $entry->is_cancelled : 0;
+                        $status_class = $is_cancelled ? 'cancelled' : $entry->status;
+                        $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
+
+                        // Prepare data attributes for filtering
+                        $customer_name = $customer ? $customer->customer_name : '';
+                        $fitter_attr = ($fitter_id !== null) ? $fitter_id : 'unassigned';
+                        $balance_status = ($balance > 0) ? 'outstanding' : (($balance < 0) ? 'overpaid' : 'paid');
                         ?>
-                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>" <?php echo $entry->is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
-                            <td><strong><?php echo esc_html($entry->order_number); ?></strong></td>
+                        <tr data-entry-id="<?php echo esc_attr($entry->id); ?>"
+                            data-job-date="<?php echo esc_attr($entry->job_date); ?>"
+                            data-customer-name="<?php echo esc_attr(strtolower($customer_name)); ?>"
+                            data-fitter-id="<?php echo esc_attr($fitter_attr); ?>"
+                            data-balance="<?php echo esc_attr($balance_status); ?>"
+                            <?php echo $is_cancelled ? 'style="opacity: 0.6;"' : ''; ?>>
+                            <td><strong><?php echo esc_html($order_number); ?></strong></td>
                             <td>
                                 <?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?>
                                 <?php if ($entry->job_time): ?>
@@ -109,6 +177,15 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #999;">No customer</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($fitter): ?>
+                                    <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color']); ?>; color: white; font-size: 11px; font-weight: 600;">
+                                        <?php echo esc_html($fitter['name']); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color: #999;">Unassigned</span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -181,14 +258,35 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     <h3>Customer Details</h3>
                     <div class="form-field">
                         <label for="customer-search">Search Customer</label>
-                        <input type="text" id="customer-search" placeholder="Type to search customers..." autocomplete="off">
-                        <input type="hidden" id="customer-id" name="customer_id" value="">
-                        <div id="customer-search-results" class="search-results"></div>
+                        <div style="position: relative;">
+                            <input type="text" id="customer-search" placeholder="Type to search customers..." autocomplete="off" style="width: 100%;">
+                            <input type="hidden" id="customer-id" name="customer_id" value="">
+                            <div id="customer-search-results" class="search-results"></div>
+                        </div>
                         <div id="selected-customer-display" style="display: none; margin-top: 10px; padding: 10px; background: #f0f0f1; border-radius: 4px;">
                             <strong>Selected Customer:</strong> <span id="selected-customer-name"></span>
                             <button type="button" class="button button-small" id="clear-customer-btn" style="margin-left: 10px;">Change</button>
                         </div>
                         <button type="button" class="button button-small" id="add-new-customer-inline" style="margin-top: 5px;">+ Add New Customer</button>
+                    </div>
+                </div>
+
+                <!-- Fitter Selection -->
+                <div class="form-section">
+                    <h3>Assign Fitter</h3>
+                    <div class="form-field">
+                        <label for="fitter-id">Fitter</label>
+                        <select id="fitter-id" name="fitter_id">
+                            <option value="">None / Unassigned</option>
+                            <?php foreach ($fitters as $index => $fitter): ?>
+                                <option value="<?php echo esc_attr($index); ?>">
+                                    <?php echo esc_html($fitter['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (empty($fitters)): ?>
+                            <p class="description">No fitters available. <a href="<?php echo admin_url('admin.php?page=wp-staff-diary-settings#fitters'); ?>">Add fitters in settings</a></p>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -343,8 +441,20 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <input type="email" id="quick-customer-email">
             </div>
             <div class="form-field">
-                <label for="quick-customer-address">Address</label>
-                <textarea id="quick-customer-address" rows="3"></textarea>
+                <label for="quick-address-line-1">Address Line 1</label>
+                <input type="text" id="quick-address-line-1">
+            </div>
+            <div class="form-field">
+                <label for="quick-address-line-2">Address Line 2</label>
+                <input type="text" id="quick-address-line-2">
+            </div>
+            <div class="form-field">
+                <label for="quick-address-line-3">Address Line 3</label>
+                <input type="text" id="quick-address-line-3">
+            </div>
+            <div class="form-field">
+                <label for="quick-postcode">Postcode</label>
+                <input type="text" id="quick-postcode" style="max-width: 150px;">
             </div>
             <div class="modal-footer">
                 <button type="submit" class="button button-primary">Add Customer</button>
@@ -358,4 +468,101 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
     var currentMonth = '<?php echo esc_js($current_month); ?>';
     var vatEnabled = <?php echo $vat_enabled; ?>;
     var vatRate = <?php echo $vat_rate; ?>;
+
+    jQuery(document).ready(function($) {
+        // List View Filters
+        function applyFilters() {
+            const sortDate = $('#sort-date').val();
+            const filterCustomer = $('#filter-customer').val().toLowerCase();
+            const filterFitter = $('#filter-fitter').val();
+            const filterBalance = $('#filter-balance').val();
+
+            let $rows = $('.jobs-table tbody tr').not(':has(td[colspan])');
+            let visibleRows = [];
+
+            // First, filter rows
+            $rows.each(function() {
+                const $row = $(this);
+                const customerName = $row.data('customer-name') || '';
+                const fitterId = String($row.data('fitter-id'));
+                const balanceStatus = $row.data('balance');
+                let visible = true;
+
+                // Filter by customer
+                if (filterCustomer && !customerName.includes(filterCustomer)) {
+                    visible = false;
+                }
+
+                // Filter by fitter
+                if (filterFitter && fitterId !== filterFitter) {
+                    visible = false;
+                }
+
+                // Filter by balance
+                if (filterBalance && balanceStatus !== filterBalance) {
+                    visible = false;
+                }
+
+                if (visible) {
+                    visibleRows.push($row);
+                    $row.show();
+                } else {
+                    $row.hide();
+                }
+            });
+
+            // Then, sort visible rows
+            if (visibleRows.length > 0) {
+                visibleRows.sort(function(a, b) {
+                    const dateA = new Date($(a).data('job-date'));
+                    const dateB = new Date($(b).data('job-date'));
+
+                    if (sortDate === 'asc') {
+                        return dateA - dateB;
+                    } else {
+                        return dateB - dateA;
+                    }
+                });
+
+                // Reorder rows in DOM
+                const $tbody = $('.jobs-table tbody');
+                visibleRows.forEach(function($row) {
+                    $tbody.append($row);
+                });
+            }
+
+            // Show/hide "no results" message
+            if (visibleRows.length === 0) {
+                if ($('.jobs-table tbody .no-results-row').length === 0) {
+                    $('.jobs-table tbody').append(
+                        '<tr class="no-results-row"><td colspan="9" style="text-align: center; padding: 40px;">' +
+                        '<p style="color: #666; font-size: 16px;">No jobs match the selected filters.</p></td></tr>'
+                    );
+                }
+            } else {
+                $('.jobs-table tbody .no-results-row').remove();
+            }
+        }
+
+        // Filter event handlers
+        $('#sort-date').on('change', applyFilters);
+        $('#filter-customer').on('input', function() {
+            clearTimeout(window.filterCustomerTimeout);
+            window.filterCustomerTimeout = setTimeout(applyFilters, 300);
+        });
+        $('#filter-fitter').on('change', applyFilters);
+        $('#filter-balance').on('change', applyFilters);
+
+        // Clear filters
+        $('#clear-filters').on('click', function() {
+            $('#sort-date').val('desc');
+            $('#filter-customer').val('');
+            $('#filter-fitter').val('');
+            $('#filter-balance').val('');
+            applyFilters();
+        });
+
+        // Apply initial sort on page load
+        applyFilters();
+    });
 </script>

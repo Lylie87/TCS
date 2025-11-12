@@ -234,6 +234,7 @@ class WP_Staff_Diary_Admin {
         $data = array(
             'user_id' => $user_id,
             'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+            'fitter_id' => !empty($_POST['fitter_id']) ? intval($_POST['fitter_id']) : null,
             'job_date' => sanitize_text_field($_POST['job_date']),
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
             'fitting_date' => !empty($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null,
@@ -774,6 +775,81 @@ class WP_Staff_Diary_Admin {
         }
     }
 
+    // ==================== FITTER AJAX HANDLERS ====================
+
+    /**
+     * AJAX: Add fitter
+     */
+    public function add_fitter() {
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $name = sanitize_text_field($_POST['name']);
+        $color = sanitize_hex_color($_POST['color']);
+
+        if (empty($name)) {
+            wp_send_json_error('Fitter name is required');
+        }
+
+        if (empty($color)) {
+            $color = '#3498db'; // Default color
+        }
+
+        // Get current fitters
+        $fitters = get_option('wp_staff_diary_fitters', array());
+
+        // Add new fitter
+        $fitters[] = array(
+            'name' => $name,
+            'color' => $color
+        );
+
+        update_option('wp_staff_diary_fitters', $fitters);
+        wp_send_json_success('Fitter added successfully');
+    }
+
+    /**
+     * AJAX: Delete fitter
+     */
+    public function delete_fitter() {
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $index = intval($_POST['index']);
+
+        // Get current fitters
+        $fitters = get_option('wp_staff_diary_fitters', array());
+
+        // Check if index exists
+        if (!isset($fitters[$index])) {
+            wp_send_json_error('Fitter not found');
+        }
+
+        // Check if any jobs are assigned to this fitter
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_diary WHERE fitter_id = %d",
+            $index
+        ));
+
+        if ($count > 0) {
+            wp_send_json_error("Cannot delete this fitter. There are $count job(s) assigned to them.");
+        }
+
+        // Remove the fitter
+        unset($fitters[$index]);
+        $fitters = array_values($fitters); // Re-index array
+        update_option('wp_staff_diary_fitters', $fitters);
+        wp_send_json_success('Fitter deleted successfully');
+    }
+
     // ==================== ACCESSORY AJAX HANDLERS ====================
 
     /**
@@ -974,10 +1050,13 @@ class WP_Staff_Diary_Admin {
         check_ajax_referer('wp_staff_diary_nonce', 'nonce');
 
         $customer_name = sanitize_text_field($_POST['customer_name']);
-        $customer_address = sanitize_textarea_field($_POST['customer_address']);
-        $customer_phone = sanitize_text_field($_POST['customer_phone']);
-        $customer_email = sanitize_email($_POST['customer_email']);
-        $notes = sanitize_textarea_field($_POST['notes']);
+        $address_line_1 = isset($_POST['address_line_1']) ? sanitize_text_field($_POST['address_line_1']) : '';
+        $address_line_2 = isset($_POST['address_line_2']) ? sanitize_text_field($_POST['address_line_2']) : '';
+        $address_line_3 = isset($_POST['address_line_3']) ? sanitize_text_field($_POST['address_line_3']) : '';
+        $postcode = isset($_POST['postcode']) ? sanitize_text_field($_POST['postcode']) : '';
+        $customer_phone = isset($_POST['customer_phone']) ? sanitize_text_field($_POST['customer_phone']) : '';
+        $customer_email = isset($_POST['customer_email']) ? sanitize_email($_POST['customer_email']) : '';
+        $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
 
         if (empty($customer_name)) {
             wp_send_json_error(array('message' => 'Customer name is required'));
@@ -985,7 +1064,10 @@ class WP_Staff_Diary_Admin {
 
         $data = array(
             'customer_name' => $customer_name,
-            'customer_address' => $customer_address,
+            'address_line_1' => $address_line_1,
+            'address_line_2' => $address_line_2,
+            'address_line_3' => $address_line_3,
+            'postcode' => $postcode,
             'customer_phone' => $customer_phone,
             'customer_email' => $customer_email,
             'notes' => $notes
@@ -1032,10 +1114,13 @@ class WP_Staff_Diary_Admin {
 
         $customer_id = intval($_POST['customer_id']);
         $customer_name = sanitize_text_field($_POST['customer_name']);
-        $customer_address = sanitize_textarea_field($_POST['customer_address']);
-        $customer_phone = sanitize_text_field($_POST['customer_phone']);
-        $customer_email = sanitize_email($_POST['customer_email']);
-        $notes = sanitize_textarea_field($_POST['notes']);
+        $address_line_1 = isset($_POST['address_line_1']) ? sanitize_text_field($_POST['address_line_1']) : '';
+        $address_line_2 = isset($_POST['address_line_2']) ? sanitize_text_field($_POST['address_line_2']) : '';
+        $address_line_3 = isset($_POST['address_line_3']) ? sanitize_text_field($_POST['address_line_3']) : '';
+        $postcode = isset($_POST['postcode']) ? sanitize_text_field($_POST['postcode']) : '';
+        $customer_phone = isset($_POST['customer_phone']) ? sanitize_text_field($_POST['customer_phone']) : '';
+        $customer_email = isset($_POST['customer_email']) ? sanitize_email($_POST['customer_email']) : '';
+        $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
 
         if (empty($customer_name)) {
             wp_send_json_error(array('message' => 'Customer name is required'));
@@ -1043,7 +1128,10 @@ class WP_Staff_Diary_Admin {
 
         $data = array(
             'customer_name' => $customer_name,
-            'customer_address' => $customer_address,
+            'address_line_1' => $address_line_1,
+            'address_line_2' => $address_line_2,
+            'address_line_3' => $address_line_3,
+            'postcode' => $postcode,
             'customer_phone' => $customer_phone,
             'customer_email' => $customer_email,
             'notes' => $notes

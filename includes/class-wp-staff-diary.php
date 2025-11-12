@@ -60,6 +60,10 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_add_payment_method', $plugin_admin, 'add_payment_method');
         $this->loader->add_action('wp_ajax_delete_payment_method', $plugin_admin, 'delete_payment_method');
 
+        // AJAX handlers - Fitters
+        $this->loader->add_action('wp_ajax_wp_staff_diary_add_fitter', $plugin_admin, 'add_fitter');
+        $this->loader->add_action('wp_ajax_wp_staff_diary_delete_fitter', $plugin_admin, 'delete_fitter');
+
         // AJAX handlers - Accessories
         $this->loader->add_action('wp_ajax_add_accessory', $plugin_admin, 'add_accessory');
         $this->loader->add_action('wp_ajax_update_accessory', $plugin_admin, 'update_accessory');

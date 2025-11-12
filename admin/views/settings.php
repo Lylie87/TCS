@@ -35,6 +35,10 @@ if (isset($_POST['wp_staff_diary_save_settings'])) {
     update_option('wp_staff_diary_week_start', sanitize_text_field($_POST['week_start']));
     update_option('wp_staff_diary_default_status', sanitize_text_field($_POST['default_status']));
 
+    // Job time options
+    update_option('wp_staff_diary_job_time_type', sanitize_text_field($_POST['job_time_type']));
+    update_option('wp_staff_diary_fitting_time_length', isset($_POST['fitting_time_length']) ? '1' : '0');
+
     echo '<div class="notice notice-success is-dismissible"><p>General settings saved successfully!</p></div>';
 }
 
@@ -94,6 +98,10 @@ $time_format = get_option('wp_staff_diary_time_format', 'H:i');
 $week_start = get_option('wp_staff_diary_week_start', 'monday');
 $default_status = get_option('wp_staff_diary_default_status', 'pending');
 
+// Job time options
+$job_time_type = get_option('wp_staff_diary_job_time_type', 'ampm'); // 'ampm' or 'time' or 'none'
+$fitting_time_length = get_option('wp_staff_diary_fitting_time_length', '0');
+
 // Company details
 $company_name = get_option('wp_staff_diary_company_name', '');
 $company_address = get_option('wp_staff_diary_company_address', '');
@@ -134,6 +142,9 @@ $payment_methods = get_option('wp_staff_diary_payment_methods', array(
 // Accessories
 $db = new WP_Staff_Diary_Database();
 $accessories = $db->get_all_accessories();
+
+// Fitters
+$fitters = get_option('wp_staff_diary_fitters', array());
 ?>
 
 <div class="wrap wp-staff-diary-wrap">
@@ -148,6 +159,7 @@ $accessories = $db->get_all_accessories();
         <a href="#statuses" class="nav-tab" data-tab="statuses">Job Statuses</a>
         <a href="#payment-methods" class="nav-tab" data-tab="payment-methods">Payment Methods</a>
         <a href="#accessories" class="nav-tab" data-tab="accessories">Accessories</a>
+        <a href="#fitters" class="nav-tab" data-tab="fitters">Fitters</a>
         <a href="#terms" class="nav-tab" data-tab="terms">Terms & Conditions</a>
         <a href="#info" class="nav-tab" data-tab="info">Plugin Info</a>
     </nav>
@@ -218,6 +230,33 @@ $accessories = $db->get_all_accessories();
                                 <?php endforeach; ?>
                             </select>
                             <p class="description">The default status for new job entries.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="job_time_type">Job Time Selection</label>
+                        </th>
+                        <td>
+                            <select name="job_time_type" id="job_time_type" class="regular-text">
+                                <option value="none" <?php selected($job_time_type, 'none'); ?>>No Time Selection</option>
+                                <option value="ampm" <?php selected($job_time_type, 'ampm'); ?>>AM/PM Only</option>
+                                <option value="time" <?php selected($job_time_type, 'time'); ?>>Specific Time</option>
+                            </select>
+                            <p class="description">Choose how users select job time: No time, AM/PM period only, or specific start time.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="fitting_time_length">Enable Fitting Time Length</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="fitting_time_length" id="fitting_time_length" value="1" <?php checked($fitting_time_length, '1'); ?>>
+                                Allow users to specify job duration (e.g., 3 hours)
+                            </label>
+                            <p class="description">When enabled, users can allocate a specific time length to each job.</p>
                         </td>
                     </tr>
                 </tbody>
@@ -535,6 +574,62 @@ $accessories = $db->get_all_accessories();
         </div>
     </div>
 
+    <!-- Fitters Tab -->
+    <div id="fitters-tab" class="settings-tab" style="display:none;">
+        <h2>Fitters</h2>
+        <p>Manage your team of fitters. Assign colors to each fitter for easy identification in the calendar view.</p>
+
+        <div id="fitters-management" class="wp-staff-diary-management-section">
+            <table class="wp-list-table widefat fixed striped" id="fitters-table">
+                <thead>
+                    <tr>
+                        <th>Fitter Name</th>
+                        <th style="width: 150px;">Color</th>
+                        <th style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($fitters)): ?>
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #666;">No fitters added yet. Add your first fitter below.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($fitters as $index => $fitter): ?>
+                            <tr data-fitter-index="<?php echo esc_attr($index); ?>">
+                                <td><?php echo esc_html($fitter['name']); ?></td>
+                                <td>
+                                    <span class="color-preview" style="display: inline-block; width: 30px; height: 30px; background-color: <?php echo esc_attr($fitter['color']); ?>; border: 1px solid #ddd; border-radius: 3px; vertical-align: middle;"></span>
+                                    <span style="margin-left: 10px;"><?php echo esc_html($fitter['color']); ?></span>
+                                </td>
+                                <td>
+                                    <button type="button" class="button button-small button-link-delete delete-fitter" data-index="<?php echo esc_attr($index); ?>">Delete</button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <div class="add-fitter-form" style="margin-top: 20px;">
+                <h3>Add New Fitter</h3>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="new-fitter-name">Fitter Name:</label></th>
+                        <td><input type="text" id="new-fitter-name" class="regular-text" placeholder="e.g., John Smith"></td>
+                    </tr>
+                    <tr>
+                        <th><label for="new-fitter-color">Color:</label></th>
+                        <td>
+                            <input type="color" id="new-fitter-color" value="#3498db">
+                            <p class="description">Choose a color to identify this fitter in the calendar view.</p>
+                        </td>
+                    </tr>
+                </table>
+                <button type="button" id="add-fitter-btn" class="button button-secondary">Add Fitter</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Terms & Conditions Tab -->
     <div id="terms-tab" class="settings-tab" style="display:none;">
         <h2>Terms & Conditions</h2>
@@ -712,6 +807,183 @@ jQuery(document).ready(function($) {
         var next = current + 1;
         var nextStr = String(next).padStart(start.length, '0');
         $('#order-preview').text(prefix + nextStr);
+    });
+
+    // Add Status
+    $('#add-status-btn').on('click', function() {
+        var label = $('#new-status-label').val().trim();
+        if (!label) {
+            alert('Please enter a status name');
+            return;
+        }
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_add_status',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                label: label
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to add status');
+                }
+            },
+            error: function() {
+                alert('Error adding status');
+            }
+        });
+    });
+
+    // Delete Status
+    $('.delete-status').on('click', function() {
+        if (!confirm('Are you sure you want to remove this status?')) {
+            return;
+        }
+
+        var statusKey = $(this).data('status-key');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_delete_status',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                status_key: statusKey
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to remove status');
+                }
+            },
+            error: function() {
+                alert('Error removing status');
+            }
+        });
+    });
+
+    // Add Payment Method
+    $('#add-payment-method-btn').on('click', function() {
+        var label = $('#new-payment-method-label').val().trim();
+        if (!label) {
+            alert('Please enter a payment method name');
+            return;
+        }
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_add_payment_method',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                label: label
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to add payment method');
+                }
+            },
+            error: function() {
+                alert('Error adding payment method');
+            }
+        });
+    });
+
+    // Delete Payment Method
+    $('.delete-payment-method').on('click', function() {
+        if (!confirm('Are you sure you want to remove this payment method?')) {
+            return;
+        }
+
+        var methodKey = $(this).data('method-key');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_delete_payment_method',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                method_key: methodKey
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to remove payment method');
+                }
+            },
+            error: function() {
+                alert('Error removing payment method');
+            }
+        });
+    });
+
+    // Add Fitter
+    $('#add-fitter-btn').on('click', function() {
+        var name = $('#new-fitter-name').val().trim();
+        var color = $('#new-fitter-color').val();
+
+        if (!name) {
+            alert('Please enter a fitter name');
+            return;
+        }
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_add_fitter',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                name: name,
+                color: color
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to add fitter');
+                }
+            },
+            error: function() {
+                alert('Error adding fitter');
+            }
+        });
+    });
+
+    // Delete Fitter
+    $('.delete-fitter').on('click', function() {
+        if (!confirm('Are you sure you want to remove this fitter?')) {
+            return;
+        }
+
+        var index = $(this).data('index');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_delete_fitter',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
+                index: index
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.data || 'Failed to remove fitter');
+                }
+            },
+            error: function() {
+                alert('Error removing fitter');
+            }
+        });
     });
 });
 </script>

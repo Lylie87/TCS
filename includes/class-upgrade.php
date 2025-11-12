@@ -37,9 +37,14 @@ class WP_Staff_Diary_Upgrade {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
         // Upgrade to v2.0.0 - Create all new tables
-        // Also run for 2.0.0 -> 2.0.1 to ensure migration completed
-        if (version_compare($from_version, '2.0.1', '<')) {
+        // Also run for 2.0.0 -> 2.0.2 to ensure migration completed
+        if (version_compare($from_version, '2.0.2', '<')) {
             self::upgrade_to_2_0_0();
+        }
+
+        // Upgrade to v2.0.3 - UK address fields and fitters
+        if (version_compare($from_version, '2.0.3', '<')) {
+            self::upgrade_to_2_0_3();
         }
 
         // Legacy upgrades for older versions
@@ -130,9 +135,41 @@ class WP_Staff_Diary_Upgrade {
         // Update diary entries table with new columns
         $table_diary = $wpdb->prefix . 'staff_diary_entries';
 
-        // Add new columns if they don't exist
+        // Handle order_number column specially (needs to populate existing rows)
+        $order_number_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'order_number'");
+        if (empty($order_number_exists)) {
+            // Add column as nullable first
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN order_number varchar(50) DEFAULT NULL AFTER id");
+
+            // Get current order number from settings
+            $current_order = get_option('wp_staff_diary_order_current', '01100');
+            $order_prefix = get_option('wp_staff_diary_order_prefix', '');
+
+            // Populate existing entries with unique order numbers
+            $existing_entries = $wpdb->get_results("SELECT id FROM $table_diary WHERE order_number IS NULL ORDER BY id ASC");
+            foreach ($existing_entries as $entry) {
+                $order_num = $order_prefix . str_pad($current_order, 5, '0', STR_PAD_LEFT);
+                $wpdb->update(
+                    $table_diary,
+                    array('order_number' => $order_num),
+                    array('id' => $entry->id)
+                );
+                $current_order++;
+            }
+
+            // Update the current order number
+            update_option('wp_staff_diary_order_current', $current_order);
+
+            // Now make it NOT NULL and add UNIQUE constraint
+            $wpdb->query("ALTER TABLE $table_diary MODIFY order_number varchar(50) NOT NULL");
+            $unique_check = $wpdb->get_results("SHOW INDEX FROM $table_diary WHERE Key_name = 'order_number'");
+            if (empty($unique_check)) {
+                $wpdb->query("ALTER TABLE $table_diary ADD UNIQUE KEY order_number (order_number)");
+            }
+        }
+
+        // Add other new columns if they don't exist
         $columns_to_add = array(
-            'order_number' => "ALTER TABLE $table_diary ADD COLUMN order_number varchar(50) NOT NULL UNIQUE AFTER id",
             'customer_id' => "ALTER TABLE $table_diary ADD COLUMN customer_id bigint(20) DEFAULT NULL AFTER user_id",
             'fitting_date' => "ALTER TABLE $table_diary ADD COLUMN fitting_date date DEFAULT NULL AFTER job_time",
             'fitting_time_period' => "ALTER TABLE $table_diary ADD COLUMN fitting_time_period varchar(10) DEFAULT NULL AFTER fitting_date",
@@ -239,6 +276,56 @@ class WP_Staff_Diary_Upgrade {
                 'bank-transfer' => 'Bank Transfer',
                 'card-payment' => 'Card Payment'
             ));
+        }
+
+        // v2.0.2 options - Job time settings
+        if (get_option('wp_staff_diary_job_time_type') === false) {
+            add_option('wp_staff_diary_job_time_type', 'ampm');
+        }
+        if (get_option('wp_staff_diary_fitting_time_length') === false) {
+            add_option('wp_staff_diary_fitting_time_length', '0');
+        }
+    }
+
+    /**
+     * Upgrade to version 2.0.3
+     * Convert customer address to UK format and add fitters support
+     */
+    private static function upgrade_to_2_0_3() {
+        global $wpdb;
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+
+        $table_customers = $wpdb->prefix . 'staff_diary_customers';
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Check if customer_address column exists (old format)
+        $old_address_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_customers LIKE 'customer_address'");
+
+        if (!empty($old_address_exists)) {
+            // Add new UK address columns
+            $wpdb->query("ALTER TABLE $table_customers
+                ADD COLUMN address_line_1 varchar(255) DEFAULT NULL AFTER customer_name,
+                ADD COLUMN address_line_2 varchar(255) DEFAULT NULL AFTER address_line_1,
+                ADD COLUMN address_line_3 varchar(255) DEFAULT NULL AFTER address_line_2,
+                ADD COLUMN postcode varchar(20) DEFAULT NULL AFTER address_line_3");
+
+            // Migrate existing data: put old address into address_line_1
+            $wpdb->query("UPDATE $table_customers SET address_line_1 = customer_address WHERE customer_address IS NOT NULL");
+
+            // Drop old column
+            $wpdb->query("ALTER TABLE $table_customers DROP COLUMN customer_address");
+        }
+
+        // Add fitter_id column to diary entries
+        $fitter_column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'fitter_id'");
+        if (empty($fitter_column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitter_id bigint(20) DEFAULT NULL AFTER user_id");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY fitter_id (fitter_id)");
+        }
+
+        // Add fitters option if it doesn't exist
+        if (get_option('wp_staff_diary_fitters') === false) {
+            add_option('wp_staff_diary_fitters', array());
         }
     }
 }
