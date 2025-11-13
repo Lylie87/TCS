@@ -26,6 +26,34 @@ class WP_Staff_Diary_GitHub_Updater {
 
         // Add admin action to force clear update cache
         add_action('admin_init', array($this, 'maybe_clear_update_cache'));
+
+        // Add admin notice with update diagnostics
+        add_action('admin_notices', array($this, 'show_update_diagnostics'));
+    }
+
+    /**
+     * Show update diagnostics in admin
+     */
+    public function show_update_diagnostics() {
+        $screen = get_current_screen();
+        if ($screen->id !== 'plugins') {
+            return;
+        }
+
+        $remote_version = $this->get_remote_version();
+        $download_url = $remote_version ? $this->get_download_url($remote_version) : 'N/A';
+
+        echo '<div class="notice notice-info" style="padding: 15px; background: #f0f0f1; border-left: 4px solid #2271b1;">';
+        echo '<h3 style="margin-top: 0;">WP Staff Diary Update Diagnostics</h3>';
+        echo '<table style="border-collapse: collapse; width: 100%; max-width: 600px;">';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">Current Version:</td><td style="padding: 5px;">' . esc_html($this->version) . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">Remote Version (GitHub):</td><td style="padding: 5px;">' . esc_html($remote_version ? $remote_version : 'Not found') . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">Plugin Slug:</td><td style="padding: 5px;">' . esc_html($this->plugin_slug) . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">Update Available:</td><td style="padding: 5px;">' . ($remote_version && version_compare($this->version, $remote_version, '<') ? '<strong style="color: green;">YES</strong>' : 'No') . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">Download URL:</td><td style="padding: 5px; word-break: break-all; font-size: 11px;">' . esc_html($download_url) . '</td></tr>';
+        echo '</table>';
+        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a></p>';
+        echo '</div>';
     }
 
     /**
