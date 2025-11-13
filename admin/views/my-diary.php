@@ -470,8 +470,16 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 
                 <!-- Payment Recording Section -->
                 <div class="form-section" id="payment-section" style="display: none;">
-                    <h3>Record Payment</h3>
+                    <h3>Payments</h3>
+
+                    <!-- Payment History -->
+                    <div id="payment-history-container" style="margin-bottom: 15px;">
+                        <p class="description">No payments recorded yet.</p>
+                    </div>
+
+                    <!-- Record New Payment Form -->
                     <div id="payment-form-container" class="payment-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                        <h4 style="margin-top: 0; margin-bottom: 15px;">Record New Payment</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                             <div>
                                 <label style="display: block; margin-bottom: 5px;"><strong>Amount (£):</strong></label>
