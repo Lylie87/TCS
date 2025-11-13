@@ -238,8 +238,15 @@
             }
 
             // Payment section - show when editing existing job
+            console.log('Payment section check:', {
+                'entry.id': entry.id,
+                'entry.is_cancelled': entry.is_cancelled,
+                'entry.balance': entry.balance,
+                'entry.total': entry.total
+            });
             if (entry.id && entry.id > 0 && !entry.is_cancelled) {
                 $('#payment-section').show();
+                console.log('Payment section SHOWN');
 
                 // Display payment history
                 if (entry.payments && entry.payments.length > 0) {
