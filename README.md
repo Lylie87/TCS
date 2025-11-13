@@ -4,7 +4,7 @@ A comprehensive WordPress plugin for managing daily job planning, customer infor
 
 ## Version
 
-2.0.23
+2.0.24
 
 ## Overview
 
@@ -329,7 +329,13 @@ Version migrations are handled automatically in `includes/class-upgrade.php`. Wh
 
 ## Changelog
 
-### Version 2.0.23 (Current)
+### Version 2.0.24 (Current)
+- Enhanced: Financial summary updates immediately after payment recording
+- Enhanced: Balance shows "PAID IN FULL" in bright green when £0.00
+- Enhanced: Payment rows now stand out with darker green background and border
+- Improved: Better visual distinction between paid/unpaid status
+
+### Version 2.0.23
 - Fixed: PDF download nonce verification error
 - Added: Fitting Cost field for separate labor charges
 - Fixed: Fitting cost included in all financial calculations

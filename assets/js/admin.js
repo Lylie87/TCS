@@ -745,8 +745,11 @@
             }
 
             // Balance
-            const balanceClass = entry.balance > 0 ? 'balance-due' : 'balance-paid';
-            html += `<tr class="${balanceClass}"><td><strong>Balance Due:</strong></td><td class="amount"><strong>£${parseFloat(entry.balance).toFixed(2)}</strong></td></tr>`;
+            const balance = parseFloat(entry.balance);
+            const balanceClass = balance > 0 ? 'balance-due' : 'balance-paid';
+            const balanceLabel = balance > 0 ? 'Balance Due:' : 'PAID IN FULL';
+            const balanceAmount = balance > 0 ? `£${balance.toFixed(2)}` : '£0.00';
+            html += `<tr class="${balanceClass}"><td><strong>${balanceLabel}</strong></td><td class="amount"><strong>${balanceAmount}</strong></td></tr>`;
             html += '</table>';
             html += '</div>';
 
