@@ -54,7 +54,7 @@ class WP_Staff_Diary_Activator {
 
         $sql_diary = "CREATE TABLE $table_diary (
             id bigint(20) NOT NULL AUTO_INCREMENT,
-            order_number varchar(50) NOT NULL UNIQUE,
+            order_number varchar(50) NOT NULL,
             user_id bigint(20) NOT NULL,
             customer_id bigint(20) DEFAULT NULL,
             fitter_id int(11) DEFAULT NULL,
