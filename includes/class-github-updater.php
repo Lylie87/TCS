@@ -40,6 +40,15 @@ class WP_Staff_Diary_GitHub_Updater {
             return;
         }
 
+        // Show database fix result if present
+        if (isset($_GET['db_fixed'])) {
+            if ($_GET['db_fixed'] === 'success') {
+                echo '<div class="notice notice-success"><p><strong>Database tables created successfully!</strong> The plugin should now work correctly.</p></div>';
+            } elseif ($_GET['db_fixed'] === 'failed') {
+                echo '<div class="notice notice-error"><p><strong>Database creation failed!</strong> Check wp-content/debug.log for details. You may need to check database permissions.</p></div>';
+            }
+        }
+
         // Test GitHub API connection
         $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases/latest";
         $response = wp_remote_get($api_url, array(
@@ -107,10 +116,26 @@ class WP_Staff_Diary_GitHub_Updater {
         }
 
         if (isset($_GET['fix_database']) && $_GET['fix_database'] === 'wp_staff_diary') {
+            global $wpdb;
+
+            // Log the table prefix being used
+            error_log('WP Staff Diary - Fix Database:');
+            error_log('- Table prefix: ' . $wpdb->prefix);
+            error_log('- Expected table: ' . $wpdb->prefix . 'staff_diary_entries');
+
             // Run activator to recreate tables
             require_once WP_STAFF_DIARY_PATH . 'includes/class-activator.php';
             WP_Staff_Diary_Activator::activate();
-            wp_redirect(admin_url('plugins.php?db_fixed=1'));
+
+            // Check if table was created
+            $table_check = $wpdb->get_var("SHOW TABLES LIKE '" . $wpdb->prefix . "staff_diary_entries'");
+            error_log('- Table exists after activation: ' . ($table_check ? 'YES' : 'NO'));
+
+            if ($table_check) {
+                wp_redirect(admin_url('plugins.php?db_fixed=success'));
+            } else {
+                wp_redirect(admin_url('plugins.php?db_fixed=failed'));
+            }
             exit;
         }
     }
