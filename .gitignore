@@ -23,3 +23,8 @@ vendor/
 *.bak
 *.swp
 *~
+
+# Release files
+WP Staff Diary.zip
+wp-staff-diary.zip
+*.zip
