@@ -13,38 +13,17 @@ $version = ($versionLine -replace '.*Version:\s*', '').Trim()
 Write-Host "Creating Release: v$version" -ForegroundColor Yellow
 Write-Host ""
 
-# Create temporary directory
-$tempDir = "temp-release-$(Get-Random)"
+# Create temporary directory OUTSIDE the project directory to avoid infinite loop
+$tempDir = Join-Path $env:TEMP "wp-staff-diary-release-$(Get-Random)"
 $zipName = "wp-staff-diary.zip"
 
 Write-Host "Step 1: Creating clean copy of plugin files..." -ForegroundColor Green
 New-Item -ItemType Directory -Path "$tempDir\wp-staff-diary" -Force | Out-Null
 
 # Copy all files except exclusions
-$excludePatterns = @('.git', '.gitignore', 'node_modules', '.DS_Store', '*.sh', '*.ps1', 'temp-release-*', '*.zip')
-Get-ChildItem -Path "." -Recurse | Where-Object {
-    $item = $_
-    $shouldExclude = $false
-    foreach ($pattern in $excludePatterns) {
-        if ($item.Name -like $pattern -or $item.FullName -match [regex]::Escape($pattern)) {
-            $shouldExclude = $true
-            break
-        }
-    }
-    -not $shouldExclude
-} | ForEach-Object {
-    $relativePath = $_.FullName.Substring((Get-Location).Path.Length + 1)
-    $targetPath = Join-Path "$tempDir\wp-staff-diary" $relativePath
-
-    if ($_.PSIsContainer) {
-        New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
-    } else {
-        $targetDir = Split-Path -Parent $targetPath
-        if (-not (Test-Path $targetDir)) {
-            New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
-        }
-        Copy-Item $_.FullName -Destination $targetPath -Force
-    }
+$excludeFiles = @('.git', '.gitignore', 'node_modules', '.DS_Store', '*.sh', '*.ps1', 'temp-release-*', '*.zip')
+Get-ChildItem -Path "." -Exclude $excludeFiles | ForEach-Object {
+    Copy-Item $_.FullName -Destination "$tempDir\wp-staff-diary\" -Recurse -Force -Exclude $excludeFiles
 }
 
 Write-Host "Step 2: Creating ZIP archive..." -ForegroundColor Green
@@ -58,7 +37,8 @@ if (Test-Path $zipName) {
 Compress-Archive -Path "$tempDir\wp-staff-diary" -DestinationPath $zipName -Force
 
 $zipSize = (Get-Item $zipName).Length / 1KB
-Write-Host "✓ ZIP created: $zipName ($([math]::Round($zipSize, 2)) KB)" -ForegroundColor Green
+$zipSizeRounded = [math]::Round($zipSize, 2)
+Write-Host "SUCCESS: ZIP created - $zipName ($zipSizeRounded KB)" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Step 3: Creating GitHub release..." -ForegroundColor Green
@@ -70,7 +50,7 @@ gh release create "v$version" $zipName --title "v$version" --notes $releaseNotes
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "=========================================" -ForegroundColor Green
-    Write-Host "✓ Release v$version created successfully!" -ForegroundColor Green
+    Write-Host "SUCCESS: Release v$version created!" -ForegroundColor Green
     Write-Host "=========================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "View release: https://github.com/Lylie87/TCS/releases/tag/v$version" -ForegroundColor Cyan
@@ -79,7 +59,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "You can delete it after verifying the release." -ForegroundColor Yellow
 } else {
     Write-Host ""
-    Write-Host "Error: Failed to create GitHub release" -ForegroundColor Red
+    Write-Host "ERROR: Failed to create GitHub release" -ForegroundColor Red
     Write-Host "Make sure you're authenticated with: gh auth login" -ForegroundColor Yellow
 }
 
@@ -89,4 +69,4 @@ Write-Host ""
 Write-Host "Cleaning up temporary files..." -ForegroundColor Gray
 Remove-Item -Recurse -Force $tempDir
 
-Write-Host "✓ Done!" -ForegroundColor Green
+Write-Host "Done!" -ForegroundColor Green

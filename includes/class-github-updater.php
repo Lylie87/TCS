@@ -82,7 +82,33 @@ class WP_Staff_Diary_GitHub_Updater {
      * Get download URL for specific version
      */
     private function get_download_url($version) {
-        // Use tag with 'v' prefix for release
+        // Get the release asset (wp-staff-diary.zip) from the release
+        $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases/tags/v{$version}";
+
+        $response = wp_remote_get($api_url, array(
+            'timeout' => 10,
+            'headers' => array(
+                'Accept' => 'application/vnd.github.v3+json',
+            ),
+        ));
+
+        if (is_wp_error($response)) {
+            return false;
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $release = json_decode($body);
+
+        // Look for wp-staff-diary.zip in release assets
+        if (isset($release->assets) && is_array($release->assets)) {
+            foreach ($release->assets as $asset) {
+                if ($asset->name === 'wp-staff-diary.zip') {
+                    return $asset->browser_download_url;
+                }
+            }
+        }
+
+        // Fallback to repository archive if asset not found
         return "https://github.com/{$this->github_user}/{$this->github_repo}/archive/refs/tags/v{$version}.zip";
     }
 
