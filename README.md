@@ -372,7 +372,7 @@ Version migrations are handled automatically in `includes/class-upgrade.php`. Wh
 ## Support & Documentation
 
 For additional help:
-- Check CLAUDE.md for detailed developer documentation
+- Check DEVELOPER.md for detailed code structure and development guide
 - Review code comments in source files
 - Check libs/README.md for TCPDF installation
 

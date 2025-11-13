@@ -1,6 +1,6 @@
-# CLAUDE.md
+# DEVELOPER.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Developer documentation and code structure guide for the Staff Daily Job Planner WordPress plugin.
 
 ## Project Overview
 
