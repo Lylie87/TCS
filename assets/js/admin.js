@@ -821,8 +821,8 @@
             $(`#photo-upload-input-${entryId}`).click();
         });
 
-        // Photo file selected
-        $(document).on('change', '[id^="photo-upload-input-"]', function() {
+        // Photo file selected in view modal (not edit form)
+        $(document).on('change', '[id^="photo-upload-input-"]:not(#photo-upload-input-form)', function() {
             const entryId = $(this).attr('id').replace('photo-upload-input-', '');
             const file = this.files[0];
 
