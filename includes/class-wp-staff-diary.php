@@ -16,8 +16,27 @@ class WP_Staff_Diary {
         $this->plugin_name = 'wp-staff-diary';
 
         $this->load_dependencies();
+        $this->set_locale();
         $this->define_admin_hooks();
         $this->define_public_hooks();
+    }
+
+    /**
+     * Load plugin text domain for translations
+     */
+    private function set_locale() {
+        $this->loader->add_action('init', $this, 'load_plugin_textdomain');
+    }
+
+    /**
+     * Load the plugin text domain for translation
+     */
+    public function load_plugin_textdomain() {
+        load_plugin_textdomain(
+            'wp-staff-diary',
+            false,
+            dirname(plugin_basename(WP_STAFF_DIARY_PATH)) . '/languages/'
+        );
     }
 
     private function load_dependencies() {

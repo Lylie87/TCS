@@ -11,18 +11,14 @@ class WP_Staff_Diary_GitHub_Updater {
     private $plugin_slug;
     private $version;
 
-    public function __construct($plugin_file, $github_user, $github_repo) {
+    public function __construct($plugin_file, $github_user, $github_repo, $version = null) {
         $this->plugin_file = $plugin_file;
         $this->github_user = $github_user;
         $this->github_repo = $github_repo;
         $this->plugin_slug = plugin_basename($plugin_file);
 
-        // Get current version
-        if (!function_exists('get_plugin_data')) {
-            require_once(ABSPATH . 'wp-admin/includes/plugin.php');
-        }
-        $plugin_data = get_plugin_data($plugin_file);
-        $this->version = $plugin_data['Version'];
+        // Get current version - use provided version or constant to avoid early get_plugin_data() call
+        $this->version = $version ? $version : (defined('WP_STAFF_DIARY_VERSION') ? WP_STAFF_DIARY_VERSION : '1.0.0');
 
         // Hook into WordPress update system
         add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
