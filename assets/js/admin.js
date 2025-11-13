@@ -244,7 +244,7 @@
                 'entry.balance': entry.balance,
                 'entry.total': entry.total
             });
-            if (entry.id && entry.id > 0 && !entry.is_cancelled) {
+            if (entry.id && entry.id > 0 && entry.is_cancelled != 1) {
                 $('#payment-section').show();
                 console.log('Payment section SHOWN');
 
@@ -341,15 +341,18 @@
                 type: 'POST',
                 data: formData,
                 success: function(response) {
+                    console.log('Save response:', response);
                     if (response.success) {
                         alert(response.data.message);
                         location.reload();
                     } else {
                         alert('Error: ' + response.data.message);
+                        console.error('Save error:', response);
                         $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
                     }
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', xhr, status, error);
                     alert('An error occurred while saving the entry.');
                     $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
                 }
@@ -747,7 +750,7 @@
             } else {
                 html += '<p style="color: #999;">No photos uploaded yet.</p>';
             }
-            if (!entry.is_cancelled) {
+            if (entry.is_cancelled != 1) {
                 html += `<button type="button" class="button" id="upload-photo-btn" data-entry-id="${entry.id}">
                     <span class="dashicons dashicons-camera"></span> Upload Photo
                 </button>`;
@@ -756,7 +759,7 @@
             html += '</div>';
 
             // Record Payment Section
-            if (!entry.is_cancelled && entry.balance > 0) {
+            if (entry.is_cancelled != 1 && entry.balance > 0) {
                 html += '<div class="detail-section">';
                 html += '<h3>Record Payment</h3>';
                 html += `<div class="payment-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
@@ -802,7 +805,7 @@
 
             // Actions
             html += '<div class="detail-section detail-actions">';
-            if (!entry.is_cancelled) {
+            if (entry.is_cancelled != 1) {
                 html += `<button type="button" class="button" onclick="window.open('${wpStaffDiary.ajaxUrl.replace('admin-ajax.php', '')}admin-post.php?action=wp_staff_diary_download_pdf&entry_id=${entry.id}&nonce=${wpStaffDiary.nonce}')">
                     <span class="dashicons dashicons-pdf"></span> Download PDF
                 </button>`;
