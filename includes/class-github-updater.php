@@ -32,6 +32,23 @@ class WP_Staff_Diary_GitHub_Updater {
     }
 
     /**
+     * Get API headers including authentication if token is set
+     */
+    private function get_api_headers() {
+        $headers = array(
+            'Accept' => 'application/vnd.github.v3+json',
+        );
+
+        // Add authentication token if configured
+        $github_token = get_option('wp_staff_diary_github_token', '');
+        if (!empty($github_token)) {
+            $headers['Authorization'] = 'token ' . $github_token;
+        }
+
+        return $headers;
+    }
+
+    /**
      * Show update diagnostics in admin
      */
     public function show_update_diagnostics() {
@@ -40,13 +57,15 @@ class WP_Staff_Diary_GitHub_Updater {
             return;
         }
 
+        // Check if token is configured
+        $github_token = get_option('wp_staff_diary_github_token', '');
+        $token_status = !empty($github_token) ? '<span style="color: green;">✓ Configured</span>' : '<span style="color: red;">✗ Not configured</span>';
+
         // Test GitHub API connection
         $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases/latest";
         $response = wp_remote_get($api_url, array(
             'timeout' => 10,
-            'headers' => array(
-                'Accept' => 'application/vnd.github.v3+json',
-            ),
+            'headers' => $this->get_api_headers(),
         ));
 
         $api_status = 'Unknown';
@@ -80,6 +99,7 @@ class WP_Staff_Diary_GitHub_Updater {
         echo '<h3 style="margin-top: 0;">WP Staff Diary Update Diagnostics</h3>';
         echo '<table style="border-collapse: collapse; width: 100%; max-width: 700px;">';
         echo '<tr><td style="padding: 5px; font-weight: bold;">Current Version:</td><td style="padding: 5px;">' . esc_html($this->version) . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">GitHub Token:</td><td style="padding: 5px;">' . $token_status . '</td></tr>';
         echo '<tr><td style="padding: 5px; font-weight: bold;">GitHub API Status:</td><td style="padding: 5px;">' . esc_html($api_status) . '</td></tr>';
         if ($api_error) {
             echo '<tr><td style="padding: 5px; font-weight: bold;">API Error:</td><td style="padding: 5px; color: red; font-size: 11px;">' . esc_html($api_error) . '</td></tr>';
@@ -91,7 +111,13 @@ class WP_Staff_Diary_GitHub_Updater {
         echo '<tr><td style="padding: 5px; font-weight: bold;">Update Available:</td><td style="padding: 5px;">' . ($remote_version && version_compare($this->version, $remote_version, '<') ? '<strong style="color: green;">YES</strong>' : 'No') . '</td></tr>';
         echo '<tr><td style="padding: 5px; font-weight: bold;">Download URL:</td><td style="padding: 5px; word-break: break-all; font-size: 11px;">' . esc_html($download_url) . '</td></tr>';
         echo '</table>';
-        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a></p>';
+
+        if (empty($github_token)) {
+            echo '<div class="notice notice-warning inline" style="margin: 15px 0; padding: 10px;"><p><strong>Repository is private:</strong> You need to configure a GitHub Personal Access Token in <a href="' . admin_url('admin.php?page=wp-staff-diary-settings#github') . '">Settings → GitHub Updates</a> to enable auto-updates.</p></div>';
+        }
+
+        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a> ';
+        echo '<a href="' . admin_url('admin.php?page=wp-staff-diary-settings#github') . '" class="button button-secondary">Configure GitHub Token</a></p>';
         echo '</div>';
     }
 
@@ -151,9 +177,7 @@ class WP_Staff_Diary_GitHub_Updater {
 
         $response = wp_remote_get($api_url, array(
             'timeout' => 10,
-            'headers' => array(
-                'Accept' => 'application/vnd.github.v3+json',
-            ),
+            'headers' => $this->get_api_headers(),
         ));
 
         if (is_wp_error($response)) {
@@ -180,9 +204,7 @@ class WP_Staff_Diary_GitHub_Updater {
 
         $response = wp_remote_get($api_url, array(
             'timeout' => 10,
-            'headers' => array(
-                'Accept' => 'application/vnd.github.v3+json',
-            ),
+            'headers' => $this->get_api_headers(),
         ));
 
         if (is_wp_error($response)) {
@@ -246,9 +268,7 @@ class WP_Staff_Diary_GitHub_Updater {
 
         $response = wp_remote_get($api_url, array(
             'timeout' => 10,
-            'headers' => array(
-                'Accept' => 'application/vnd.github.v3+json',
-            ),
+            'headers' => $this->get_api_headers(),
         ));
 
         if (is_wp_error($response)) {

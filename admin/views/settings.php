@@ -92,6 +92,25 @@ if (isset($_POST['wp_staff_diary_save_terms'])) {
     echo '<div class="notice notice-success is-dismissible"><p>Terms and conditions saved successfully!</p></div>';
 }
 
+// Save GitHub settings
+if (isset($_POST['wp_staff_diary_save_github'])) {
+    check_admin_referer('wp_staff_diary_github_nonce');
+
+    $github_token = sanitize_text_field($_POST['github_token']);
+
+    // Only update if token provided or if clearing
+    if (!empty($github_token) || isset($_POST['clear_token'])) {
+        update_option('wp_staff_diary_github_token', $github_token);
+
+        // Clear update cache to force recheck with new token
+        delete_site_transient('update_plugins');
+
+        echo '<div class="notice notice-success is-dismissible"><p>GitHub settings saved successfully! Update check cache has been cleared.</p></div>';
+    } else {
+        echo '<div class="notice notice-error is-dismissible"><p>Please enter a GitHub token or check "Clear Token" to remove it.</p></div>';
+    }
+}
+
 // Get current settings
 $date_format = get_option('wp_staff_diary_date_format', 'd/m/Y');
 $time_format = get_option('wp_staff_diary_time_format', 'H:i');
@@ -145,6 +164,9 @@ $accessories = $db->get_all_accessories();
 
 // Fitters
 $fitters = get_option('wp_staff_diary_fitters', array());
+
+// GitHub settings
+$github_token = get_option('wp_staff_diary_github_token', '');
 ?>
 
 <div class="wrap wp-staff-diary-wrap">
@@ -160,6 +182,7 @@ $fitters = get_option('wp_staff_diary_fitters', array());
         <a href="#payment-methods" class="nav-tab" data-tab="payment-methods">Payment Methods</a>
         <a href="#accessories" class="nav-tab" data-tab="accessories">Accessories</a>
         <a href="#fitters" class="nav-tab" data-tab="fitters">Fitters</a>
+        <a href="#github" class="nav-tab" data-tab="github">GitHub Updates</a>
         <a href="#terms" class="nav-tab" data-tab="terms">Terms & Conditions</a>
         <a href="#info" class="nav-tab" data-tab="info">Plugin Info</a>
     </nav>
@@ -630,6 +653,101 @@ $fitters = get_option('wp_staff_diary_fitters', array());
         </div>
     </div>
 
+    <!-- GitHub Updates Tab -->
+    <div id="github-tab" class="settings-tab" style="display:none;">
+        <h2>GitHub Auto-Updates</h2>
+        <p>Configure GitHub authentication to enable automatic plugin updates from your private repository.</p>
+
+        <div class="notice notice-info inline" style="margin: 20px 0; padding: 12px;">
+            <h3 style="margin-top: 0;">Why do I need this?</h3>
+            <p>Your plugin repository is <strong>private</strong>, which means WordPress cannot check for updates without authentication. By providing a GitHub Personal Access Token, the plugin can securely access your private repository to check for new releases.</p>
+        </div>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('wp_staff_diary_github_nonce'); ?>
+
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">
+                            <label for="github_token">GitHub Personal Access Token</label>
+                        </th>
+                        <td>
+                            <input type="password" name="github_token" id="github_token" value="<?php echo esc_attr($github_token); ?>" class="large-text" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                            <button type="button" id="toggle_token_visibility" class="button button-small" style="margin-left: 10px;">Show/Hide</button>
+                            <p class="description">
+                                Enter your GitHub Personal Access Token to enable auto-updates from the private repository.<br>
+                                <?php if (!empty($github_token)): ?>
+                                    <span style="color: green;">✓ Token is currently set</span>
+                                <?php else: ?>
+                                    <span style="color: orange;">⚠ No token configured - auto-updates will not work</span>
+                                <?php endif; ?>
+                            </p>
+                            <label style="margin-top: 10px; display: block;">
+                                <input type="checkbox" name="clear_token" value="1">
+                                Clear token (remove authentication)
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Token Status</th>
+                        <td>
+                            <?php if (!empty($github_token)): ?>
+                                <span style="color: green; font-weight: bold;">✓ Configured</span> - Auto-updates are enabled
+                            <?php else: ?>
+                                <span style="color: red; font-weight: bold;">✗ Not configured</span> - Auto-updates are disabled
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="submit">
+                <input type="submit" name="wp_staff_diary_save_github" class="button button-primary" value="Save GitHub Settings">
+            </p>
+        </form>
+
+        <hr style="margin: 40px 0;">
+
+        <h2>How to Create a GitHub Personal Access Token</h2>
+        <div class="instructions-box" style="background: #f9f9f9; border: 1px solid #ddd; padding: 20px; border-radius: 5px;">
+            <ol style="line-height: 2;">
+                <li>Go to <a href="https://github.com/settings/tokens" target="_blank">https://github.com/settings/tokens</a> (opens in new tab)</li>
+                <li>Click <strong>"Generate new token"</strong> → <strong>"Generate new token (classic)"</strong></li>
+                <li>Give it a descriptive name: <code>WP Staff Diary Auto-Updates</code></li>
+                <li>Set expiration: Choose <strong>"No expiration"</strong> or a long duration (90 days, 1 year, etc.)</li>
+                <li>Select scopes: Check <strong>"repo"</strong> (Full control of private repositories)
+                    <ul style="margin-left: 20px; list-style-type: disc;">
+                        <li>This gives read access to your private repository</li>
+                        <li>Required for WordPress to download releases</li>
+                    </ul>
+                </li>
+                <li>Click <strong>"Generate token"</strong> at the bottom</li>
+                <li><strong>Copy the token immediately</strong> (you won't be able to see it again!)</li>
+                <li>Paste it into the field above and click "Save GitHub Settings"</li>
+            </ol>
+
+            <div class="notice notice-warning inline" style="margin-top: 20px;">
+                <p><strong>Security Note:</strong> Keep your token secure! It provides access to your private repository. Never share it or commit it to your code.</p>
+            </div>
+        </div>
+
+        <hr style="margin: 40px 0;">
+
+        <h2>Testing Your Configuration</h2>
+        <p>After saving your token, go to the <strong>Plugins</strong> page to verify the connection:</p>
+        <ul style="line-height: 2; margin-left: 20px;">
+            <li>Check the "WP Staff Diary Update Diagnostics" box at the top of the Plugins page</li>
+            <li><strong>"GitHub API Status"</strong> should show <span style="color: green; font-weight: bold;">SUCCESS</span></li>
+            <li><strong>"Remote Version"</strong> should show the latest version number from GitHub</li>
+            <li><strong>"Update Available"</strong> will show "YES" if a newer version is available</li>
+        </ul>
+
+        <p style="margin-top: 20px;">
+            <a href="<?php echo admin_url('plugins.php'); ?>" class="button button-secondary">Go to Plugins Page</a>
+        </p>
+    </div>
+
     <!-- Terms & Conditions Tab -->
     <div id="terms-tab" class="settings-tab" style="display:none;">
         <h2>Terms & Conditions</h2>
@@ -1020,6 +1138,17 @@ jQuery(document).ready(function($) {
                 alert('Error deleting accessory');
             }
         });
+    });
+
+    // Toggle GitHub token visibility
+    $('#toggle_token_visibility').on('click', function(e) {
+        e.preventDefault();
+        var tokenField = $('#github_token');
+        if (tokenField.attr('type') === 'password') {
+            tokenField.attr('type', 'text');
+        } else {
+            tokenField.attr('type', 'password');
+        }
     });
 });
 </script>
