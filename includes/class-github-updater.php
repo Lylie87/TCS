@@ -40,19 +40,59 @@ class WP_Staff_Diary_GitHub_Updater {
             return;
         }
 
-        $remote_version = $this->get_remote_version();
+        // Test GitHub API connection
+        $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases/latest";
+        $response = wp_remote_get($api_url, array(
+            'timeout' => 10,
+            'headers' => array(
+                'Accept' => 'application/vnd.github.v3+json',
+            ),
+        ));
+
+        $api_status = 'Unknown';
+        $api_error = '';
+        $remote_version = false;
+
+        if (is_wp_error($response)) {
+            $api_status = 'ERROR';
+            $api_error = $response->get_error_message();
+        } else {
+            $status_code = wp_remote_retrieve_response_code($response);
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body);
+
+            if ($status_code === 200 && isset($data->tag_name)) {
+                $api_status = 'SUCCESS';
+                $remote_version = ltrim($data->tag_name, 'v');
+            } elseif ($status_code === 404) {
+                $api_status = 'NOT FOUND (No releases exist)';
+            } elseif ($status_code === 403) {
+                $api_status = 'FORBIDDEN (Rate limited or private repo)';
+            } else {
+                $api_status = "HTTP $status_code";
+                $api_error = substr($body, 0, 200);
+            }
+        }
+
         $download_url = $remote_version ? $this->get_download_url($remote_version) : 'N/A';
 
         echo '<div class="notice notice-info" style="padding: 15px; background: #f0f0f1; border-left: 4px solid #2271b1;">';
         echo '<h3 style="margin-top: 0;">WP Staff Diary Update Diagnostics</h3>';
-        echo '<table style="border-collapse: collapse; width: 100%; max-width: 600px;">';
+        echo '<table style="border-collapse: collapse; width: 100%; max-width: 700px;">';
         echo '<tr><td style="padding: 5px; font-weight: bold;">Current Version:</td><td style="padding: 5px;">' . esc_html($this->version) . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">GitHub API Status:</td><td style="padding: 5px;">' . esc_html($api_status) . '</td></tr>';
+        if ($api_error) {
+            echo '<tr><td style="padding: 5px; font-weight: bold;">API Error:</td><td style="padding: 5px; color: red; font-size: 11px;">' . esc_html($api_error) . '</td></tr>';
+        }
         echo '<tr><td style="padding: 5px; font-weight: bold;">Remote Version (GitHub):</td><td style="padding: 5px;">' . esc_html($remote_version ? $remote_version : 'Not found') . '</td></tr>';
         echo '<tr><td style="padding: 5px; font-weight: bold;">Plugin Slug:</td><td style="padding: 5px;">' . esc_html($this->plugin_slug) . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">Repository:</td><td style="padding: 5px;">' . esc_html($this->github_user . '/' . $this->github_repo) . '</td></tr>';
+        echo '<tr><td style="padding: 5px; font-weight: bold;">API URL:</td><td style="padding: 5px; word-break: break-all; font-size: 11px;">' . esc_html($api_url) . '</td></tr>';
         echo '<tr><td style="padding: 5px; font-weight: bold;">Update Available:</td><td style="padding: 5px;">' . ($remote_version && version_compare($this->version, $remote_version, '<') ? '<strong style="color: green;">YES</strong>' : 'No') . '</td></tr>';
         echo '<tr><td style="padding: 5px; font-weight: bold;">Download URL:</td><td style="padding: 5px; word-break: break-all; font-size: 11px;">' . esc_html($download_url) . '</td></tr>';
         echo '</table>';
-        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a></p>';
+        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a> ';
+        echo '<a href="' . admin_url('plugins.php?fix_database=wp_staff_diary') . '" class="button button-secondary">Fix Database Tables</a></p>';
         echo '</div>';
     }
 
@@ -63,6 +103,14 @@ class WP_Staff_Diary_GitHub_Updater {
         if (isset($_GET['force_update_check']) && $_GET['force_update_check'] === 'wp_staff_diary') {
             delete_site_transient('update_plugins');
             wp_redirect(admin_url('plugins.php'));
+            exit;
+        }
+
+        if (isset($_GET['fix_database']) && $_GET['fix_database'] === 'wp_staff_diary') {
+            // Run activator to recreate tables
+            require_once WP_STAFF_DIARY_PATH . 'includes/class-activator.php';
+            WP_Staff_Diary_Activator::activate();
+            wp_redirect(admin_url('plugins.php?db_fixed=1'));
             exit;
         }
     }
