@@ -238,8 +238,15 @@
             }
 
             // Payment section - show when editing existing job
+            console.log('Payment section check:', {
+                'entry.id': entry.id,
+                'entry.is_cancelled': entry.is_cancelled,
+                'entry.balance': entry.balance,
+                'entry.total': entry.total
+            });
             if (entry.id && entry.id > 0 && !entry.is_cancelled) {
                 $('#payment-section').show();
+                console.log('Payment section SHOWN');
 
                 // Display payment history
                 if (entry.payments && entry.payments.length > 0) {
@@ -821,8 +828,8 @@
             $(`#photo-upload-input-${entryId}`).click();
         });
 
-        // Photo file selected
-        $(document).on('change', '[id^="photo-upload-input-"]', function() {
+        // Photo file selected in view modal (not edit form)
+        $(document).on('change', '[id^="photo-upload-input-"]:not(#photo-upload-input-form)', function() {
             const entryId = $(this).attr('id').replace('photo-upload-input-', '');
             const file = this.files[0];
 
