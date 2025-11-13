@@ -559,7 +559,7 @@
         });
 
         // Product fields change
-        $('#sq-mtr-qty, #price-per-sq-mtr').on('input', function() {
+        $('#sq-mtr-qty, #price-per-sq-mtr, #fitting-cost').on('input', function() {
             updateCalculations();
         });
 
@@ -585,8 +585,11 @@
 
             $('#accessories-total-display').text(accessoriesTotal.toFixed(2));
 
+            // Fitting cost
+            const fittingCost = parseFloat($('#fitting-cost').val()) || 0;
+
             // Subtotal
-            const subtotal = productTotal + accessoriesTotal;
+            const subtotal = productTotal + fittingCost + accessoriesTotal;
             $('#subtotal-display').text(subtotal.toFixed(2));
 
             // VAT
