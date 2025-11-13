@@ -36,6 +36,17 @@ class WP_Staff_Diary_Upgrade {
         $charset_collate = $wpdb->get_charset_collate();
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
+        // First, ensure base tables exist - if not, run activator
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_diary'");
+
+        if (!$table_exists) {
+            // Base tables don't exist, run activator
+            require_once WP_STAFF_DIARY_PATH . 'includes/class-activator.php';
+            WP_Staff_Diary_Activator::activate();
+            return; // Activator creates everything we need
+        }
+
         // Upgrade to v2.0.0 - Create all new tables
         // Also run for 2.0.0 -> 2.0.2 to ensure migration completed
         if (version_compare($from_version, '2.0.2', '<')) {
@@ -47,9 +58,13 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_0_3();
         }
 
+        // Upgrade to v2.0.23 - Add fitting_cost field
+        if (version_compare($from_version, '2.0.23', '<')) {
+            self::upgrade_to_2_0_23();
+        }
+
         // Legacy upgrades for older versions
-        // Add job_time column if it doesn't exist
-        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
 
         if (empty($column_exists)) {
@@ -326,6 +341,21 @@ class WP_Staff_Diary_Upgrade {
         // Add fitters option if it doesn't exist
         if (get_option('wp_staff_diary_fitters') === false) {
             add_option('wp_staff_diary_fitters', array());
+        }
+    }
+
+    /**
+     * Upgrade to version 2.0.23
+     * Add fitting_cost field for customer fitting charges
+     */
+    private static function upgrade_to_2_0_23() {
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Add fitting_cost column
+        $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'fitting_cost'");
+        if (empty($column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitting_cost decimal(10,2) DEFAULT 0.00 AFTER price_per_sq_mtr");
         }
     }
 }

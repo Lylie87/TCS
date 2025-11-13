@@ -193,6 +193,7 @@
             $('#product-description').val(entry.product_description);
             $('#sq-mtr-qty').val(entry.sq_mtr_qty);
             $('#price-per-sq-mtr').val(entry.price_per_sq_mtr);
+            $('#fitting-cost').val(entry.fitting_cost || 0);
 
             // Accessories
             $('.accessory-checkbox').prop('checked', false);
@@ -329,6 +330,7 @@
                 product_description: $('#product-description').val(),
                 sq_mtr_qty: $('#sq-mtr-qty').val(),
                 price_per_sq_mtr: $('#price-per-sq-mtr').val(),
+                fitting_cost: $('#fitting-cost').val(),
                 notes: $('#notes').val(),
                 status: $('#status').val(),
                 accessories: accessories
@@ -557,7 +559,7 @@
         });
 
         // Product fields change
-        $('#sq-mtr-qty, #price-per-sq-mtr').on('input', function() {
+        $('#sq-mtr-qty, #price-per-sq-mtr, #fitting-cost').on('input', function() {
             updateCalculations();
         });
 
@@ -583,8 +585,11 @@
 
             $('#accessories-total-display').text(accessoriesTotal.toFixed(2));
 
+            // Fitting cost
+            const fittingCost = parseFloat($('#fitting-cost').val()) || 0;
+
             // Subtotal
-            const subtotal = productTotal + accessoriesTotal;
+            const subtotal = productTotal + fittingCost + accessoriesTotal;
             $('#subtotal-display').text(subtotal.toFixed(2));
 
             // VAT
@@ -694,6 +699,16 @@
                     </tr>`;
                 }
 
+                // Fitting cost row
+                if (entry.fitting_cost && parseFloat(entry.fitting_cost) > 0) {
+                    html += `<tr>
+                        <td>Fitting Cost</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>£${parseFloat(entry.fitting_cost).toFixed(2)}</td>
+                    </tr>`;
+                }
+
                 if (entry.accessories && entry.accessories.length > 0) {
                     entry.accessories.forEach(function(acc) {
                         html += `<tr>
@@ -730,8 +745,11 @@
             }
 
             // Balance
-            const balanceClass = entry.balance > 0 ? 'balance-due' : 'balance-paid';
-            html += `<tr class="${balanceClass}"><td><strong>Balance Due:</strong></td><td class="amount"><strong>£${parseFloat(entry.balance).toFixed(2)}</strong></td></tr>`;
+            const balance = parseFloat(entry.balance);
+            const balanceClass = balance > 0 ? 'balance-due' : 'balance-paid';
+            const balanceLabel = balance > 0 ? 'Balance Due:' : 'PAID IN FULL';
+            const balanceAmount = balance > 0 ? `£${balance.toFixed(2)}` : '£0.00';
+            html += `<tr class="${balanceClass}"><td><strong>${balanceLabel}</strong></td><td class="amount"><strong>${balanceAmount}</strong></td></tr>`;
             html += '</table>';
             html += '</div>';
 

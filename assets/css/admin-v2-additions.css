@@ -399,17 +399,30 @@
 }
 
 .financial-summary-table .payment-row {
-    background: #e8f5e9;
+    background: #c8e6c9;
+    border-left: 4px solid #4caf50;
+    font-weight: 500;
+}
+
+.financial-summary-table .payment-row td {
+    color: #2e7d32;
 }
 
 .financial-summary-table .balance-due {
     background: #fff3cd;
     font-size: 18px;
+    border-left: 4px solid #ff9800;
 }
 
 .financial-summary-table .balance-paid {
-    background: #d4edda;
+    background: #4caf50;
+    color: #ffffff;
     font-size: 18px;
+    border-left: 4px solid #2e7d32;
+}
+
+.financial-summary-table .balance-paid td {
+    color: #ffffff;
 }
 
 .notes-content {
