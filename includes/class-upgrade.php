@@ -58,6 +58,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_0_3();
         }
 
+        // Upgrade to v2.0.23 - Add fitting_cost field
+        if (version_compare($from_version, '2.0.23', '<')) {
+            self::upgrade_to_2_0_23();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
@@ -336,6 +341,21 @@ class WP_Staff_Diary_Upgrade {
         // Add fitters option if it doesn't exist
         if (get_option('wp_staff_diary_fitters') === false) {
             add_option('wp_staff_diary_fitters', array());
+        }
+    }
+
+    /**
+     * Upgrade to version 2.0.23
+     * Add fitting_cost field for customer fitting charges
+     */
+    private static function upgrade_to_2_0_23() {
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Add fitting_cost column
+        $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'fitting_cost'");
+        if (empty($column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitting_cost decimal(10,2) DEFAULT 0.00 AFTER price_per_sq_mtr");
         }
     }
 }

@@ -60,6 +60,7 @@ class WP_Staff_Diary_Activator {
             product_description text DEFAULT NULL,
             sq_mtr_qty decimal(10,2) DEFAULT NULL,
             price_per_sq_mtr decimal(10,2) DEFAULT NULL,
+            fitting_cost decimal(10,2) DEFAULT 0.00,
             notes text DEFAULT NULL,
             status varchar(50) DEFAULT 'pending',
             is_cancelled tinyint(1) DEFAULT 0,

@@ -464,10 +464,16 @@ class WP_Staff_Diary_Database {
             $product_total = $entry->sq_mtr_qty * $entry->price_per_sq_mtr;
         }
 
+        // Add fitting cost
+        $fitting_cost = 0;
+        if ($entry && isset($entry->fitting_cost)) {
+            $fitting_cost = floatval($entry->fitting_cost);
+        }
+
         // Get accessories total
         $accessories_total = $this->get_job_accessories_total($diary_entry_id);
 
-        return $product_total + $accessories_total;
+        return $product_total + $fitting_cost + $accessories_total;
     }
 
     /**

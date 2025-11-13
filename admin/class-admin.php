@@ -276,6 +276,7 @@ class WP_Staff_Diary_Admin {
             'product_description' => !empty($_POST['product_description']) ? sanitize_textarea_field($_POST['product_description']) : null,
             'sq_mtr_qty' => !empty($_POST['sq_mtr_qty']) ? floatval($_POST['sq_mtr_qty']) : null,
             'price_per_sq_mtr' => !empty($_POST['price_per_sq_mtr']) ? floatval($_POST['price_per_sq_mtr']) : null,
+            'fitting_cost' => !empty($_POST['fitting_cost']) ? floatval($_POST['fitting_cost']) : 0,
             'notes' => !empty($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : null,
             'status' => $status
         );
@@ -1045,7 +1046,7 @@ class WP_Staff_Diary_Admin {
             wp_die('Invalid request');
         }
 
-        if (!wp_verify_nonce($_GET['nonce'], 'wp_staff_diary_pdf_' . $_GET['entry_id'])) {
+        if (!wp_verify_nonce($_GET['nonce'], 'wp_staff_diary_nonce')) {
             wp_die('Invalid nonce');
         }
 

@@ -372,6 +372,11 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
                         </div>
                     </div>
+                    <div class="form-field" style="margin-top: 15px;">
+                        <label for="fitting-cost">Fitting Cost (£)</label>
+                        <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
+                        <p class="description">Customer cost for fitting the product</p>
+                    </div>
                     <div class="calculation-display">
                         <strong>Product Total:</strong> £<span id="product-total-display">0.00</span>
                     </div>

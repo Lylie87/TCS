@@ -193,6 +193,7 @@
             $('#product-description').val(entry.product_description);
             $('#sq-mtr-qty').val(entry.sq_mtr_qty);
             $('#price-per-sq-mtr').val(entry.price_per_sq_mtr);
+            $('#fitting-cost').val(entry.fitting_cost || 0);
 
             // Accessories
             $('.accessory-checkbox').prop('checked', false);
@@ -329,6 +330,7 @@
                 product_description: $('#product-description').val(),
                 sq_mtr_qty: $('#sq-mtr-qty').val(),
                 price_per_sq_mtr: $('#price-per-sq-mtr').val(),
+                fitting_cost: $('#fitting-cost').val(),
                 notes: $('#notes').val(),
                 status: $('#status').val(),
                 accessories: accessories
@@ -691,6 +693,16 @@
                         <td>${entry.sq_mtr_qty || '-'}</td>
                         <td>£${entry.price_per_sq_mtr ? parseFloat(entry.price_per_sq_mtr).toFixed(2) : '-'}</td>
                         <td>£${productTotal.toFixed(2)}</td>
+                    </tr>`;
+                }
+
+                // Fitting cost row
+                if (entry.fitting_cost && parseFloat(entry.fitting_cost) > 0) {
+                    html += `<tr>
+                        <td>Fitting Cost</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>£${parseFloat(entry.fitting_cost).toFixed(2)}</td>
                     </tr>`;
                 }
 
