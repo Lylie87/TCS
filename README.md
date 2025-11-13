@@ -4,7 +4,7 @@ A comprehensive WordPress plugin for managing daily job planning, customer infor
 
 ## Version
 
-2.0.24
+2.0.25
 
 ## Overview
 
@@ -329,7 +329,13 @@ Version migrations are handled automatically in `includes/class-upgrade.php`. Wh
 
 ## Changelog
 
-### Version 2.0.24 (Current)
+### Version 2.0.25 (Current)
+- Fixed: GitHub auto-update detection for public repositories
+- Enhanced: Use /releases endpoint instead of /releases/latest for better reliability
+- Enhanced: Flexible ZIP filename matching (handles multiple naming conventions)
+- Improved: Better error messages in update diagnostics
+
+### Version 2.0.24
 - Enhanced: Financial summary updates immediately after payment recording
 - Enhanced: Balance shows "PAID IN FULL" in bright green when £0.00
 - Enhanced: Payment rows now stand out with darker green background and border
