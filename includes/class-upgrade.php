@@ -36,6 +36,17 @@ class WP_Staff_Diary_Upgrade {
         $charset_collate = $wpdb->get_charset_collate();
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
+        // First, ensure base tables exist - if not, run activator
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_diary'");
+
+        if (!$table_exists) {
+            // Base tables don't exist, run activator
+            require_once WP_STAFF_DIARY_PATH . 'includes/class-activator.php';
+            WP_Staff_Diary_Activator::activate();
+            return; // Activator creates everything we need
+        }
+
         // Upgrade to v2.0.0 - Create all new tables
         // Also run for 2.0.0 -> 2.0.2 to ensure migration completed
         if (version_compare($from_version, '2.0.2', '<')) {
@@ -48,8 +59,7 @@ class WP_Staff_Diary_Upgrade {
         }
 
         // Legacy upgrades for older versions
-        // Add job_time column if it doesn't exist
-        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
 
         if (empty($column_exists)) {
