@@ -6,51 +6,68 @@ This plugin now supports automatic updates from GitHub! Here's how it works:
 
 The plugin checks GitHub for new releases and displays update notifications in WordPress, just like official WordPress.org plugins.
 
-## Creating a New Release (For Updates)
+## Quick Release (Automated) ⚡
 
-When you're ready to release a new version:
+After making changes and committing them, simply run:
+
+```bash
+./create-release.sh
+```
+
+**That's it!** The script automatically:
+- ✅ Reads the version from `wp-staff-diary.php`
+- ✅ Creates a clean ZIP file (excludes .git, node_modules, etc.)
+- ✅ Creates a GitHub release with proper tag
+- ✅ Uploads the ZIP to GitHub
+- ✅ WordPress users get update notifications instantly!
+
+### With Custom Release Notes:
+
+```bash
+./create-release.sh 2.0.15 "Fixed payment section and WordPress 6.7 compatibility"
+```
+
+---
+
+## Manual Release Process
+
+If you prefer manual control or the script isn't available:
 
 ### 1. Update the Version Number
 
 Edit `wp-staff-diary.php` and bump the version:
 ```php
-* Version: 2.0.13  // Increment this
-define('WP_STAFF_DIARY_VERSION', '2.0.13');  // And this
+* Version: 2.0.15  // Increment this
+define('WP_STAFF_DIARY_VERSION', '2.0.15');  // And this
 ```
 
 ### 2. Commit and Push
 ```bash
 git add -A
-git commit -m "Version 2.0.13: Description of changes"
+git commit -m "Version 2.0.15: Description of changes"
 git push origin main
 ```
 
-### 3. Create a GitHub Release
-
-#### Option A: Via GitHub Web Interface
-1. Go to https://github.com/Lylie87/TCS/releases
-2. Click **"Draft a new release"**
-3. Click **"Choose a tag"** and type: `v2.0.13` (must start with 'v')
-4. Click **"Create new tag: v2.0.13 on publish"**
-5. Set **Release title**: `Version 2.0.13`
-6. Add **Release notes** describing what changed
-7. Click **"Publish release"**
-
-#### Option B: Via Command Line
+### 3. Run the Release Script
 ```bash
-# Create and push tag
-git tag -a v2.0.13 -m "Version 2.0.13: Description"
-git push origin v2.0.13
-
-# Then create release on GitHub from that tag
+./create-release.sh
 ```
 
-### 4. WordPress Will Detect the Update!
+Or manually via GitHub Web Interface:
+1. Go to https://github.com/Lylie87/TCS/releases
+2. Click **"Draft a new release"**
+3. Tag: `v2.0.15` (must start with 'v')
+4. Title: `Version 2.0.15`
+5. Upload `wp-staff-diary.zip` (create manually)
+6. Add release notes
+7. Click **"Publish release"**
 
-Within 12 hours (WordPress checks periodically), users will see:
+### 4. WordPress Detects the Update!
+
+Within minutes, users see:
 - **"Update Available"** notification in Plugins page
 - One-click update button
-- Changelog from your release notes
+- Changelog from release notes
 
 ## Important Notes
 
