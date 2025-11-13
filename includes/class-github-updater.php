@@ -23,6 +23,20 @@ class WP_Staff_Diary_GitHub_Updater {
         // Hook into WordPress update system
         add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
         add_filter('plugins_api', array($this, 'plugin_info'), 10, 3);
+
+        // Add admin action to force clear update cache
+        add_action('admin_init', array($this, 'maybe_clear_update_cache'));
+    }
+
+    /**
+     * Clear update cache if requested
+     */
+    public function maybe_clear_update_cache() {
+        if (isset($_GET['force_update_check']) && $_GET['force_update_check'] === 'wp_staff_diary') {
+            delete_site_transient('update_plugins');
+            wp_redirect(admin_url('plugins.php'));
+            exit;
+        }
     }
 
     /**
@@ -35,16 +49,28 @@ class WP_Staff_Diary_GitHub_Updater {
 
         $remote_version = $this->get_remote_version();
 
+        // Debug logging
+        error_log('WP Staff Diary Update Check:');
+        error_log('- Current version: ' . $this->version);
+        error_log('- Remote version: ' . ($remote_version ? $remote_version : 'Not found'));
+        error_log('- Plugin slug: ' . $this->plugin_slug);
+
         if ($remote_version && version_compare($this->version, $remote_version, '<')) {
+            $download_url = $this->get_download_url($remote_version);
+
+            error_log('- Update available! Download URL: ' . $download_url);
+
             $plugin_data = array(
                 'slug' => $this->plugin_slug,
                 'new_version' => $remote_version,
                 'url' => "https://github.com/{$this->github_user}/{$this->github_repo}",
-                'package' => $this->get_download_url($remote_version),
+                'package' => $download_url,
                 'tested' => get_bloginfo('version'),
             );
 
             $transient->response[$this->plugin_slug] = (object) $plugin_data;
+        } else {
+            error_log('- No update needed or remote version not found');
         }
 
         return $transient;
