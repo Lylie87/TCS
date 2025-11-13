@@ -237,11 +237,39 @@
                 $('#photos-section').hide();
             }
 
-            // Payment section - show when editing and has balance
-            if (entry.id && entry.id > 0 && !entry.is_cancelled && entry.balance > 0) {
+            // Payment section - show when editing existing job
+            if (entry.id && entry.id > 0 && !entry.is_cancelled) {
                 $('#payment-section').show();
-                $('#payment-amount-form').val(entry.balance.toFixed(2));
-                $('#record-payment-form-btn').data('entry-id', entry.id);
+
+                // Display payment history
+                if (entry.payments && entry.payments.length > 0) {
+                    let historyHtml = '<div style="background: #f0f0f1; padding: 12px; border-radius: 4px;">';
+                    historyHtml += '<h4 style="margin-top: 0;">Payment History</h4>';
+                    historyHtml += '<table style="width: 100%; border-collapse: collapse;">';
+                    entry.payments.forEach(function(payment) {
+                        historyHtml += `<tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px 0;">
+                                <strong>${payment.payment_type}</strong> (${payment.payment_method})<br>
+                                <small style="color: #666;">Recorded by ${payment.recorded_by_name} on ${payment.recorded_at_formatted}</small>
+                            </td>
+                            <td style="padding: 8px 0; text-align: right;"><strong>£${parseFloat(payment.amount).toFixed(2)}</strong></td>
+                        </tr>`;
+                    });
+                    historyHtml += '</table>';
+                    historyHtml += '</div>';
+                    $('#payment-history-container').html(historyHtml);
+                } else {
+                    $('#payment-history-container').html('<p class="description">No payments recorded yet.</p>');
+                }
+
+                // Show/hide payment form based on balance
+                if (entry.balance > 0) {
+                    $('#payment-form-container').show();
+                    $('#payment-amount-form').val(entry.balance.toFixed(2));
+                    $('#record-payment-form-btn').data('entry-id', entry.id);
+                } else {
+                    $('#payment-form-container').hide();
+                }
             } else {
                 $('#payment-section').hide();
             }
@@ -685,7 +713,7 @@
             if (entry.payments && entry.payments.length > 0) {
                 entry.payments.forEach(function(payment) {
                     html += `<tr class="payment-row">
-                        <td>${payment.payment_type} (${payment.payment_method}) - ${payment.recorded_at_formatted}</td>
+                        <td>${payment.payment_type} (${payment.payment_method}) - Recorded by ${payment.recorded_by_name} on ${payment.recorded_at_formatted}</td>
                         <td class="amount">-£${parseFloat(payment.amount).toFixed(2)}</td>
                     </tr>`;
                 });
