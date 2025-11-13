@@ -40,15 +40,6 @@ class WP_Staff_Diary_GitHub_Updater {
             return;
         }
 
-        // Show database fix result if present
-        if (isset($_GET['db_fixed'])) {
-            if ($_GET['db_fixed'] === 'success') {
-                echo '<div class="notice notice-success"><p><strong>Database tables created successfully!</strong> The plugin should now work correctly.</p></div>';
-            } elseif ($_GET['db_fixed'] === 'failed') {
-                echo '<div class="notice notice-error"><p><strong>Database creation failed!</strong> Check wp-content/debug.log for details. You may need to check database permissions.</p></div>';
-            }
-        }
-
         // Test GitHub API connection
         $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases/latest";
         $response = wp_remote_get($api_url, array(
@@ -100,8 +91,7 @@ class WP_Staff_Diary_GitHub_Updater {
         echo '<tr><td style="padding: 5px; font-weight: bold;">Update Available:</td><td style="padding: 5px;">' . ($remote_version && version_compare($this->version, $remote_version, '<') ? '<strong style="color: green;">YES</strong>' : 'No') . '</td></tr>';
         echo '<tr><td style="padding: 5px; font-weight: bold;">Download URL:</td><td style="padding: 5px; word-break: break-all; font-size: 11px;">' . esc_html($download_url) . '</td></tr>';
         echo '</table>';
-        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a> ';
-        echo '<a href="' . admin_url('plugins.php?fix_database=wp_staff_diary') . '" class="button button-secondary">Fix Database Tables</a></p>';
+        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a></p>';
         echo '</div>';
     }
 
@@ -112,30 +102,6 @@ class WP_Staff_Diary_GitHub_Updater {
         if (isset($_GET['force_update_check']) && $_GET['force_update_check'] === 'wp_staff_diary') {
             delete_site_transient('update_plugins');
             wp_redirect(admin_url('plugins.php'));
-            exit;
-        }
-
-        if (isset($_GET['fix_database']) && $_GET['fix_database'] === 'wp_staff_diary') {
-            global $wpdb;
-
-            // Log the table prefix being used
-            error_log('WP Staff Diary - Fix Database:');
-            error_log('- Table prefix: ' . $wpdb->prefix);
-            error_log('- Expected table: ' . $wpdb->prefix . 'staff_diary_entries');
-
-            // Run activator to recreate tables
-            require_once WP_STAFF_DIARY_PATH . 'includes/class-activator.php';
-            WP_Staff_Diary_Activator::activate();
-
-            // Check if table was created
-            $table_check = $wpdb->get_var("SHOW TABLES LIKE '" . $wpdb->prefix . "staff_diary_entries'");
-            error_log('- Table exists after activation: ' . ($table_check ? 'YES' : 'NO'));
-
-            if ($table_check) {
-                wp_redirect(admin_url('plugins.php?db_fixed=success'));
-            } else {
-                wp_redirect(admin_url('plugins.php?db_fixed=failed'));
-            }
             exit;
         }
     }

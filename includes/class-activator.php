@@ -12,22 +12,6 @@ class WP_Staff_Diary_Activator {
 
         $charset_collate = $wpdb->get_charset_collate();
 
-        // Drop existing tables if they exist (to handle broken state)
-        $tables_to_drop = array(
-            $wpdb->prefix . 'staff_diary_entries',
-            $wpdb->prefix . 'staff_diary_customers',
-            $wpdb->prefix . 'staff_diary_images',
-            $wpdb->prefix . 'staff_diary_payments',
-            $wpdb->prefix . 'staff_diary_accessories',
-            $wpdb->prefix . 'staff_diary_job_accessories'
-        );
-
-        foreach ($tables_to_drop as $table_name) {
-            $wpdb->query("DROP TABLE IF EXISTS $table_name");
-        }
-
-        error_log("WP Staff Diary: Dropped all existing tables for clean recreation");
-
         // Table for customers
         $table_customers = $wpdb->prefix . 'staff_diary_customers';
 
