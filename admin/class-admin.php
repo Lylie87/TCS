@@ -225,6 +225,9 @@ class WP_Staff_Diary_Admin {
      * AJAX: Save diary entry
      */
     public function save_diary_entry() {
+        // Start output buffering to catch any stray output
+        ob_start();
+
         check_ajax_referer('wp_staff_diary_nonce', 'nonce');
 
         $entry_id = isset($_POST['entry_id']) ? intval($_POST['entry_id']) : 0;
@@ -234,6 +237,7 @@ class WP_Staff_Diary_Admin {
         // If status is 'cancelled' and this is an existing entry, delete it
         if ($status === 'cancelled' && $entry_id > 0) {
             $result = $this->db->delete_entry($entry_id);
+            ob_end_clean();
             if ($result) {
                 wp_send_json_success(array('message' => 'Job cancelled and removed from diary'));
             } else {
@@ -244,6 +248,7 @@ class WP_Staff_Diary_Admin {
 
         // Prevent creating new entries with cancelled status
         if ($status === 'cancelled' && $entry_id === 0) {
+            ob_end_clean();
             wp_send_json_error(array('message' => 'Cannot create a new job with cancelled status'));
             return;
         }
@@ -299,6 +304,7 @@ class WP_Staff_Diary_Admin {
                     }
                 }
 
+                ob_end_clean();
                 wp_send_json_success(array(
                     'entry_id' => $entry_id,
                     'message' => 'Entry updated successfully'
@@ -307,6 +313,7 @@ class WP_Staff_Diary_Admin {
                 global $wpdb;
                 error_log('WP Staff Diary Update Error: ' . $wpdb->last_error);
                 error_log('WP Staff Diary Update Query: ' . $wpdb->last_query);
+                ob_end_clean();
                 wp_send_json_error(array('message' => 'Failed to update entry: ' . $wpdb->last_error));
             }
         } else {
@@ -332,12 +339,14 @@ class WP_Staff_Diary_Admin {
                     }
                 }
 
+                ob_end_clean();
                 wp_send_json_success(array(
                     'entry_id' => $new_id,
                     'order_number' => $order_number,
                     'message' => 'Entry created successfully'
                 ));
             } else {
+                ob_end_clean();
                 wp_send_json_error(array('message' => 'Failed to create entry'));
             }
         }
