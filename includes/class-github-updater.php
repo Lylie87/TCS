@@ -61,8 +61,8 @@ class WP_Staff_Diary_GitHub_Updater {
         $github_token = get_option('wp_staff_diary_github_token', '');
         $token_status = !empty($github_token) ? '<span style="color: green;">✓ Configured</span>' : '<span style="color: red;">✗ Not configured</span>';
 
-        // Test GitHub API connection
-        $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases/latest";
+        // Test GitHub API connection - use /releases instead of /releases/latest for private repos
+        $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases";
         $response = wp_remote_get($api_url, array(
             'timeout' => 10,
             'headers' => $this->get_api_headers(),
@@ -78,15 +78,28 @@ class WP_Staff_Diary_GitHub_Updater {
         } else {
             $status_code = wp_remote_retrieve_response_code($response);
             $body = wp_remote_retrieve_body($response);
-            $data = json_decode($body);
+            $releases = json_decode($body);
 
-            if ($status_code === 200 && isset($data->tag_name)) {
-                $api_status = 'SUCCESS';
-                $remote_version = ltrim($data->tag_name, 'v');
+            if ($status_code === 200 && is_array($releases)) {
+                if (empty($releases)) {
+                    $api_status = 'NO RELEASES (Repository has no releases)';
+                } else {
+                    // Find first non-draft, non-prerelease
+                    foreach ($releases as $release) {
+                        if (!$release->draft && !$release->prerelease) {
+                            $api_status = 'SUCCESS';
+                            $remote_version = ltrim($release->tag_name, 'v');
+                            break;
+                        }
+                    }
+                    if (!$remote_version) {
+                        $api_status = 'NO PUBLISHED RELEASES (Only drafts or prereleases found)';
+                    }
+                }
             } elseif ($status_code === 404) {
-                $api_status = 'NOT FOUND (No releases exist)';
+                $api_status = 'NOT FOUND (Repository not accessible)';
             } elseif ($status_code === 403) {
-                $api_status = 'FORBIDDEN (Rate limited or private repo)';
+                $api_status = 'FORBIDDEN (Check token permissions)';
             } else {
                 $api_status = "HTTP $status_code";
                 $api_error = substr($body, 0, 200);
@@ -173,7 +186,8 @@ class WP_Staff_Diary_GitHub_Updater {
      * Get remote version from GitHub
      */
     private function get_remote_version() {
-        $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases/latest";
+        // Use /releases endpoint instead of /releases/latest for private repo compatibility
+        $api_url = "https://api.github.com/repos/{$this->github_user}/{$this->github_repo}/releases";
 
         $response = wp_remote_get($api_url, array(
             'timeout' => 10,
@@ -185,11 +199,16 @@ class WP_Staff_Diary_GitHub_Updater {
         }
 
         $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body);
+        $releases = json_decode($body);
 
-        if (isset($data->tag_name)) {
-            // Remove 'v' prefix if present (e.g., v2.0.12 -> 2.0.12)
-            return ltrim($data->tag_name, 'v');
+        // Get the first non-draft, non-prerelease version
+        if (is_array($releases) && !empty($releases)) {
+            foreach ($releases as $release) {
+                if (!$release->draft && !$release->prerelease) {
+                    // Remove 'v' prefix if present (e.g., v2.0.12 -> 2.0.12)
+                    return ltrim($release->tag_name, 'v');
+                }
+            }
         }
 
         return false;
@@ -214,10 +233,11 @@ class WP_Staff_Diary_GitHub_Updater {
         $body = wp_remote_retrieve_body($response);
         $release = json_decode($body);
 
-        // Look for wp-staff-diary.zip in release assets
+        // Look for plugin ZIP in release assets (try multiple naming conventions)
         if (isset($release->assets) && is_array($release->assets)) {
+            $possible_names = array('wp-staff-diary.zip', 'WP Staff Diary.zip', 'wp_staff_diary.zip');
             foreach ($release->assets as $asset) {
-                if ($asset->name === 'wp-staff-diary.zip') {
+                if (in_array($asset->name, $possible_names)) {
                     return $asset->browser_download_url;
                 }
             }
