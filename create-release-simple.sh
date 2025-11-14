@@ -28,7 +28,8 @@ cd "${TEMP_DIR}"
 rm -rf .git .gitignore node_modules .DS_Store *.sh *.ps1 temp-release-* wp-staff-diary.zip 2>/dev/null || true
 
 echo "Step 3: Creating zip archive (files at root for WordPress auto-update)..."
-zip -r "../${ZIP_NAME}" ./* -q
+# Use . to include everything and preserve directory structure
+zip -r "../${ZIP_NAME}" . -q
 
 # Go back to original directory
 cd ..

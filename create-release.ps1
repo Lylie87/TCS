@@ -33,8 +33,18 @@ if (Test-Path $zipName) {
     Remove-Item $zipName -Force
 }
 
-# Create ZIP archive with files at root (use \* to compress contents, not the folder)
-Compress-Archive -Path "$tempDir\*" -DestinationPath $zipName -Force
+# Get the current directory to return to
+$originalDir = Get-Location
+
+# Change to temp directory and create ZIP from there to ensure proper structure
+Push-Location $tempDir
+
+# Create ZIP archive - compress everything in current directory
+# Use Get-ChildItem to explicitly get all items and preserve structure
+$items = Get-ChildItem -Path . -Force
+Compress-Archive -Path $items -DestinationPath "$originalDir\$zipName" -Force
+
+Pop-Location
 
 $zipSize = (Get-Item $zipName).Length / 1KB
 $zipSizeRounded = [math]::Round($zipSize, 2)
