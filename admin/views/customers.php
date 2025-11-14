@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Check user permissions
-if (!current_user_can('read')) {
+if (!current_user_can('edit_posts')) {
     wp_die(__('You do not have sufficient permissions to access this page.'));
 }
 
