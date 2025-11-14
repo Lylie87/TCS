@@ -4,7 +4,7 @@ A comprehensive WordPress plugin for managing daily job planning, customer infor
 
 ## Version
 
-2.0.26
+2.0.27
 
 ## Overview
 
@@ -160,7 +160,7 @@ The plugin creates the following custom tables:
 
 ## User Permissions
 
-- **Staff Members** (capability: `read`)
+- **Staff Members** (capability: `edit_posts`)
   - View and edit their own jobs
   - Record payments on their jobs
   - Upload photos
@@ -329,7 +329,13 @@ Version migrations are handled automatically in `includes/class-upgrade.php`. Wh
 
 ## Changelog
 
-### Version 2.0.26 (Current)
+### Version 2.0.27 (Current)
+- Fixed: Permission errors after plugin update
+- Changed: Updated capability requirement from `read` to `edit_posts` for better compatibility
+- Enhanced: Added proper capability checks to all admin view files
+- Improved: More reliable menu access for Authors and above
+
+### Version 2.0.26
 - Maintenance: Code cleanup and optimization
 - Improved: Development workflow enhancements
 - Updated: Documentation and configuration files

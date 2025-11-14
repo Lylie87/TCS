@@ -11,6 +11,11 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Check user capabilities
+if (!current_user_can('edit_posts')) {
+    wp_die(__('Sorry, you are not allowed to access this page.'));
+}
+
 $current_user = wp_get_current_user();
 $db = new WP_Staff_Diary_Database();
 

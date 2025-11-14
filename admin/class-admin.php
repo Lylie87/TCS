@@ -139,7 +139,7 @@ class WP_Staff_Diary_Admin {
         add_menu_page(
             'My Jobs',
             'Job Planner',
-            'read',
+            'edit_posts',
             'wp-staff-diary',
             array($this, 'display_my_diary_page'),
             'dashicons-calendar-alt',
@@ -151,7 +151,7 @@ class WP_Staff_Diary_Admin {
             'wp-staff-diary',
             'My Jobs',
             'My Jobs',
-            'read',
+            'edit_posts',
             'wp-staff-diary',
             array($this, 'display_my_diary_page')
         );
@@ -171,7 +171,7 @@ class WP_Staff_Diary_Admin {
             'wp-staff-diary',
             'Customers',
             'Customers',
-            'read',
+            'edit_posts',
             'wp-staff-diary-customers',
             array($this, 'display_customers_page')
         );
