@@ -13,28 +13,28 @@ $version = ($versionLine -replace '.*Version:\s*', '').Trim()
 Write-Host "Creating Release: v$version" -ForegroundColor Yellow
 Write-Host ""
 
-# Create temporary directory OUTSIDE the project directory to avoid infinite loop
+# Create temporary directory to stage files
 $tempDir = Join-Path $env:TEMP "wp-staff-diary-release-$(Get-Random)"
 $zipName = "wp-staff-diary.zip"
 
 Write-Host "Step 1: Creating clean copy of plugin files..." -ForegroundColor Green
-New-Item -ItemType Directory -Path "$tempDir\wp-staff-diary" -Force | Out-Null
+New-Item -ItemType Directory -Path "$tempDir" -Force | Out-Null
 
-# Copy all files except exclusions
+# Copy all files except exclusions (directly to temp dir, not nested folder)
 $excludeFiles = @('.git', '.gitignore', 'node_modules', '.DS_Store', '*.sh', '*.ps1', 'temp-release-*', '*.zip')
 Get-ChildItem -Path "." -Exclude $excludeFiles | ForEach-Object {
-    Copy-Item $_.FullName -Destination "$tempDir\wp-staff-diary\" -Recurse -Force -Exclude $excludeFiles
+    Copy-Item $_.FullName -Destination "$tempDir\" -Recurse -Force -Exclude $excludeFiles
 }
 
-Write-Host "Step 2: Creating ZIP archive..." -ForegroundColor Green
+Write-Host "Step 2: Creating ZIP archive (files at root for WordPress)..." -ForegroundColor Green
 
 # Remove existing zip if it exists
 if (Test-Path $zipName) {
     Remove-Item $zipName -Force
 }
 
-# Create ZIP archive
-Compress-Archive -Path "$tempDir\wp-staff-diary" -DestinationPath $zipName -Force
+# Create ZIP archive with files at root (use \* to compress contents, not the folder)
+Compress-Archive -Path "$tempDir\*" -DestinationPath $zipName -Force
 
 $zipSize = (Get-Item $zipName).Length / 1KB
 $zipSizeRounded = [math]::Round($zipSize, 2)
