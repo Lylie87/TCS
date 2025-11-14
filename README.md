@@ -4,7 +4,7 @@ A comprehensive WordPress plugin for managing daily job planning, customer infor
 
 ## Version
 
-2.0.27
+2.1.0
 
 ## Overview
 
@@ -329,7 +329,19 @@ Version migrations are handled automatically in `includes/class-upgrade.php`. Wh
 
 ## Changelog
 
-### Version 2.0.27 (Current)
+### Version 2.1.0 (Current)
+- **Major Update**: Introduced modular architecture for safer development
+- Added: Module-based system with Payments module as proof-of-concept
+- Added: Interface-driven design (Module, Controller, Repository interfaces)
+- Added: Base classes for shared functionality across modules
+- Added: Module registry for managing plugin features
+- Added: ARCHITECTURE.md documentation for developers
+- Enhanced: Separation of concerns (Controller, Repository, Module layers)
+- Improved: Code maintainability and testability
+- Improved: Ability to add new features without affecting existing code
+- Note: Fully backwards compatible with existing functionality
+
+### Version 2.0.27
 - Fixed: Permission errors after plugin update
 - Changed: Updated capability requirement from `read` to `edit_posts` for better compatibility
 - Enhanced: Added proper capability checks to all admin view files

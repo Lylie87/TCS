@@ -10,12 +10,14 @@ class WP_Staff_Diary {
     protected $loader;
     protected $plugin_name;
     protected $version;
+    protected $module_registry;
 
     public function __construct() {
         $this->version = WP_STAFF_DIARY_VERSION;
         $this->plugin_name = 'wp-staff-diary';
 
         $this->load_dependencies();
+        $this->load_modules();
         $this->set_locale();
         $this->define_admin_hooks();
         $this->define_public_hooks();
@@ -40,13 +42,45 @@ class WP_Staff_Diary {
     }
 
     private function load_dependencies() {
+        // Core dependencies
         require_once WP_STAFF_DIARY_PATH . 'includes/class-loader.php';
         require_once WP_STAFF_DIARY_PATH . 'includes/class-database.php';
         require_once WP_STAFF_DIARY_PATH . 'includes/class-pdf-generator.php';
+
+        // Legacy admin class (for backwards compatibility)
         require_once WP_STAFF_DIARY_PATH . 'admin/class-admin.php';
         require_once WP_STAFF_DIARY_PATH . 'public/class-public.php';
 
+        // New modular architecture - Interfaces
+        require_once WP_STAFF_DIARY_PATH . 'includes/interfaces/interface-module.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/interfaces/interface-controller.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/interfaces/interface-repository.php';
+
+        // New modular architecture - Base classes
+        require_once WP_STAFF_DIARY_PATH . 'includes/shared/class-base-module.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/shared/class-base-controller.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/shared/class-base-repository.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/shared/class-module-registry.php';
+
         $this->loader = new WP_Staff_Diary_Loader();
+        $this->module_registry = new WP_Staff_Diary_Module_Registry($this->loader);
+    }
+
+    /**
+     * Load and register all modules
+     */
+    private function load_modules() {
+        // Load Payments module
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/payments/class-payments-repository.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/payments/class-payments-controller.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/payments/class-payments-module.php';
+
+        // Register Payments module
+        $payments_module = new WP_Staff_Diary_Payments_Module();
+        $this->module_registry->register($payments_module);
+
+        // Initialize all modules
+        $this->module_registry->init_all();
     }
 
     private function define_admin_hooks() {
@@ -68,8 +102,10 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_delete_diary_image', $plugin_admin, 'delete_diary_image');
 
         // AJAX handlers - Payments
-        $this->loader->add_action('wp_ajax_add_payment', $plugin_admin, 'add_payment');
-        $this->loader->add_action('wp_ajax_delete_payment', $plugin_admin, 'delete_payment');
+        // NOTE: Payment handlers now managed by Payments module
+        // Keeping these for backwards compatibility fallback
+        // $this->loader->add_action('wp_ajax_add_payment', $plugin_admin, 'add_payment');
+        // $this->loader->add_action('wp_ajax_delete_payment', $plugin_admin, 'delete_payment');
 
         // AJAX handlers - Statuses
         $this->loader->add_action('wp_ajax_wp_staff_diary_add_status', $plugin_admin, 'add_status');
@@ -119,5 +155,9 @@ class WP_Staff_Diary {
 
     public function get_version() {
         return $this->version;
+    }
+
+    public function get_module_registry() {
+        return $this->module_registry;
     }
 }
