@@ -79,6 +79,15 @@ class WP_Staff_Diary {
         $payments_module = new WP_Staff_Diary_Payments_Module();
         $this->module_registry->register($payments_module);
 
+        // Load Customers module
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/customers/class-customers-repository.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/customers/class-customers-controller.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/customers/class-customers-module.php';
+
+        // Register Customers module
+        $customers_module = new WP_Staff_Diary_Customers_Module();
+        $this->module_registry->register($customers_module);
+
         // Initialize all modules
         $this->module_registry->init_all();
     }
@@ -125,11 +134,13 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_delete_accessory', $plugin_admin, 'delete_accessory');
 
         // AJAX handlers - Customers
-        $this->loader->add_action('wp_ajax_search_customers', $plugin_admin, 'search_customers');
-        $this->loader->add_action('wp_ajax_add_customer', $plugin_admin, 'add_customer');
-        $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer');
-        $this->loader->add_action('wp_ajax_update_customer', $plugin_admin, 'update_customer');
-        $this->loader->add_action('wp_ajax_delete_customer', $plugin_admin, 'delete_customer');
+        // NOTE: Customer handlers now managed by Customers module
+        // Keeping these for backwards compatibility fallback
+        // $this->loader->add_action('wp_ajax_search_customers', $plugin_admin, 'search_customers');
+        // $this->loader->add_action('wp_ajax_add_customer', $plugin_admin, 'add_customer');
+        // $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer');
+        // $this->loader->add_action('wp_ajax_update_customer', $plugin_admin, 'update_customer');
+        // $this->loader->add_action('wp_ajax_delete_customer', $plugin_admin, 'delete_customer');
 
         // AJAX handlers - PDF Generation
         $this->loader->add_action('wp_ajax_generate_pdf', $plugin_admin, 'generate_pdf');
