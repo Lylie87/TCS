@@ -4,7 +4,7 @@ A comprehensive WordPress plugin for managing daily job planning, customer infor
 
 ## Version
 
-2.1.0
+2.1.1
 
 ## Overview
 
@@ -329,7 +329,15 @@ Version migrations are handled automatically in `includes/class-upgrade.php`. Wh
 
 ## Changelog
 
-### Version 2.1.0 (Current)
+### Version 2.1.1 (Current)
+- **Critical Fix**: Corrected ZIP structure for proper WordPress auto-updates
+- Fixed: "Plugin file does not exist" error after auto-update
+- Fixed: Nested folder structure in release ZIP files
+- Updated: Both PowerShell and Bash release scripts to create correct structure
+- Added: PHP-based ZIP creator as alternative method
+- Note: If you had issues with v2.1.0, this version resolves all update problems
+
+### Version 2.1.0
 - **Major Update**: Introduced modular architecture for safer development
 - Added: Module-based system with Payments module as proof-of-concept
 - Added: Interface-driven design (Module, Controller, Repository interfaces)
