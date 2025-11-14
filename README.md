@@ -4,7 +4,7 @@ A comprehensive WordPress plugin for managing daily job planning, customer infor
 
 ## Version
 
-2.0.25
+2.0.26
 
 ## Overview
 
@@ -329,7 +329,12 @@ Version migrations are handled automatically in `includes/class-upgrade.php`. Wh
 
 ## Changelog
 
-### Version 2.0.25 (Current)
+### Version 2.0.26 (Current)
+- Maintenance: Code cleanup and optimization
+- Improved: Development workflow enhancements
+- Updated: Documentation and configuration files
+
+### Version 2.0.25
 - Fixed: GitHub auto-update detection for public repositories
 - Enhanced: Use /releases endpoint instead of /releases/latest for better reliability
 - Enhanced: Flexible ZIP filename matching (handles multiple naming conventions)
