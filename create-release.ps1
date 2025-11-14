@@ -1,8 +1,11 @@
 # WordPress Plugin GitHub Release Creator (PowerShell)
 # Usage: .\create-release.ps1
+#
+# This script uploads a manually-created wp-staff-diary.zip to GitHub releases
+# The ZIP should be created manually to ensure correct structure
 
 Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "WordPress Plugin GitHub Release Creator" -ForegroundColor Cyan
+Write-Host "GitHub Release Uploader" -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -10,42 +13,43 @@ Write-Host ""
 $versionLine = Get-Content "wp-staff-diary.php" | Select-String -Pattern "Version:" | Select-Object -First 1
 $version = ($versionLine -replace '.*Version:\s*', '').Trim()
 
-Write-Host "Creating Release: v$version" -ForegroundColor Yellow
+Write-Host "Preparing Release: v$version" -ForegroundColor Yellow
 Write-Host ""
 
-# Create temporary directory OUTSIDE the project directory to avoid infinite loop
-$tempDir = Join-Path $env:TEMP "wp-staff-diary-release-$(Get-Random)"
 $zipName = "wp-staff-diary.zip"
+$zipPath = "C:\Users\alexl\TCS Git\TCS\$zipName"
 
-Write-Host "Step 1: Creating clean copy of plugin files..." -ForegroundColor Green
-New-Item -ItemType Directory -Path "$tempDir\wp-staff-diary" -Force | Out-Null
+# Check if manually-created ZIP exists
+Write-Host "Step 1: Checking for manually-created ZIP..." -ForegroundColor Green
 
-# Copy all files except exclusions
-$excludeFiles = @('.git', '.gitignore', 'node_modules', '.DS_Store', '*.sh', '*.ps1', 'temp-release-*', '*.zip')
-Get-ChildItem -Path "." -Exclude $excludeFiles | ForEach-Object {
-    Copy-Item $_.FullName -Destination "$tempDir\wp-staff-diary\" -Recurse -Force -Exclude $excludeFiles
+if (-Not (Test-Path $zipPath)) {
+    Write-Host ""
+    Write-Host "=========================================" -ForegroundColor Red
+    Write-Host "ERROR: ZIP file not found!" -ForegroundColor Red
+    Write-Host "=========================================" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Expected location: $zipPath" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Please create wp-staff-diary.zip manually:" -ForegroundColor Yellow
+    Write-Host "1. Select all plugin files and folders (NOT the parent folder)" -ForegroundColor White
+    Write-Host "2. Right-click -> Send to -> Compressed (zipped) folder" -ForegroundColor White
+    Write-Host "3. Name it: wp-staff-diary.zip" -ForegroundColor White
+    Write-Host "4. Place it in: C:\Users\alexl\TCS Git\TCS\" -ForegroundColor White
+    Write-Host "5. Run this script again" -ForegroundColor White
+    Write-Host ""
+    exit 1
 }
 
-Write-Host "Step 2: Creating ZIP archive..." -ForegroundColor Green
-
-# Remove existing zip if it exists
-if (Test-Path $zipName) {
-    Remove-Item $zipName -Force
-}
-
-# Create ZIP archive
-Compress-Archive -Path "$tempDir\wp-staff-diary" -DestinationPath $zipName -Force
-
-$zipSize = (Get-Item $zipName).Length / 1KB
+$zipSize = (Get-Item $zipPath).Length / 1KB
 $zipSizeRounded = [math]::Round($zipSize, 2)
-Write-Host "SUCCESS: ZIP created - $zipName ($zipSizeRounded KB)" -ForegroundColor Green
+Write-Host "SUCCESS: Found ZIP - $zipName ($zipSizeRounded KB)" -ForegroundColor Green
 Write-Host ""
 
-Write-Host "Step 3: Creating GitHub release..." -ForegroundColor Green
+Write-Host "Step 2: Creating GitHub release..." -ForegroundColor Green
 
 # Create GitHub release
 $releaseNotes = "Release v$version - Bug fixes and improvements"
-gh release create "v$version" $zipName --title "v$version" --notes $releaseNotes --repo Lylie87/TCS
+gh release create "v$version" $zipPath --title "v$version" --notes $releaseNotes --repo Lylie87/TCS
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
@@ -55,8 +59,10 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "View release: https://github.com/Lylie87/TCS/releases/tag/v$version" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "The ZIP file '$zipName' is in your current directory." -ForegroundColor Yellow
-    Write-Host "You can delete it after verifying the release." -ForegroundColor Yellow
+    Write-Host "The ZIP file was uploaded from:" -ForegroundColor Yellow
+    Write-Host "$zipPath" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "You can safely delete the local ZIP after verifying the release." -ForegroundColor Gray
 } else {
     Write-Host ""
     Write-Host "ERROR: Failed to create GitHub release" -ForegroundColor Red
@@ -64,9 +70,4 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 Write-Host ""
-
-# Cleanup temp directory
-Write-Host "Cleaning up temporary files..." -ForegroundColor Gray
-Remove-Item -Recurse -Force $tempDir
-
 Write-Host "Done!" -ForegroundColor Green

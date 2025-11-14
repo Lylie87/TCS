@@ -19,17 +19,17 @@ ZIP_NAME="wp-staff-diary.zip"
 
 echo ""
 echo "Step 1: Creating clean copy of plugin files..."
-mkdir -p "${TEMP_DIR}/wp-staff-diary"
-cp -r ./* "${TEMP_DIR}/wp-staff-diary/" 2>/dev/null || true
+mkdir -p "${TEMP_DIR}"
+cp -r ./* "${TEMP_DIR}/" 2>/dev/null || true
 
 # Remove files that shouldn't be in the release
 echo "Step 2: Removing dev files..."
-cd "${TEMP_DIR}/wp-staff-diary"
-rm -rf .git .gitignore node_modules .DS_Store *.sh temp-release-* wp-staff-diary.zip 2>/dev/null || true
+cd "${TEMP_DIR}"
+rm -rf .git .gitignore node_modules .DS_Store *.sh *.ps1 temp-release-* wp-staff-diary.zip 2>/dev/null || true
 
-echo "Step 3: Creating zip archive in your directory..."
-cd ..
-zip -r "../${ZIP_NAME}" wp-staff-diary -q
+echo "Step 3: Creating zip archive (files at root for WordPress auto-update)..."
+# Use . to include everything and preserve directory structure
+zip -r "../${ZIP_NAME}" . -q
 
 # Go back to original directory
 cd ..

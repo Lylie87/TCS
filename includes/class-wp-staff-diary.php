@@ -74,10 +74,29 @@ class WP_Staff_Diary {
         require_once WP_STAFF_DIARY_PATH . 'includes/modules/payments/class-payments-repository.php';
         require_once WP_STAFF_DIARY_PATH . 'includes/modules/payments/class-payments-controller.php';
         require_once WP_STAFF_DIARY_PATH . 'includes/modules/payments/class-payments-module.php';
-
-        // Register Payments module
         $payments_module = new WP_Staff_Diary_Payments_Module();
         $this->module_registry->register($payments_module);
+
+        // Load Customers module
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/customers/class-customers-repository.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/customers/class-customers-controller.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/customers/class-customers-module.php';
+        $customers_module = new WP_Staff_Diary_Customers_Module();
+        $this->module_registry->register($customers_module);
+
+        // Load Jobs module
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/jobs/class-jobs-repository.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/jobs/class-jobs-controller.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/jobs/class-jobs-module.php';
+        $jobs_module = new WP_Staff_Diary_Jobs_Module();
+        $this->module_registry->register($jobs_module);
+
+        // Load Images module
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/images/class-images-repository.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/images/class-images-controller.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/images/class-images-module.php';
+        $images_module = new WP_Staff_Diary_Images_Module();
+        $this->module_registry->register($images_module);
 
         // Initialize all modules
         $this->module_registry->init_all();
@@ -92,14 +111,18 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_dashboard_setup', $plugin_admin, 'add_dashboard_widget');
 
         // AJAX handlers - Diary Entries
-        $this->loader->add_action('wp_ajax_save_diary_entry', $plugin_admin, 'save_diary_entry');
-        $this->loader->add_action('wp_ajax_delete_diary_entry', $plugin_admin, 'delete_diary_entry');
-        $this->loader->add_action('wp_ajax_cancel_diary_entry', $plugin_admin, 'cancel_diary_entry');
-        $this->loader->add_action('wp_ajax_get_diary_entry', $plugin_admin, 'get_diary_entry');
+        // NOTE: Job/diary entry handlers now managed by Jobs module
+        // Keeping these for backwards compatibility fallback
+        // $this->loader->add_action('wp_ajax_save_diary_entry', $plugin_admin, 'save_diary_entry');
+        // $this->loader->add_action('wp_ajax_delete_diary_entry', $plugin_admin, 'delete_diary_entry');
+        // $this->loader->add_action('wp_ajax_cancel_diary_entry', $plugin_admin, 'cancel_diary_entry');
+        // $this->loader->add_action('wp_ajax_get_diary_entry', $plugin_admin, 'get_diary_entry');
 
         // AJAX handlers - Images
-        $this->loader->add_action('wp_ajax_upload_job_image', $plugin_admin, 'upload_job_image');
-        $this->loader->add_action('wp_ajax_delete_diary_image', $plugin_admin, 'delete_diary_image');
+        // NOTE: Image handlers now managed by Images module
+        // Keeping these for backwards compatibility fallback
+        // $this->loader->add_action('wp_ajax_upload_job_image', $plugin_admin, 'upload_job_image');
+        // $this->loader->add_action('wp_ajax_delete_diary_image', $plugin_admin, 'delete_diary_image');
 
         // AJAX handlers - Payments
         // NOTE: Payment handlers now managed by Payments module
@@ -125,11 +148,13 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_delete_accessory', $plugin_admin, 'delete_accessory');
 
         // AJAX handlers - Customers
-        $this->loader->add_action('wp_ajax_search_customers', $plugin_admin, 'search_customers');
-        $this->loader->add_action('wp_ajax_add_customer', $plugin_admin, 'add_customer');
-        $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer');
-        $this->loader->add_action('wp_ajax_update_customer', $plugin_admin, 'update_customer');
-        $this->loader->add_action('wp_ajax_delete_customer', $plugin_admin, 'delete_customer');
+        // NOTE: Customer handlers now managed by Customers module
+        // Keeping these for backwards compatibility fallback
+        // $this->loader->add_action('wp_ajax_search_customers', $plugin_admin, 'search_customers');
+        // $this->loader->add_action('wp_ajax_add_customer', $plugin_admin, 'add_customer');
+        // $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer');
+        // $this->loader->add_action('wp_ajax_update_customer', $plugin_admin, 'update_customer');
+        // $this->loader->add_action('wp_ajax_delete_customer', $plugin_admin, 'delete_customer');
 
         // AJAX handlers - PDF Generation
         $this->loader->add_action('wp_ajax_generate_pdf', $plugin_admin, 'generate_pdf');
