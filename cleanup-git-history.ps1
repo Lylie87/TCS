@@ -1,10 +1,10 @@
 # Git History Cleanup Script
-# This script creates a clean branch without AI references in commit messages
+# This script creates a clean branch with consolidated commit history
 #
 # Usage: .\cleanup-git-history.ps1
 
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "Git History Cleanup - Remove AI References" -ForegroundColor Cyan
+Write-Host "Git History Cleanup - Consolidate Changes" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -20,7 +20,7 @@ git fetch origin master
 Write-Host "Step 2: Creating new clean branch 'development' from master..." -ForegroundColor Green
 git checkout -b development origin/master
 
-# Get all changed files from the claude branch
+# Get all changed files from the feature branch
 Write-Host "Step 3: Getting all changes from $currentBranch..." -ForegroundColor Green
 git checkout $currentBranch -- .
 
@@ -83,7 +83,7 @@ Author: Alex Lyle
     Write-Host "1. Review the commit with: git log -1" -ForegroundColor White
     Write-Host "2. Push to GitHub: git push -u origin development" -ForegroundColor White
     Write-Host "3. Set 'development' as default branch on GitHub" -ForegroundColor White
-    Write-Host "4. Delete the old claude branch (optional)" -ForegroundColor White
+    Write-Host "4. Delete the old feature branch (optional)" -ForegroundColor White
     Write-Host ""
     Write-Host "To delete the old branch:" -ForegroundColor Yellow
     Write-Host "  git branch -D $currentBranch" -ForegroundColor White

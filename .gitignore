@@ -11,7 +11,7 @@
 Thumbs.db
 
 # Local development
-.claude/
+.config/
 node_modules/
 vendor/
 
