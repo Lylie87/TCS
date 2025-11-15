@@ -32,11 +32,30 @@ $end_date = clone $week_start;
 $end_date->modify('+6 days');
 $end_date_str = $end_date->format('Y-m-d');
 
+// Get entries for the current week
 $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date_str);
 
-// Organize entries by fitting date (or job date if no fitting date)
+// Get ALL jobs with unknown fitting dates (not limited to current week)
+global $wpdb;
+$table_diary = $wpdb->prefix . 'staff_diary_entries';
+$unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
+    "SELECT * FROM $table_diary
+     WHERE user_id = %d
+     AND fitting_date_unknown = 1
+     AND is_cancelled = 0
+     ORDER BY job_date DESC",
+    $current_user->ID
+));
+
+// Organize scheduled entries by date (exclude jobs with unknown fitting dates)
 $entries_by_date = array();
+
 foreach ($entries as $entry) {
+    // Skip jobs with unknown fitting dates (they're shown in the separate section)
+    if (isset($entry->fitting_date_unknown) && $entry->fitting_date_unknown == 1) {
+        continue;
+    }
+
     // Use fitting_date if set, otherwise fall back to job_date
     $date_key = !empty($entry->fitting_date) ? $entry->fitting_date : $entry->job_date;
     if (!isset($entries_by_date[$date_key])) {
@@ -99,6 +118,88 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             </button>
         </div>
     </div>
+
+    <!-- Jobs with Unknown Fitting Dates -->
+    <?php if (!empty($unknown_fitting_date_entries)): ?>
+        <div class="unknown-fitting-dates-section" style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 6px; padding: 20px; margin: 20px 0;">
+            <h2 style="margin: 0 0 15px 0; color: #856404; font-size: 18px;">
+                <span class="dashicons dashicons-clock" style="font-size: 20px; vertical-align: middle;"></span>
+                Pending Stock - Fitting Date Unknown (<?php echo count($unknown_fitting_date_entries); ?>)
+            </h2>
+            <p style="margin: 0 0 15px 0; color: #856404;">
+                These jobs are awaiting stock and do not have a confirmed fitting date yet.
+            </p>
+
+            <table class="wp-list-table widefat fixed striped" style="background: white;">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Order #</th>
+                        <th style="width: 12%;">Order Date</th>
+                        <th style="width: 20%;">Customer</th>
+                        <th style="width: 15%;">Fitter</th>
+                        <th style="width: 20%;">Product</th>
+                        <th style="width: 10%; text-align: right;">Total</th>
+                        <th style="width: 11%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($unknown_fitting_date_entries as $entry): ?>
+                        <?php
+                        $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
+                        $customer = $customer_id ? $db->get_customer($customer_id) : null;
+
+                        $fitter_id = isset($entry->fitter_id) ? $entry->fitter_id : null;
+                        $fitter = null;
+                        if ($fitter_id !== null && isset($fitters[$fitter_id])) {
+                            $fitter = $fitters[$fitter_id];
+                        }
+
+                        $subtotal = $db->calculate_job_subtotal($entry->id);
+                        $total = $subtotal;
+                        if ($vat_enabled == '1') {
+                            $total = $subtotal * (1 + ($vat_rate / 100));
+                        }
+
+                        $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
+                        ?>
+                        <tr>
+                            <td><strong><?php echo esc_html($order_number); ?></strong></td>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?></td>
+                            <td>
+                                <?php if ($customer): ?>
+                                    <strong><?php echo esc_html($customer->customer_name); ?></strong>
+                                    <?php if ($customer->customer_phone): ?>
+                                        <br><small><?php echo esc_html($customer->customer_phone); ?></small>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span style="color: #999;">No customer</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($fitter): ?>
+                                    <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color']); ?>; color: white; font-size: 11px; font-weight: 600;">
+                                        <?php echo esc_html($fitter['name']); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color: #999;">Unassigned</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php echo $entry->product_description ? esc_html(wp_trim_words($entry->product_description, 5)) : '<span style="color: #999;">—</span>'; ?>
+                            </td>
+                            <td style="text-align: right;">
+                                <strong>£<?php echo number_format($total, 2); ?></strong>
+                            </td>
+                            <td>
+                                <button class="button button-small view-entry" data-id="<?php echo esc_attr($entry->id); ?>">View</button>
+                                <button class="button button-small edit-entry" data-id="<?php echo esc_attr($entry->id); ?>">Edit</button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 
     <div class="calendar-container">
         <div class="calendar-weekdays">

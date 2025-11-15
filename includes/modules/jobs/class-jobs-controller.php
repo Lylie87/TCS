@@ -69,10 +69,24 @@ class WP_Staff_Diary_Jobs_Controller extends WP_Staff_Diary_Base_Controller {
             return;
         }
 
+        // Handle WooCommerce customer - convert to plugin customer
+        $customer_id = null;
+        if (!empty($_POST['customer_id'])) {
+            $posted_customer_id = $_POST['customer_id'];
+
+            // Check if this is a WooCommerce customer
+            if (is_string($posted_customer_id) && strpos($posted_customer_id, 'wc_') === 0) {
+                $wc_user_id = intval(substr($posted_customer_id, 3));
+                $customer_id = $this->convert_wc_customer_to_plugin($wc_user_id);
+            } else {
+                $customer_id = intval($posted_customer_id);
+            }
+        }
+
         // Prepare data for main entry
         $data = array(
             'user_id' => $user_id,
-            'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+            'customer_id' => $customer_id,
             'fitter_id' => isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null,
             'job_date' => !empty($_POST['job_date']) ? sanitize_text_field($_POST['job_date']) : null,
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
@@ -255,5 +269,53 @@ class WP_Staff_Diary_Jobs_Controller extends WP_Staff_Diary_Base_Controller {
         } else {
             $this->send_error('Entry not found');
         }
+    }
+
+    /**
+     * Convert a WooCommerce customer to a plugin customer
+     * Creates a new customer record in the plugin database from WooCommerce user data
+     *
+     * @param int $wc_user_id WooCommerce user ID
+     * @return int|null The new customer ID or null if failed
+     */
+    private function convert_wc_customer_to_plugin($wc_user_id) {
+        if (!class_exists('WooCommerce')) {
+            return null;
+        }
+
+        $user = get_user_by('ID', $wc_user_id);
+
+        if (!$user) {
+            return null;
+        }
+
+        // Prepare customer data from WooCommerce user
+        $customer_data = array(
+            'customer_name' => $user->display_name ? $user->display_name : $user->user_login,
+            'customer_email' => $user->user_email,
+            'customer_phone' => get_user_meta($wc_user_id, 'billing_phone', true),
+            'address_line_1' => get_user_meta($wc_user_id, 'billing_address_1', true),
+            'address_line_2' => get_user_meta($wc_user_id, 'billing_address_2', true),
+            'address_line_3' => get_user_meta($wc_user_id, 'billing_city', true),
+            'postcode' => get_user_meta($wc_user_id, 'billing_postcode', true),
+            'notes' => 'Imported from WooCommerce (User ID: ' . $wc_user_id . ')'
+        );
+
+        // Check if this WooCommerce customer already exists in our database
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_customers';
+        $existing = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table WHERE customer_email = %s AND notes LIKE %s LIMIT 1",
+            $customer_data['customer_email'],
+            '%User ID: ' . $wc_user_id . '%'
+        ));
+
+        if ($existing) {
+            return intval($existing);
+        }
+
+        // Create new customer record
+        $customers_repo = new WP_Staff_Diary_Customers_Repository();
+        return $customers_repo->create_customer($customer_data);
     }
 }

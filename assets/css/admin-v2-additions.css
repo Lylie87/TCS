@@ -140,7 +140,7 @@
    =========================================== */
 
 #customer-search-results {
-    position: fixed; /* Changed from absolute to fixed */
+    position: absolute;
     background: white;
     border: 1px solid #ddd;
     border-radius: 4px;

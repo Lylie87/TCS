@@ -41,12 +41,13 @@
             $(this).closest('.wp-staff-diary-modal').fadeOut();
         });
 
-        // Click outside modal to close
-        $(window).on('click', function(event) {
-            if ($(event.target).hasClass('wp-staff-diary-modal')) {
-                $('.wp-staff-diary-modal').fadeOut();
-            }
-        });
+        // Click outside modal to close - DISABLED to prevent accidental data loss
+        // Users must explicitly click the X button or Cancel button to close modals
+        // $(window).on('click', function(event) {
+        //     if ($(event.target).hasClass('wp-staff-diary-modal')) {
+        //         $('.wp-staff-diary-modal').fadeOut();
+        //     }
+        // });
 
         // ===========================================
         // ENTRY MODAL & FORM
@@ -416,8 +417,13 @@
 
             let html = '';
             customers.forEach(function(customer) {
+                // Add WooCommerce badge if this is a WooCommerce customer
+                const wcBadge = customer.is_woocommerce
+                    ? '<span style="display: inline-block; padding: 2px 6px; margin-left: 8px; border-radius: 3px; background: #96588a; color: white; font-size: 10px; font-weight: 600;">WooCommerce</span>'
+                    : '';
+
                 html += `<div class="search-result-item" data-customer-id="${customer.id}">
-                    <strong>${customer.customer_name}</strong><br>
+                    <strong>${customer.customer_name}</strong>${wcBadge}<br>
                     ${customer.customer_phone ? customer.customer_phone : ''}
                     ${customer.customer_email ? ' | ' + customer.customer_email : ''}
                 </div>`;
@@ -465,6 +471,28 @@
             $('#selected-customer-display').show();
             $('#customer-search').val('').hide();
             $('#customer-search-results').html('').hide();
+
+            // Fetch customer details and auto-populate billing address
+            $.ajax({
+                url: wpStaffDiary.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'get_customer',
+                    nonce: wpStaffDiary.nonce,
+                    customer_id: customerId
+                },
+                success: function(response) {
+                    if (response.success && response.data.customer) {
+                        const customer = response.data.customer;
+
+                        // Auto-populate billing address fields
+                        $('#billing-address-line-1').val(customer.address_line_1 || '');
+                        $('#billing-address-line-2').val(customer.address_line_2 || '');
+                        $('#billing-address-line-3').val(customer.address_line_3 || '');
+                        $('#billing-postcode').val(customer.postcode || '');
+                    }
+                }
+            });
         }
 
         // Clear customer selection
