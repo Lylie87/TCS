@@ -357,8 +357,8 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     <h3>Job Details</h3>
                     <div class="form-grid">
                         <div class="form-field">
-                            <label for="job-date">Job Date <span class="required">*</span></label>
-                            <input type="date" id="job-date" name="job_date" required>
+                            <label for="job-date">Order Date <span class="required">*</span></label>
+                            <input type="date" id="job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>" required>
                         </div>
                         <?php if ($job_time_type === 'time'): ?>
                         <div class="form-field">
@@ -369,6 +369,10 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         <div class="form-field">
                             <label for="fitting-date">Fitting Date</label>
                             <input type="date" id="fitting-date" name="fitting_date">
+                            <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                <input type="checkbox" id="fitting-date-unknown" name="fitting_date_unknown" value="1">
+                                <span>Fitting Date Unknown (stock needs to be ordered)</span>
+                            </label>
                         </div>
                         <?php if ($job_time_type === 'ampm'): ?>
                         <div class="form-field">

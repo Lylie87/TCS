@@ -693,6 +693,17 @@
             }
         });
 
+        // Fitting date unknown checkbox toggle
+        $(document).on('change', '#fitting-date-unknown', function() {
+            if ($(this).is(':checked')) {
+                $('#fitting-date').prop('disabled', true).val('');
+                $('#fitting-time-period').prop('disabled', true).val('');
+            } else {
+                $('#fitting-date').prop('disabled', false);
+                $('#fitting-time-period').prop('disabled', false);
+            }
+        });
+
         // ===========================================
         // ACCESSORIES & CALCULATIONS
         // ===========================================

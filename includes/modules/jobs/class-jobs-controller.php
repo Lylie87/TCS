@@ -77,6 +77,7 @@ class WP_Staff_Diary_Jobs_Controller extends WP_Staff_Diary_Base_Controller {
             'job_date' => !empty($_POST['job_date']) ? sanitize_text_field($_POST['job_date']) : null,
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
             'fitting_date' => !empty($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null,
+            'fitting_date_unknown' => !empty($_POST['fitting_date_unknown']) ? 1 : 0,
             'fitting_time_period' => !empty($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null,
             'billing_address_line_1' => !empty($_POST['billing_address_line_1']) ? sanitize_text_field($_POST['billing_address_line_1']) : null,
             'billing_address_line_2' => !empty($_POST['billing_address_line_2']) ? sanitize_text_field($_POST['billing_address_line_2']) : null,

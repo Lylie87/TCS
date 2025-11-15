@@ -366,7 +366,7 @@ class WP_Staff_Diary_Upgrade {
 
     /**
      * Upgrade to version 2.2.0
-     * Add WooCommerce integration fields
+     * Add WooCommerce integration fields, fitting_date_unknown field, and notifications table
      */
     private static function upgrade_to_2_2_0() {
         global $wpdb;
@@ -384,5 +384,35 @@ class WP_Staff_Diary_Upgrade {
             $wpdb->query("ALTER TABLE $table_diary ADD COLUMN woocommerce_product_id bigint(20) DEFAULT NULL AFTER product_source");
             $wpdb->query("ALTER TABLE $table_diary ADD KEY woocommerce_product_id (woocommerce_product_id)");
         }
+
+        // Add fitting_date_unknown column
+        $fitting_unknown_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'fitting_date_unknown'");
+        if (empty($fitting_unknown_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitting_date_unknown tinyint(1) DEFAULT 0 AFTER fitting_date");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY fitting_date_unknown (fitting_date_unknown)");
+        }
+
+        // Create notification logs table
+        $table_notification_logs = $wpdb->prefix . 'staff_diary_notification_logs';
+        $charset_collate = $wpdb->get_charset_collate();
+
+        $sql_notification_logs = "CREATE TABLE $table_notification_logs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) DEFAULT NULL,
+            notification_type varchar(50) NOT NULL,
+            recipient varchar(255) NOT NULL,
+            method varchar(20) NOT NULL,
+            status varchar(20) NOT NULL,
+            error_message text DEFAULT NULL,
+            sent_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY notification_type (notification_type),
+            KEY status (status),
+            KEY sent_at (sent_at)
+        ) $charset_collate;";
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql_notification_logs);
     }
 }
