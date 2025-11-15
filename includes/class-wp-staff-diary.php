@@ -169,6 +169,9 @@ class WP_Staff_Diary {
 
         // Action for direct PDF download
         $this->loader->add_action('admin_post_wp_staff_diary_download_pdf', $plugin_admin, 'download_pdf');
+
+        // AJAX handlers - Quotes
+        $this->loader->add_action('wp_ajax_convert_quote_to_job', $plugin_admin, 'convert_quote_to_job');
     }
 
     private function define_public_hooks() {

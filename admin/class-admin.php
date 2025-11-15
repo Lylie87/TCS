@@ -50,6 +50,15 @@ class WP_Staff_Diary_Admin {
             false
         );
 
+        // Enqueue quotes.js for quotes page
+        wp_enqueue_script(
+            $this->plugin_name . '-quotes',
+            WP_STAFF_DIARY_URL . 'assets/js/quotes.js',
+            array('jquery', $this->plugin_name),
+            $this->version,
+            false
+        );
+
         // Get statuses and payment methods from settings
         $statuses = get_option('wp_staff_diary_statuses', array(
             'quotation' => 'Quotation',
@@ -1548,5 +1557,63 @@ class WP_Staff_Diary_Admin {
             'message' => 'Database repaired successfully!',
             'repaired' => $repaired
         ));
+    }
+
+    /**
+     * AJAX: Convert quote to job
+     * Updates the quote entry with fitting details and changes status to pending
+     */
+    public function convert_quote_to_job() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $quote_id = intval($_POST['quote_id']);
+        $fitting_date = isset($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null;
+        $fitting_time_period = isset($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null;
+        $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
+        $fitting_date_unknown = isset($_POST['fitting_date_unknown']) ? intval($_POST['fitting_date_unknown']) : 0;
+
+        if (empty($quote_id)) {
+            wp_send_json_error(array('message' => 'Quote ID is required'));
+            return;
+        }
+
+        // Verify the entry exists and is a quotation
+        $entry = $this->db->get_entry($quote_id);
+        if (!$entry) {
+            wp_send_json_error(array('message' => 'Quote not found'));
+            return;
+        }
+
+        if ($entry->status !== 'quotation') {
+            wp_send_json_error(array('message' => 'This entry is not a quotation'));
+            return;
+        }
+
+        // Verify ownership or admin
+        $user_id = get_current_user_id();
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Update the entry with fitting details and change status to pending
+        $update_data = array(
+            'status' => 'pending',
+            'fitter_id' => $fitter_id,
+            'fitting_date' => $fitting_date,
+            'fitting_time_period' => $fitting_time_period,
+            'fitting_date_unknown' => $fitting_date_unknown
+        );
+
+        $result = $this->db->update_entry($quote_id, $update_data);
+
+        if ($result !== false) {
+            wp_send_json_success(array(
+                'message' => 'Quote successfully converted to job',
+                'entry_id' => $quote_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to convert quote to job'));
+        }
     }
 }
