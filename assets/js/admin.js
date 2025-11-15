@@ -810,8 +810,14 @@
                     entry_id: entryId
                 },
                 success: function(response) {
-                    console.log('GET DIARY ENTRY RESPONSE:', response);
-                    console.log('Entry data:', response.data);
+                    console.log('=== GET DIARY ENTRY DEBUG ===');
+                    console.log('Full response:', JSON.stringify(response, null, 2));
+                    console.log('Order number:', response.data.order_number);
+                    console.log('Customer:', response.data.customer);
+                    console.log('Status:', response.data.status);
+                    console.log('Subtotal:', response.data.subtotal);
+                    console.log('Total:', response.data.total);
+                    console.log('Fitter ID:', response.data.fitter_id);
                     if (response.success) {
                         displayEntryDetails(response.data);
                     } else {
