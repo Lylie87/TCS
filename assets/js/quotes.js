@@ -57,12 +57,12 @@
             initWooCommerceProductSearch();
         }
 
-        // Fitting address toggle
-        $('#quote-fitting-address-different').on('change', function() {
+        // Billing address toggle
+        $('#quote-billing-address-different').on('change', function() {
             if ($(this).is(':checked')) {
-                $('#quote-fitting-address-section').slideDown();
+                $('#quote-billing-address-section').slideDown();
             } else {
-                $('#quote-fitting-address-section').slideUp();
+                $('#quote-billing-address-section').slideUp();
             }
         });
     }
@@ -172,16 +172,31 @@
         // Customer
         formData.append('customer_id', selectedCustomerId || '');
 
-        // Addresses
-        formData.append('billing_address_line_1', $('#quote-billing-address-line-1').val());
-        formData.append('billing_address_line_2', $('#quote-billing-address-line-2').val());
-        formData.append('billing_address_line_3', $('#quote-billing-address-line-3').val());
-        formData.append('billing_postcode', $('#quote-billing-postcode').val());
-        formData.append('fitting_address_different', $('#quote-fitting-address-different').is(':checked') ? 1 : 0);
+        // Addresses - fitting address is primary for quotes
+        const billingIsDifferent = $('#quote-billing-address-different').is(':checked');
+
         formData.append('fitting_address_line_1', $('#quote-fitting-address-line-1').val());
         formData.append('fitting_address_line_2', $('#quote-fitting-address-line-2').val());
         formData.append('fitting_address_line_3', $('#quote-fitting-address-line-3').val());
         formData.append('fitting_postcode', $('#quote-fitting-postcode').val());
+
+        // If billing address is different, use separate billing fields
+        // Otherwise, copy fitting address to billing fields
+        if (billingIsDifferent) {
+            formData.append('billing_address_line_1', $('#quote-billing-address-line-1').val());
+            formData.append('billing_address_line_2', $('#quote-billing-address-line-2').val());
+            formData.append('billing_address_line_3', $('#quote-billing-address-line-3').val());
+            formData.append('billing_postcode', $('#quote-billing-postcode').val());
+        } else {
+            // Billing same as fitting
+            formData.append('billing_address_line_1', $('#quote-fitting-address-line-1').val());
+            formData.append('billing_address_line_2', $('#quote-fitting-address-line-2').val());
+            formData.append('billing_address_line_3', $('#quote-fitting-address-line-3').val());
+            formData.append('billing_postcode', $('#quote-fitting-postcode').val());
+        }
+
+        // For quotes, fitting_address_different is always 0 (we don't use that paradigm)
+        formData.append('fitting_address_different', 0);
 
         // Product details
         formData.append('product_description', $('#quote-product-description').val());
@@ -797,7 +812,7 @@
         $('#quote-entry-id').val('');
         $('#quote-selected-customer-display').hide();
         $('#quote-customer-search').show();
-        $('#quote-fitting-address-section').hide();
+        $('#quote-billing-address-section').hide();
         $('.quote-accessory-checkbox').prop('checked', false);
         $('.quote-accessory-quantity').prop('disabled', true).val(1);
         calculateQuoteTotal();
@@ -816,19 +831,27 @@
             selectCustomer(quote.customer);
         }
 
-        // Addresses
-        $('#quote-billing-address-line-1').val(quote.billing_address_line_1 || '');
-        $('#quote-billing-address-line-2').val(quote.billing_address_line_2 || '');
-        $('#quote-billing-address-line-3').val(quote.billing_address_line_3 || '');
-        $('#quote-billing-postcode').val(quote.billing_postcode || '');
+        // Addresses - fitting is primary for quotes
+        $('#quote-fitting-address-line-1').val(quote.fitting_address_line_1 || '');
+        $('#quote-fitting-address-line-2').val(quote.fitting_address_line_2 || '');
+        $('#quote-fitting-address-line-3').val(quote.fitting_address_line_3 || '');
+        $('#quote-fitting-postcode').val(quote.fitting_postcode || '');
 
-        if (quote.fitting_address_different) {
-            $('#quote-fitting-address-different').prop('checked', true);
-            $('#quote-fitting-address-section').show();
-            $('#quote-fitting-address-line-1').val(quote.fitting_address_line_1 || '');
-            $('#quote-fitting-address-line-2').val(quote.fitting_address_line_2 || '');
-            $('#quote-fitting-address-line-3').val(quote.fitting_address_line_3 || '');
-            $('#quote-fitting-postcode').val(quote.fitting_postcode || '');
+        // Check if billing address is different from fitting address
+        const billingDifferent = (
+            quote.billing_address_line_1 !== quote.fitting_address_line_1 ||
+            quote.billing_address_line_2 !== quote.fitting_address_line_2 ||
+            quote.billing_address_line_3 !== quote.fitting_address_line_3 ||
+            quote.billing_postcode !== quote.fitting_postcode
+        );
+
+        if (billingDifferent) {
+            $('#quote-billing-address-different').prop('checked', true);
+            $('#quote-billing-address-section').show();
+            $('#quote-billing-address-line-1').val(quote.billing_address_line_1 || '');
+            $('#quote-billing-address-line-2').val(quote.billing_address_line_2 || '');
+            $('#quote-billing-address-line-3').val(quote.billing_address_line_3 || '');
+            $('#quote-billing-postcode').val(quote.billing_postcode || '');
         }
 
         // Product

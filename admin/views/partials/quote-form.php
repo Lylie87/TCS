@@ -55,48 +55,48 @@ $accessories = $db->get_all_accessories();
 
         <!-- Address Section -->
         <div class="form-section">
-            <h3>Billing Address</h3>
+            <h3>Fitting Address</h3>
             <div class="form-field">
-                <label for="quote-billing-address-line-1">Address Line 1</label>
-                <input type="text" id="quote-billing-address-line-1" name="billing_address_line_1">
+                <label for="quote-fitting-address-line-1">Address Line 1</label>
+                <input type="text" id="quote-fitting-address-line-1" name="fitting_address_line_1">
             </div>
             <div class="form-field">
-                <label for="quote-billing-address-line-2">Address Line 2</label>
-                <input type="text" id="quote-billing-address-line-2" name="billing_address_line_2">
+                <label for="quote-fitting-address-line-2">Address Line 2</label>
+                <input type="text" id="quote-fitting-address-line-2" name="fitting_address_line_2">
             </div>
             <div class="form-field">
-                <label for="quote-billing-address-line-3">City/Town</label>
-                <input type="text" id="quote-billing-address-line-3" name="billing_address_line_3">
+                <label for="quote-fitting-address-line-3">City/Town</label>
+                <input type="text" id="quote-fitting-address-line-3" name="fitting_address_line_3">
             </div>
             <div class="form-field">
-                <label for="quote-billing-postcode">Postcode</label>
-                <input type="text" id="quote-billing-postcode" name="billing_postcode">
+                <label for="quote-fitting-postcode">Postcode</label>
+                <input type="text" id="quote-fitting-postcode" name="fitting_postcode">
             </div>
 
             <div class="form-field" style="margin-top: 15px;">
                 <label>
-                    <input type="checkbox" id="quote-fitting-address-different" name="fitting_address_different" value="1">
-                    <strong>Fitting address is different from billing address</strong>
+                    <input type="checkbox" id="quote-billing-address-different" name="billing_address_different" value="1">
+                    <strong>Billing address is different from fitting address</strong>
                 </label>
             </div>
 
-            <div id="quote-fitting-address-section" style="display: none; margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px;">
-                <h4 style="margin-top: 0;">Fitting Address</h4>
+            <div id="quote-billing-address-section" style="display: none; margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px;">
+                <h4 style="margin-top: 0;">Billing Address</h4>
                 <div class="form-field">
-                    <label for="quote-fitting-address-line-1">Address Line 1</label>
-                    <input type="text" id="quote-fitting-address-line-1" name="fitting_address_line_1">
+                    <label for="quote-billing-address-line-1">Address Line 1</label>
+                    <input type="text" id="quote-billing-address-line-1" name="billing_address_line_1">
                 </div>
                 <div class="form-field">
-                    <label for="quote-fitting-address-line-2">Address Line 2</label>
-                    <input type="text" id="quote-fitting-address-line-2" name="fitting_address_line_2">
+                    <label for="quote-billing-address-line-2">Address Line 2</label>
+                    <input type="text" id="quote-billing-address-line-2" name="billing_address_line_2">
                 </div>
                 <div class="form-field">
-                    <label for="quote-fitting-address-line-3">City/Town</label>
-                    <input type="text" id="quote-fitting-address-line-3" name="fitting_address_line_3">
+                    <label for="quote-billing-address-line-3">City/Town</label>
+                    <input type="text" id="quote-billing-address-line-3" name="billing_address_line_3">
                 </div>
                 <div class="form-field">
-                    <label for="quote-fitting-postcode">Postcode</label>
-                    <input type="text" id="quote-fitting-postcode" name="fitting_postcode">
+                    <label for="quote-billing-postcode">Postcode</label>
+                    <input type="text" id="quote-billing-postcode" name="billing_postcode">
                 </div>
             </div>
         </div>
