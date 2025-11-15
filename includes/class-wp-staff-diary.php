@@ -184,6 +184,12 @@ class WP_Staff_Diary {
         $this->loader->add_action('init', $plugin_admin, 'setup_payment_reminder_cron');
         $this->loader->add_action('wp_staff_diary_process_reminders', $plugin_admin, 'process_scheduled_reminders');
 
+        // AJAX handlers - Job Templates
+        $this->loader->add_action('wp_ajax_get_job_templates', $plugin_admin, 'get_job_templates');
+        $this->loader->add_action('wp_ajax_get_job_template', $plugin_admin, 'get_job_template');
+        $this->loader->add_action('wp_ajax_save_job_template', $plugin_admin, 'save_job_template');
+        $this->loader->add_action('wp_ajax_delete_job_template', $plugin_admin, 'delete_job_template');
+
         // AJAX handlers - Customer History
         $this->loader->add_action('wp_ajax_get_customer_jobs', $plugin_admin, 'get_customer_jobs');
     }

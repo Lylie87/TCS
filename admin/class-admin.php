@@ -2309,4 +2309,158 @@ class WP_Staff_Diary_Admin {
             wp_unschedule_event($timestamp, 'wp_staff_diary_process_reminders');
         }
     }
+
+    // ==================== JOB TEMPLATE METHODS ====================
+
+    /**
+     * Get all job templates
+     */
+    public function get_job_templates() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $user_id = get_current_user_id();
+        $templates = $this->db->get_all_job_templates($user_id);
+
+        wp_send_json_success(array(
+            'templates' => $templates
+        ));
+    }
+
+    /**
+     * Get a single job template
+     */
+    public function get_job_template() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $template_id = intval($_POST['template_id']);
+        $template = $this->db->get_job_template($template_id);
+
+        if (!$template) {
+            wp_send_json_error(array('message' => 'Template not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($template->created_by != $user_id && !current_user_can('edit_users') && $template->is_global != 1) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Decode accessories JSON
+        if (!empty($template->accessories_json)) {
+            $template->accessories = json_decode($template->accessories_json, true);
+        } else {
+            $template->accessories = array();
+        }
+
+        wp_send_json_success(array(
+            'template' => $template
+        ));
+    }
+
+    /**
+     * Save job template
+     */
+    public function save_job_template() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $template_id = isset($_POST['template_id']) && !empty($_POST['template_id']) ? intval($_POST['template_id']) : null;
+        $template_name = sanitize_text_field($_POST['template_name']);
+        $template_description = isset($_POST['template_description']) ? sanitize_textarea_field($_POST['template_description']) : '';
+        $product_description = isset($_POST['product_description']) ? sanitize_textarea_field($_POST['product_description']) : '';
+        $sq_mtr_qty = isset($_POST['sq_mtr_qty']) && $_POST['sq_mtr_qty'] !== '' ? floatval($_POST['sq_mtr_qty']) : null;
+        $price_per_sq_mtr = isset($_POST['price_per_sq_mtr']) && $_POST['price_per_sq_mtr'] !== '' ? floatval($_POST['price_per_sq_mtr']) : null;
+        $fitting_cost = isset($_POST['fitting_cost']) && $_POST['fitting_cost'] !== '' ? floatval($_POST['fitting_cost']) : 0.00;
+        $accessories = isset($_POST['accessories']) ? $_POST['accessories'] : array();
+        $is_global = isset($_POST['is_global']) && current_user_can('edit_users') ? 1 : 0;
+
+        if (empty($template_name)) {
+            wp_send_json_error(array('message' => 'Template name is required'));
+            return;
+        }
+
+        // Prepare data
+        $data = array(
+            'template_name' => $template_name,
+            'template_description' => $template_description,
+            'product_description' => $product_description,
+            'sq_mtr_qty' => $sq_mtr_qty,
+            'price_per_sq_mtr' => $price_per_sq_mtr,
+            'fitting_cost' => $fitting_cost,
+            'accessories_json' => json_encode($accessories),
+            'is_global' => $is_global
+        );
+
+        if ($template_id) {
+            // Update existing template
+            $existing = $this->db->get_job_template($template_id);
+            if (!$existing) {
+                wp_send_json_error(array('message' => 'Template not found'));
+                return;
+            }
+
+            // Verify permissions
+            $user_id = get_current_user_id();
+            if ($existing->created_by != $user_id && !current_user_can('edit_users')) {
+                wp_send_json_error(array('message' => 'Permission denied'));
+                return;
+            }
+
+            $result = $this->db->update_job_template($template_id, $data);
+
+            if ($result !== false) {
+                wp_send_json_success(array(
+                    'message' => 'Template updated successfully',
+                    'template_id' => $template_id
+                ));
+            } else {
+                wp_send_json_error(array('message' => 'Failed to update template'));
+            }
+        } else {
+            // Create new template
+            $data['created_by'] = get_current_user_id();
+
+            $template_id = $this->db->create_job_template($data);
+
+            if ($template_id) {
+                wp_send_json_success(array(
+                    'message' => 'Template created successfully',
+                    'template_id' => $template_id
+                ));
+            } else {
+                wp_send_json_error(array('message' => 'Failed to create template'));
+            }
+        }
+    }
+
+    /**
+     * Delete job template
+     */
+    public function delete_job_template() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $template_id = intval($_POST['template_id']);
+        $template = $this->db->get_job_template($template_id);
+
+        if (!$template) {
+            wp_send_json_error(array('message' => 'Template not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($template->created_by != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        $result = $this->db->delete_job_template($template_id);
+
+        if ($result) {
+            wp_send_json_success(array('message' => 'Template deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to delete template'));
+        }
+    }
 }

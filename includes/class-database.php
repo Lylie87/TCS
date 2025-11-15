@@ -668,4 +668,73 @@ class WP_Staff_Diary_Database {
 
         return $jobs_needing_reminders;
     }
+
+    // ==================== JOB TEMPLATE METHODS ====================
+
+    /**
+     * Get all job templates
+     */
+    public function get_all_job_templates($user_id = null) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        if ($user_id) {
+            // Get templates created by user OR global templates
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_templates
+                 WHERE created_by = %d OR is_global = 1
+                 ORDER BY template_name ASC",
+                $user_id
+            ));
+        }
+
+        // Get all templates (admin view)
+        return $wpdb->get_results(
+            "SELECT * FROM $table_templates ORDER BY template_name ASC"
+        );
+    }
+
+    /**
+     * Get a single job template
+     */
+    public function get_job_template($template_id) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table_templates WHERE id = %d",
+            $template_id
+        ));
+    }
+
+    /**
+     * Create a job template
+     */
+    public function create_job_template($data) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        $wpdb->insert($table_templates, $data);
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Update a job template
+     */
+    public function update_job_template($template_id, $data) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        return $wpdb->update($table_templates, $data, array('id' => $template_id));
+    }
+
+    /**
+     * Delete a job template
+     */
+    public function delete_job_template($template_id) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        return $wpdb->delete($table_templates, array('id' => $template_id));
+    }
 }

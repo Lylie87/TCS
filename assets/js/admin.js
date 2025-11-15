@@ -1375,6 +1375,309 @@
         }
 
         // ===========================================
+        // JOB TEMPLATES
+        // ===========================================
+
+        /**
+         * Save current form as template button click
+         */
+        $(document).on('click', '#save-as-template-btn', function() {
+            showSaveTemplateModal();
+        });
+
+        /**
+         * Load from template button click
+         */
+        $(document).on('click', '#load-from-template-btn', function() {
+            showTemplateSelectionModal();
+        });
+
+        /**
+         * Show save template modal
+         */
+        function showSaveTemplateModal() {
+            // Get current form values
+            const formData = {
+                product_description: $('#product-description').val() || '',
+                sq_mtr_qty: $('#sq-mtr-qty').val() || '',
+                price_per_sq_mtr: $('#price-per-sq-mtr').val() || '',
+                fitting_cost: $('#fitting-cost').val() || '',
+                accessories: []
+            };
+
+            // Get selected accessories
+            $('.accessory-checkbox:checked').each(function() {
+                const accessoryId = $(this).data('accessory-id');
+                const quantity = $('.accessory-quantity[data-accessory-id="' + accessoryId + '"]').val();
+                formData.accessories.push({
+                    id: accessoryId,
+                    name: $(this).data('accessory-name'),
+                    price: $(this).data('price'),
+                    quantity: quantity
+                });
+            });
+
+            let html = '<div id="save-template-modal-content">';
+            html += '<h2>Save as Template</h2>';
+            html += '<form id="save-template-form">';
+            html += '<div class="form-field">';
+            html += '<label for="template-name">Template Name <span class="required">*</span></label>';
+            html += '<input type="text" id="template-name" class="regular-text" required>';
+            html += '</div>';
+            html += '<div class="form-field">';
+            html += '<label for="template-description">Description (Optional)</label>';
+            html += '<textarea id="template-description" rows="3"></textarea>';
+            html += '</div>';
+            html += '<div class="modal-footer">';
+            html += '<button type="submit" class="button button-primary">Save Template</button>';
+            html += '<button type="button" class="button close-save-template-modal">Cancel</button>';
+            html += '</div>';
+            html += '</form>';
+            html += '</div>';
+
+            // Create modal if doesn't exist
+            if ($('#save-template-modal').length === 0) {
+                $('body').append('<div id="save-template-modal" class="wp-staff-diary-modal"><div class="wp-staff-diary-modal-content"><span class="wp-staff-diary-modal-close">&times;</span><div id="save-template-modal-body"></div></div></div>');
+            }
+
+            $('#save-template-modal-body').html(html);
+            $('#save-template-modal').fadeIn(200);
+
+            // Form submit handler
+            $('#save-template-form').off('submit').on('submit', function(e) {
+                e.preventDefault();
+                saveJobTemplate(formData, $('#template-name').val(), $('#template-description').val());
+            });
+
+            // Close modal handlers
+            $('.close-save-template-modal, #save-template-modal .wp-staff-diary-modal-close').off('click').on('click', function() {
+                $('#save-template-modal').fadeOut(200);
+            });
+
+            $('#save-template-modal').off('click').on('click', function(e) {
+                if (e.target.id === 'save-template-modal') {
+                    $(this).fadeOut(200);
+                }
+            });
+        }
+
+        /**
+         * Save job template
+         */
+        function saveJobTemplate(formData, templateName, templateDescription) {
+            const $submitBtn = $('#save-template-form button[type="submit"]');
+            const originalText = $submitBtn.html();
+
+            $submitBtn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Saving...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'save_job_template',
+                    nonce: wpStaffDiary.nonce,
+                    template_name: templateName,
+                    template_description: templateDescription,
+                    product_description: formData.product_description,
+                    sq_mtr_qty: formData.sq_mtr_qty,
+                    price_per_sq_mtr: formData.price_per_sq_mtr,
+                    fitting_cost: formData.fitting_cost,
+                    accessories: formData.accessories
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Template saved successfully!');
+                        $('#save-template-modal').fadeOut(200);
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to save template'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while saving the template.');
+                },
+                complete: function() {
+                    $submitBtn.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+
+        /**
+         * Show template selection modal
+         */
+        function showTemplateSelectionModal() {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_job_templates',
+                    nonce: wpStaffDiary.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayTemplateSelectionModal(response.data.templates);
+                    } else {
+                        alert('Error loading templates: ' + (response.data.message || 'Unknown error'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while loading templates.');
+                }
+            });
+        }
+
+        /**
+         * Display template selection modal
+         */
+        function displayTemplateSelectionModal(templates) {
+            let html = '<div id="template-selection-modal-content">';
+            html += '<h2>Load from Template</h2>';
+
+            if (templates.length === 0) {
+                html += '<p>No templates available. Save your first template using "Save as Template" button.</p>';
+                html += '<div class="modal-footer">';
+                html += '<button type="button" class="button close-template-selection-modal">Close</button>';
+                html += '</div>';
+            } else {
+                html += '<div class="template-list" style="max-height: 400px; overflow-y: auto;">';
+                templates.forEach(function(template) {
+                    html += '<div class="template-item" style="padding: 15px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 4px; cursor: pointer;" data-template-id="' + template.id + '">';
+                    html += '<h3 style="margin: 0 0 5px 0;">' + template.template_name + '</h3>';
+                    if (template.template_description) {
+                        html += '<p style="margin: 0 0 5px 0; color: #666;">' + template.template_description + '</p>';
+                    }
+                    if (template.product_description) {
+                        html += '<p style="margin: 0; font-size: 12px; color: #999;">Product: ' + template.product_description.substring(0, 60) + (template.product_description.length > 60 ? '...' : '') + '</p>';
+                    }
+                    html += '<div style="margin-top: 10px;">';
+                    html += '<button type="button" class="button button-primary button-small load-template-btn" data-template-id="' + template.id + '">Load</button>';
+                    html += '<button type="button" class="button button-small delete-template-btn" data-template-id="' + template.id + '" style="margin-left: 5px;">Delete</button>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                html += '<div class="modal-footer" style="margin-top: 15px;">';
+                html += '<button type="button" class="button close-template-selection-modal">Cancel</button>';
+                html += '</div>';
+            }
+
+            html += '</div>';
+
+            // Create modal if doesn't exist
+            if ($('#template-selection-modal').length === 0) {
+                $('body').append('<div id="template-selection-modal" class="wp-staff-diary-modal"><div class="wp-staff-diary-modal-content"><span class="wp-staff-diary-modal-close">&times;</span><div id="template-selection-modal-body"></div></div></div>');
+            }
+
+            $('#template-selection-modal-body').html(html);
+            $('#template-selection-modal').fadeIn(200);
+
+            // Load template button click
+            $(document).on('click', '.load-template-btn', function() {
+                const templateId = $(this).data('template-id');
+                loadJobTemplate(templateId);
+            });
+
+            // Delete template button click
+            $(document).on('click', '.delete-template-btn', function() {
+                const templateId = $(this).data('template-id');
+                if (confirm('Are you sure you want to delete this template?')) {
+                    deleteJobTemplate(templateId);
+                }
+            });
+
+            // Close modal handlers
+            $('.close-template-selection-modal, #template-selection-modal .wp-staff-diary-modal-close').off('click').on('click', function() {
+                $('#template-selection-modal').fadeOut(200);
+            });
+
+            $('#template-selection-modal').off('click').on('click', function(e) {
+                if (e.target.id === 'template-selection-modal') {
+                    $(this).fadeOut(200);
+                }
+            });
+        }
+
+        /**
+         * Load job template
+         */
+        function loadJobTemplate(templateId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_job_template',
+                    nonce: wpStaffDiary.nonce,
+                    template_id: templateId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const template = response.data.template;
+
+                        // Fill form fields
+                        $('#product-description').val(template.product_description || '');
+                        $('#sq-mtr-qty').val(template.sq_mtr_qty || '');
+                        $('#price-per-sq-mtr').val(template.price_per_sq_mtr || '');
+                        $('#fitting-cost').val(template.fitting_cost || '0.00');
+
+                        // Clear all accessory selections first
+                        $('.accessory-checkbox').prop('checked', false);
+                        $('.accessory-quantity').prop('disabled', true).val('1');
+
+                        // Load accessories
+                        if (template.accessories && template.accessories.length > 0) {
+                            template.accessories.forEach(function(accessory) {
+                                const checkbox = $('.accessory-checkbox[data-accessory-id="' + accessory.id + '"]');
+                                const quantityInput = $('.accessory-quantity[data-accessory-id="' + accessory.id + '"]');
+
+                                checkbox.prop('checked', true);
+                                quantityInput.prop('disabled', false).val(accessory.quantity);
+                            });
+                        }
+
+                        // Trigger calculation update
+                        if (typeof updateCalculations === 'function') {
+                            updateCalculations();
+                        }
+
+                        $('#template-selection-modal').fadeOut(200);
+                        alert('Template loaded successfully!');
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to load template'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while loading the template.');
+                }
+            });
+        }
+
+        /**
+         * Delete job template
+         */
+        function deleteJobTemplate(templateId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'delete_job_template',
+                    nonce: wpStaffDiary.nonce,
+                    template_id: templateId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Template deleted successfully!');
+                        // Refresh template list
+                        showTemplateSelectionModal();
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to delete template'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the template.');
+                }
+            });
+        }
+
+        // ===========================================
         // UTILITY FUNCTIONS
         // ===========================================
 
