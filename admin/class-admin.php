@@ -1270,4 +1270,253 @@ class WP_Staff_Diary_Admin {
 
         wp_send_json_success(array('products' => $products));
     }
+
+    /**
+     * AJAX: Delete all jobs (DANGER ZONE - Testing Only)
+     */
+    public function delete_all_jobs() {
+        // Verify nonce
+        check_ajax_referer('wp_staff_diary_delete_all_jobs', 'nonce');
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+            return;
+        }
+
+        global $wpdb;
+
+        // Count records before deletion
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $table_payments = $wpdb->prefix . 'staff_diary_payments';
+        $table_images = $wpdb->prefix . 'staff_diary_images';
+        $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
+
+        $jobs_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary");
+        $payments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_payments");
+        $images_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_images");
+        $accessories_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_job_accessories");
+
+        // Delete all data from job-related tables
+        $wpdb->query("TRUNCATE TABLE $table_diary");
+        $wpdb->query("TRUNCATE TABLE $table_payments");
+        $wpdb->query("TRUNCATE TABLE $table_images");
+        $wpdb->query("TRUNCATE TABLE $table_job_accessories");
+
+        // Reset order number to start
+        $order_start = get_option('wp_staff_diary_order_start', '01100');
+        update_option('wp_staff_diary_order_current', $order_start);
+
+        wp_send_json_success(array(
+            'message' => 'All jobs deleted successfully!',
+            'deleted' => array(
+                'jobs' => $jobs_count,
+                'payments' => $payments_count,
+                'images' => $images_count,
+                'accessories' => $accessories_count
+            ),
+            'new_order_start' => $order_start
+        ));
+    }
+
+    /**
+     * AJAX: Run database diagnostics
+     * Scans the database and identifies sync issues, orphaned records, etc.
+     */
+    public function run_database_diagnostics() {
+        // Verify nonce
+        check_ajax_referer('wp_staff_diary_diagnostics', 'nonce');
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+            return;
+        }
+
+        global $wpdb;
+        $current_user_id = get_current_user_id();
+
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $table_payments = $wpdb->prefix . 'staff_diary_payments';
+        $table_images = $wpdb->prefix . 'staff_diary_images';
+        $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
+        $table_customers = $wpdb->prefix . 'staff_diary_customers';
+
+        // Run diagnostics
+        $diagnostics = array();
+
+        // 1. Count total jobs in database
+        $total_jobs = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary");
+        $diagnostics['total_jobs'] = $total_jobs;
+
+        // 2. Count jobs by user
+        $jobs_by_user = $wpdb->get_results(
+            "SELECT user_id, COUNT(*) as count FROM $table_diary GROUP BY user_id"
+        );
+        $diagnostics['jobs_by_user'] = $jobs_by_user;
+
+        // 3. Current user's jobs
+        $current_user_jobs = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_diary WHERE user_id = %d",
+            $current_user_id
+        ));
+        $diagnostics['current_user_jobs'] = $current_user_jobs;
+
+        // 4. Check for cancelled jobs (is_cancelled = 1)
+        $cancelled_jobs = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary WHERE is_cancelled = 1");
+        $diagnostics['cancelled_jobs'] = $cancelled_jobs;
+
+        // 5. Check for jobs with unknown fitting dates
+        $unknown_fitting_dates = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary WHERE fitting_date_unknown = 1");
+        $diagnostics['unknown_fitting_dates'] = $unknown_fitting_dates;
+
+        // 6. Orphaned payments (payments with no matching job)
+        $orphaned_payments = $wpdb->get_var(
+            "SELECT COUNT(*) FROM $table_payments p
+             LEFT JOIN $table_diary d ON p.diary_entry_id = d.id
+             WHERE d.id IS NULL"
+        );
+        $diagnostics['orphaned_payments'] = $orphaned_payments;
+
+        // 7. Orphaned images
+        $orphaned_images = $wpdb->get_var(
+            "SELECT COUNT(*) FROM $table_images i
+             LEFT JOIN $table_diary d ON i.diary_entry_id = d.id
+             WHERE d.id IS NULL"
+        );
+        $diagnostics['orphaned_images'] = $orphaned_images;
+
+        // 8. Orphaned job accessories
+        $orphaned_accessories = $wpdb->get_var(
+            "SELECT COUNT(*) FROM $table_job_accessories a
+             LEFT JOIN $table_diary d ON a.diary_entry_id = d.id
+             WHERE d.id IS NULL"
+        );
+        $diagnostics['orphaned_accessories'] = $orphaned_accessories;
+
+        // 9. Jobs with invalid customer IDs
+        $invalid_customers = $wpdb->get_var(
+            "SELECT COUNT(*) FROM $table_diary d
+             LEFT JOIN $table_customers c ON d.customer_id = c.id
+             WHERE d.customer_id IS NOT NULL AND c.id IS NULL"
+        );
+        $diagnostics['invalid_customers'] = $invalid_customers;
+
+        // 10. Get list of all WordPress users (to identify if user_id issues exist)
+        $wp_users = get_users(array('fields' => array('ID', 'user_login', 'display_name')));
+        $diagnostics['wp_users'] = array_map(function($user) {
+            return array(
+                'id' => $user->ID,
+                'username' => $user->user_login,
+                'display_name' => $user->display_name
+            );
+        }, $wp_users);
+
+        // 11. Check order number sequence
+        $order_current = get_option('wp_staff_diary_order_current', '01100');
+        $order_start = get_option('wp_staff_diary_order_start', '01100');
+        $highest_order = $wpdb->get_var("SELECT MAX(CAST(order_number AS UNSIGNED)) FROM $table_diary");
+        $diagnostics['order_numbers'] = array(
+            'current' => $order_current,
+            'start' => $order_start,
+            'highest_in_db' => $highest_order
+        );
+
+        wp_send_json_success(array(
+            'diagnostics' => $diagnostics,
+            'issues_found' => (
+                $orphaned_payments > 0 ||
+                $orphaned_images > 0 ||
+                $orphaned_accessories > 0 ||
+                $invalid_customers > 0
+            )
+        ));
+    }
+
+    /**
+     * AJAX: Repair database issues
+     * Fixes orphaned records and reassigns jobs to current user if needed
+     */
+    public function repair_database() {
+        // Verify nonce
+        check_ajax_referer('wp_staff_diary_diagnostics', 'nonce');
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+            return;
+        }
+
+        $repair_action = isset($_POST['repair_action']) ? sanitize_text_field($_POST['repair_action']) : '';
+
+        if (empty($repair_action)) {
+            wp_send_json_error('No repair action specified');
+            return;
+        }
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $table_payments = $wpdb->prefix . 'staff_diary_payments';
+        $table_images = $wpdb->prefix . 'staff_diary_images';
+        $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
+        $repaired = array();
+
+        switch ($repair_action) {
+            case 'reassign_to_current_user':
+                // Reassign all jobs to current user
+                $current_user_id = get_current_user_id();
+                $affected = $wpdb->query($wpdb->prepare(
+                    "UPDATE $table_diary SET user_id = %d",
+                    $current_user_id
+                ));
+                $repaired['jobs_reassigned'] = $affected;
+                break;
+
+            case 'clean_orphaned_records':
+                // Delete orphaned payments
+                $deleted_payments = $wpdb->query(
+                    "DELETE p FROM $table_payments p
+                     LEFT JOIN $table_diary d ON p.diary_entry_id = d.id
+                     WHERE d.id IS NULL"
+                );
+                $repaired['orphaned_payments_deleted'] = $deleted_payments;
+
+                // Delete orphaned images
+                $deleted_images = $wpdb->query(
+                    "DELETE i FROM $table_images i
+                     LEFT JOIN $table_diary d ON i.diary_entry_id = d.id
+                     WHERE d.id IS NULL"
+                );
+                $repaired['orphaned_images_deleted'] = $deleted_images;
+
+                // Delete orphaned accessories
+                $deleted_accessories = $wpdb->query(
+                    "DELETE a FROM $table_job_accessories a
+                     LEFT JOIN $table_diary d ON a.diary_entry_id = d.id
+                     WHERE d.id IS NULL"
+                );
+                $repaired['orphaned_accessories_deleted'] = $deleted_accessories;
+                break;
+
+            case 'clear_invalid_customers':
+                // Set invalid customer_id to NULL
+                $affected = $wpdb->query(
+                    "UPDATE $table_diary d
+                     LEFT JOIN {$wpdb->prefix}staff_diary_customers c ON d.customer_id = c.id
+                     SET d.customer_id = NULL
+                     WHERE d.customer_id IS NOT NULL AND c.id IS NULL"
+                );
+                $repaired['invalid_customers_cleared'] = $affected;
+                break;
+
+            default:
+                wp_send_json_error('Invalid repair action');
+                return;
+        }
+
+        wp_send_json_success(array(
+            'message' => 'Database repaired successfully!',
+            'repaired' => $repaired
+        ));
+    }
 }

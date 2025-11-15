@@ -860,6 +860,42 @@ $github_token = get_option('wp_staff_diary_github_token', '');
                         </form>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row">
+                        <span style="color: #d63638; font-weight: 600;">⚠️ Danger Zone</span>
+                    </th>
+                    <td>
+                        <div style="margin-bottom: 25px;">
+                            <button type="button" id="run-diagnostics-btn" class="button button-secondary" style="background: #2271b1; color: white; border-color: #2271b1; margin-right: 10px;">
+                                <span class="dashicons dashicons-dashboard" style="vertical-align: middle;"></span>
+                                Run Database Diagnostics
+                            </button>
+                            <p class="description">
+                                <strong>Diagnostic Tool:</strong> Scan the database to check for sync issues, orphaned records, or hidden jobs.
+                                <br>This is <strong>safe and non-destructive</strong> - it only reads data and shows you what's in the database.
+                                <br>Use this if jobs are missing from your views or after plugin reinstallation.
+                            </p>
+                        </div>
+
+                        <div id="diagnostics-results" style="display: none; margin-bottom: 25px; padding: 15px; background: #fff; border: 2px solid #2271b1; border-radius: 4px;">
+                            <h3 style="margin-top: 0;">Database Diagnostic Results</h3>
+                            <div id="diagnostics-content"></div>
+                        </div>
+
+                        <div style="border-top: 2px solid #d63638; padding-top: 20px; margin-top: 20px;">
+                            <button type="button" id="delete-all-jobs-btn" class="button button-secondary" style="background: #d63638; color: white; border-color: #d63638;">
+                                <span class="dashicons dashicons-trash" style="vertical-align: middle;"></span>
+                                Delete All Jobs (Testing Only)
+                            </button>
+                            <p class="description" style="color: #d63638;">
+                                <strong>⚠️ WARNING:</strong> This will permanently delete ALL job entries, payments, images, and job accessories from the database.
+                                <br>This action <strong>CANNOT be undone</strong>.
+                                <br><strong>Use this for testing only</strong> - will reset order numbers to start fresh.
+                                <br>Customers, accessories master list, and settings will NOT be deleted.
+                            </p>
+                        </div>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -1148,6 +1184,226 @@ jQuery(document).ready(function($) {
             tokenField.attr('type', 'text');
         } else {
             tokenField.attr('type', 'password');
+        }
+    });
+
+    // Run Database Diagnostics
+    $('#run-diagnostics-btn').on('click', function(e) {
+        e.preventDefault();
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('Running diagnostics...');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_diagnostics',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_diagnostics'); ?>'
+            },
+            success: function(response) {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-dashboard" style="vertical-align: middle;"></span> Run Database Diagnostics');
+
+                if (response.success) {
+                    var diag = response.data.diagnostics;
+                    var html = '<div style="font-family: monospace;">';
+
+                    // Summary
+                    html += '<h4 style="margin-top: 0; color: #2271b1;">📊 Database Summary</h4>';
+                    html += '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<tr style="background: #f0f0f1;"><td style="padding: 8px;"><strong>Total Jobs in Database:</strong></td><td style="padding: 8px;"><strong style="font-size: 18px; color: #2271b1;">' + diag.total_jobs + '</strong></td></tr>';
+                    html += '<tr><td style="padding: 8px;">Your Jobs (current user):</td><td style="padding: 8px;">' + diag.current_user_jobs + '</td></tr>';
+                    html += '<tr style="background: #f0f0f1;"><td style="padding: 8px;">Unknown Fitting Dates:</td><td style="padding: 8px;">' + diag.unknown_fitting_dates + '</td></tr>';
+                    html += '<tr><td style="padding: 8px;">Cancelled Jobs:</td><td style="padding: 8px;">' + diag.cancelled_jobs + '</td></tr>';
+                    html += '</table>';
+
+                    // Jobs by user
+                    if (diag.jobs_by_user.length > 0) {
+                        html += '<h4 style="margin-top: 20px; color: #2271b1;">👥 Jobs by User</h4>';
+                        html += '<table style="width: 100%; border-collapse: collapse;">';
+                        diag.jobs_by_user.forEach(function(row, index) {
+                            var user = diag.wp_users.find(u => u.id == row.user_id);
+                            var userName = user ? user.display_name + ' (' + user.username + ')' : 'User ID: ' + row.user_id;
+                            var bgColor = index % 2 === 0 ? '#f0f0f1' : '#fff';
+                            html += '<tr style="background: ' + bgColor + ';"><td style="padding: 8px;">' + userName + '</td><td style="padding: 8px;"><strong>' + row.count + '</strong> jobs</td></tr>';
+                        });
+                        html += '</table>';
+                    }
+
+                    // Issues detected
+                    if (response.data.issues_found) {
+                        html += '<h4 style="margin-top: 20px; color: #d63638;">⚠️ Issues Detected</h4>';
+                        html += '<table style="width: 100%; border-collapse: collapse; border: 2px solid #d63638;">';
+
+                        if (diag.orphaned_payments > 0) {
+                            html += '<tr style="background: #fff3cd;"><td style="padding: 8px;"><strong>Orphaned Payments:</strong></td><td style="padding: 8px; color: #d63638;"><strong>' + diag.orphaned_payments + '</strong></td></tr>';
+                        }
+                        if (diag.orphaned_images > 0) {
+                            html += '<tr><td style="padding: 8px;"><strong>Orphaned Images:</strong></td><td style="padding: 8px; color: #d63638;"><strong>' + diag.orphaned_images + '</strong></td></tr>';
+                        }
+                        if (diag.orphaned_accessories > 0) {
+                            html += '<tr style="background: #fff3cd;"><td style="padding: 8px;"><strong>Orphaned Accessories:</strong></td><td style="padding: 8px; color: #d63638;"><strong>' + diag.orphaned_accessories + '</strong></td></tr>';
+                        }
+                        if (diag.invalid_customers > 0) {
+                            html += '<tr><td style="padding: 8px;"><strong>Invalid Customer Links:</strong></td><td style="padding: 8px; color: #d63638;"><strong>' + diag.invalid_customers + '</strong></td></tr>';
+                        }
+
+                        html += '</table>';
+
+                        // Repair options
+                        html += '<div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107;">';
+                        html += '<h4 style="margin-top: 0;">🔧 Repair Options</h4>';
+
+                        if (diag.orphaned_payments > 0 || diag.orphaned_images > 0 || diag.orphaned_accessories > 0) {
+                            html += '<button type="button" class="button repair-btn" data-action="clean_orphaned_records" style="margin-right: 10px; margin-bottom: 10px;">';
+                            html += '<span class="dashicons dashicons-admin-tools"></span> Clean Orphaned Records</button>';
+                        }
+
+                        if (diag.invalid_customers > 0) {
+                            html += '<button type="button" class="button repair-btn" data-action="clear_invalid_customers" style="margin-right: 10px; margin-bottom: 10px;">';
+                            html += '<span class="dashicons dashicons-admin-users"></span> Clear Invalid Customer Links</button>';
+                        }
+
+                        if (diag.total_jobs > 0 && diag.current_user_jobs === 0) {
+                            html += '<button type="button" class="button repair-btn" data-action="reassign_to_current_user" style="margin-right: 10px; margin-bottom: 10px;">';
+                            html += '<span class="dashicons dashicons-admin-users"></span> Reassign All Jobs to Me</button>';
+                            html += '<p class="description" style="margin-top: 5px;"><strong>Note:</strong> This will reassign ALL ' + diag.total_jobs + ' jobs to your user account.</p>';
+                        }
+
+                        html += '</div>';
+                    } else {
+                        html += '<div style="margin-top: 20px; padding: 15px; background: #d4edda; border-left: 4px solid #28a745;">';
+                        html += '<h4 style="margin-top: 0; color: #155724;">✅ Database Health Check Passed</h4>';
+                        html += '<p style="margin-bottom: 0;">No issues detected! Your database is clean and all records are properly linked.</p>';
+                        html += '</div>';
+                    }
+
+                    // Order numbers
+                    html += '<h4 style="margin-top: 20px; color: #2271b1;">🔢 Order Number Status</h4>';
+                    html += '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<tr style="background: #f0f0f1;"><td style="padding: 8px;">Current Order Number:</td><td style="padding: 8px;"><strong>' + diag.order_numbers.current + '</strong></td></tr>';
+                    html += '<tr><td style="padding: 8px;">Starting Order Number:</td><td style="padding: 8px;">' + diag.order_numbers.start + '</td></tr>';
+                    html += '<tr style="background: #f0f0f1;"><td style="padding: 8px;">Highest Order in DB:</td><td style="padding: 8px;">' + (diag.order_numbers.highest_in_db || 'None') + '</td></tr>';
+                    html += '</table>';
+
+                    html += '</div>';
+
+                    $('#diagnostics-content').html(html);
+                    $('#diagnostics-results').fadeIn();
+                } else {
+                    alert('Error: ' + (response.data || 'Failed to run diagnostics'));
+                }
+            },
+            error: function() {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-dashboard" style="vertical-align: middle;"></span> Run Database Diagnostics');
+                alert('Error: Server error occurred');
+            }
+        });
+    });
+
+    // Repair database issues
+    $(document).on('click', '.repair-btn', function() {
+        var $btn = $(this);
+        var action = $btn.data('action');
+        var confirmMsg = '';
+
+        switch(action) {
+            case 'reassign_to_current_user':
+                confirmMsg = 'This will reassign ALL jobs in the database to your user account. Continue?';
+                break;
+            case 'clean_orphaned_records':
+                confirmMsg = 'This will permanently delete orphaned payments, images, and accessories. Continue?';
+                break;
+            case 'clear_invalid_customers':
+                confirmMsg = 'This will clear invalid customer links from jobs. Continue?';
+                break;
+        }
+
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Repairing...');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'wp_staff_diary_repair',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_diagnostics'); ?>',
+                repair_action: action
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('✅ ' + response.data.message + '\n\n' + JSON.stringify(response.data.repaired, null, 2));
+                    // Re-run diagnostics
+                    $('#run-diagnostics-btn').click();
+                } else {
+                    alert('Error: ' + (response.data || 'Failed to repair'));
+                    $btn.prop('disabled', false);
+                }
+            },
+            error: function() {
+                alert('Error: Server error occurred');
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // Delete All Jobs (DANGER ZONE)
+    $('#delete-all-jobs-btn').on('click', function(e) {
+        e.preventDefault();
+
+        var confirmation = confirm(
+            '⚠️ FINAL WARNING ⚠️\n\n' +
+            'Are you ABSOLUTELY SURE you want to delete ALL jobs?\n\n' +
+            'This will permanently delete:\n' +
+            '• All job entries\n' +
+            '• All payments\n' +
+            '• All job images\n' +
+            '• All job accessories\n' +
+            '• Reset order numbers\n\n' +
+            'This action CANNOT be undone!\n\n' +
+            'Type "DELETE ALL JOBS" in the next prompt to confirm.'
+        );
+
+        if (!confirmation) {
+            return;
+        }
+
+        var confirmText = prompt('Type "DELETE ALL JOBS" (without quotes) to confirm:');
+
+        if (confirmText !== 'DELETE ALL JOBS') {
+            alert('Deletion cancelled. Text did not match.');
+            return;
+        }
+
+        // Proceed with deletion
+        if (confirm('Last chance! Click OK to permanently delete all jobs.')) {
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'wp_staff_diary_delete_all_jobs',
+                    nonce: '<?php echo wp_create_nonce('wp_staff_diary_delete_all_jobs'); ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('✅ ' + response.data.message + '\n\nDeleted:\n' +
+                              '• ' + response.data.deleted.jobs + ' jobs\n' +
+                              '• ' + response.data.deleted.payments + ' payments\n' +
+                              '• ' + response.data.deleted.images + ' images\n' +
+                              '• ' + response.data.deleted.accessories + ' job accessories\n\n' +
+                              'Order number reset to: ' + response.data.new_order_start);
+                        location.reload();
+                    } else {
+                        alert('❌ Error: ' + (response.data || 'Failed to delete jobs'));
+                    }
+                },
+                error: function() {
+                    alert('❌ Error: Server error occurred');
+                }
+            });
         }
     });
 });
