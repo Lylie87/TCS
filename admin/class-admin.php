@@ -1560,6 +1560,51 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * AJAX: Get customer jobs
+     * Returns all jobs for a specific customer with financial details
+     */
+    public function get_customer_jobs() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
+
+        if (empty($customer_id)) {
+            wp_send_json_error(array('message' => 'Customer ID is required'));
+            return;
+        }
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get all jobs for this customer (including cancelled for history)
+        $jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE customer_id = %d
+             ORDER BY job_date DESC, created_at DESC",
+            $customer_id
+        ));
+
+        // Calculate totals for each job
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        foreach ($jobs as $job) {
+            $subtotal = $this->db->calculate_job_subtotal($job->id);
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+            $job->total = $total;
+            $job->subtotal = $subtotal;
+        }
+
+        wp_send_json_success(array(
+            'jobs' => $jobs,
+            'customer_id' => $customer_id
+        ));
+    }
+
+    /**
      * AJAX: Get fitter availability
      * Returns availability for a specific fitter over a date range
      */

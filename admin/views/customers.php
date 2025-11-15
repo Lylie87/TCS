@@ -77,7 +77,13 @@ $customers = $db->get_all_customers();
                             ?>
                         </td>
                         <td style="text-align: center;">
-                            <span class="customer-job-count"><?php echo $job_count; ?></span>
+                            <?php if ($job_count > 0): ?>
+                                <button type="button" class="button button-small view-customer-jobs-btn" data-customer-id="<?php echo esc_attr($customer->id); ?>" data-customer-name="<?php echo esc_attr($customer->customer_name); ?>">
+                                    <span class="dashicons dashicons-visibility" style="vertical-align: middle;"></span> <?php echo $job_count; ?> Job<?php echo $job_count != 1 ? 's' : ''; ?>
+                                </button>
+                            <?php else: ?>
+                                <span style="color: #999;">0 Jobs</span>
+                            <?php endif; ?>
                         </td>
                         <td style="text-align: center;">
                             <button type="button" class="button button-small edit-customer-btn" data-customer-id="<?php echo esc_attr($customer->id); ?>">
@@ -152,6 +158,20 @@ $customers = $db->get_all_customers();
                 <button type="button" class="button" id="cancel-customer-btn">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Customer Jobs History Modal -->
+<div id="customer-jobs-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2 id="customer-jobs-modal-title">Job History</h2>
+        <div id="customer-jobs-content">
+            <div id="customer-jobs-loading" style="text-align: center; padding: 40px;">
+                <span class="dashicons dashicons-update dashicons-spin" style="font-size: 48px; color: #2271b1;"></span>
+                <p>Loading job history...</p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -309,6 +329,75 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // View Customer Jobs Button
+    $(document).on('click', '.view-customer-jobs-btn', function() {
+        const customerId = $(this).data('customer-id');
+        const customerName = $(this).data('customer-name');
+
+        $('#customer-jobs-modal-title').text(customerName + ' - Job History');
+        $('#customer-jobs-content').html($('#customer-jobs-loading').clone().show());
+        $('#customer-jobs-modal').fadeIn();
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'get_customer_jobs',
+                nonce: wpStaffDiary.nonce,
+                customer_id: customerId
+            },
+            success: function(response) {
+                if (response.success && response.data.jobs) {
+                    displayCustomerJobs(response.data.jobs, customerName);
+                } else {
+                    $('#customer-jobs-content').html('<p style="text-align: center; padding: 40px; color: #666;">No jobs found for this customer.</p>');
+                }
+            },
+            error: function() {
+                $('#customer-jobs-content').html('<p style="text-align: center; padding: 40px; color: #d63638;">Error loading job history.</p>');
+            }
+        });
+    });
+
+    // Display customer jobs in modal
+    function displayCustomerJobs(jobs, customerName) {
+        let html = '<div style="margin: 20px 0;">';
+        html += '<p style="margin-bottom: 15px; color: #666;">Total Jobs: <strong>' + jobs.length + '</strong></p>';
+        html += '<table class="wp-list-table widefat fixed striped">';
+        html += '<thead><tr>';
+        html += '<th style="width: 15%;">Order #</th>';
+        html += '<th style="width: 12%;">Date</th>';
+        html += '<th style="width: 12%;">Fitting Date</th>';
+        html += '<th style="width: 25%;">Product</th>';
+        html += '<th style="width: 12%;">Total</th>';
+        html += '<th style="width: 12%;">Status</th>';
+        html += '<th style="width: 12%;">Actions</th>';
+        html += '</tr></thead><tbody>';
+
+        jobs.forEach(function(job) {
+            const statusClass = job.status || 'pending';
+            const statusLabel = (wpStaffDiary.statuses && wpStaffDiary.statuses[statusClass]) ? wpStaffDiary.statuses[statusClass] : statusClass;
+            const orderNumber = job.order_number || ('Job #' + job.id);
+            const jobDate = job.job_date ? new Date(job.job_date).toLocaleDateString('en-GB') : '—';
+            const fittingDate = job.fitting_date ? new Date(job.fitting_date).toLocaleDateString('en-GB') : (job.fitting_date_unknown ? 'TBC' : '—');
+            const product = job.product_description ? job.product_description.substring(0, 50) + (job.product_description.length > 50 ? '...' : '') : '—';
+            const total = job.total ? '£' + parseFloat(job.total).toFixed(2) : '£0.00';
+
+            html += '<tr>';
+            html += '<td><strong>' + orderNumber + '</strong></td>';
+            html += '<td>' + jobDate + '</td>';
+            html += '<td>' + fittingDate + '</td>';
+            html += '<td>' + product + '</td>';
+            html += '<td>' + total + '</td>';
+            html += '<td><span class="status-badge status-' + statusClass + '">' + statusLabel + '</span></td>';
+            html += '<td><a href="?page=wp-staff-diary&view=list" class="button button-small">View Job</a></td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        $('#customer-jobs-content').html(html);
+    }
 
     // Delete Customer Button
     $(document).on('click', '.delete-customer-btn', function() {

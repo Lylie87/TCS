@@ -173,6 +173,9 @@ class WP_Staff_Diary {
         // AJAX handlers - Quotes
         $this->loader->add_action('wp_ajax_convert_quote_to_job', $plugin_admin, 'convert_quote_to_job');
         $this->loader->add_action('wp_ajax_get_fitter_availability', $plugin_admin, 'get_fitter_availability');
+
+        // AJAX handlers - Customer History
+        $this->loader->add_action('wp_ajax_get_customer_jobs', $plugin_admin, 'get_customer_jobs');
     }
 
     private function define_public_hooks() {
