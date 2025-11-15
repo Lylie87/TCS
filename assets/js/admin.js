@@ -124,7 +124,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        populateEntryForm(response.data);
+                        // Data is wrapped in response.data.entry by the modular jobs controller
+                        const entry = response.data.entry || response.data;
+                        populateEntryForm(entry);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
@@ -307,6 +309,10 @@
                     price_per_unit: parseFloat($(this).data('price'))
                 });
             });
+
+            console.log('=== SAVE ENTRY DEBUG ===');
+            console.log('Fitter dropdown value:', $('#fitter').val());
+            console.log('Fitter dropdown HTML:', $('#fitter')[0]);
 
             const formData = {
                 action: 'save_diary_entry',
@@ -812,14 +818,16 @@
                 success: function(response) {
                     console.log('=== GET DIARY ENTRY DEBUG ===');
                     console.log('Full response:', JSON.stringify(response, null, 2));
-                    console.log('Order number:', response.data.order_number);
-                    console.log('Customer:', response.data.customer);
-                    console.log('Status:', response.data.status);
-                    console.log('Subtotal:', response.data.subtotal);
-                    console.log('Total:', response.data.total);
-                    console.log('Fitter ID:', response.data.fitter_id);
                     if (response.success) {
-                        displayEntryDetails(response.data);
+                        // Data is wrapped in response.data.entry by the modular jobs controller
+                        const entry = response.data.entry || response.data;
+                        console.log('Order number:', entry.order_number);
+                        console.log('Customer:', entry.customer);
+                        console.log('Status:', entry.status);
+                        console.log('Subtotal:', entry.subtotal);
+                        console.log('Total:', entry.total);
+                        console.log('Fitter ID:', entry.fitter_id);
+                        displayEntryDetails(entry);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
