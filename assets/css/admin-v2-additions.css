@@ -139,8 +139,11 @@
    CUSTOMER SEARCH
    =========================================== */
 
-#customer-search-results {
+#customer-search-results,
+#woocommerce-product-results {
     position: absolute;
+    top: 100%; /* Position below the input */
+    left: 0;
     background: white;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -149,6 +152,8 @@
     z-index: 100001; /* Above modal */
     box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     min-width: 300px;
+    width: 100%; /* Match parent width */
+    margin-top: 2px;
 }
 
 .search-result-item {
