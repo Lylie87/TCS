@@ -860,6 +860,23 @@ $github_token = get_option('wp_staff_diary_github_token', '');
                         </form>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row">
+                        <span style="color: #d63638; font-weight: 600;">⚠️ Danger Zone</span>
+                    </th>
+                    <td>
+                        <button type="button" id="delete-all-jobs-btn" class="button button-secondary" style="background: #d63638; color: white; border-color: #d63638;">
+                            <span class="dashicons dashicons-trash" style="vertical-align: middle;"></span>
+                            Delete All Jobs (Testing Only)
+                        </button>
+                        <p class="description" style="color: #d63638;">
+                            <strong>⚠️ WARNING:</strong> This will permanently delete ALL job entries, payments, images, and job accessories from the database.
+                            <br>This action <strong>CANNOT be undone</strong>.
+                            <br><strong>Use this for testing only</strong> - will reset order numbers to start fresh.
+                            <br>Customers, accessories master list, and settings will NOT be deleted.
+                        </p>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -1148,6 +1165,63 @@ jQuery(document).ready(function($) {
             tokenField.attr('type', 'text');
         } else {
             tokenField.attr('type', 'password');
+        }
+    });
+
+    // Delete All Jobs (DANGER ZONE)
+    $('#delete-all-jobs-btn').on('click', function(e) {
+        e.preventDefault();
+
+        var confirmation = confirm(
+            '⚠️ FINAL WARNING ⚠️\n\n' +
+            'Are you ABSOLUTELY SURE you want to delete ALL jobs?\n\n' +
+            'This will permanently delete:\n' +
+            '• All job entries\n' +
+            '• All payments\n' +
+            '• All job images\n' +
+            '• All job accessories\n' +
+            '• Reset order numbers\n\n' +
+            'This action CANNOT be undone!\n\n' +
+            'Type "DELETE ALL JOBS" in the next prompt to confirm.'
+        );
+
+        if (!confirmation) {
+            return;
+        }
+
+        var confirmText = prompt('Type "DELETE ALL JOBS" (without quotes) to confirm:');
+
+        if (confirmText !== 'DELETE ALL JOBS') {
+            alert('Deletion cancelled. Text did not match.');
+            return;
+        }
+
+        // Proceed with deletion
+        if (confirm('Last chance! Click OK to permanently delete all jobs.')) {
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'wp_staff_diary_delete_all_jobs',
+                    nonce: '<?php echo wp_create_nonce('wp_staff_diary_delete_all_jobs'); ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('✅ ' + response.data.message + '\n\nDeleted:\n' +
+                              '• ' + response.data.deleted.jobs + ' jobs\n' +
+                              '• ' + response.data.deleted.payments + ' payments\n' +
+                              '• ' + response.data.deleted.images + ' images\n' +
+                              '• ' + response.data.deleted.accessories + ' job accessories\n\n' +
+                              'Order number reset to: ' + response.data.new_order_start);
+                        location.reload();
+                    } else {
+                        alert('❌ Error: ' + (response.data || 'Failed to delete jobs'));
+                    }
+                },
+                error: function() {
+                    alert('❌ Error: Server error occurred');
+                }
+            });
         }
     });
 });

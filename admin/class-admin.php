@@ -1270,4 +1270,52 @@ class WP_Staff_Diary_Admin {
 
         wp_send_json_success(array('products' => $products));
     }
+
+    /**
+     * AJAX: Delete all jobs (DANGER ZONE - Testing Only)
+     */
+    public function delete_all_jobs() {
+        // Verify nonce
+        check_ajax_referer('wp_staff_diary_delete_all_jobs', 'nonce');
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+            return;
+        }
+
+        global $wpdb;
+
+        // Count records before deletion
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $table_payments = $wpdb->prefix . 'staff_diary_payments';
+        $table_images = $wpdb->prefix . 'staff_diary_images';
+        $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
+
+        $jobs_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary");
+        $payments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_payments");
+        $images_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_images");
+        $accessories_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_job_accessories");
+
+        // Delete all data from job-related tables
+        $wpdb->query("TRUNCATE TABLE $table_diary");
+        $wpdb->query("TRUNCATE TABLE $table_payments");
+        $wpdb->query("TRUNCATE TABLE $table_images");
+        $wpdb->query("TRUNCATE TABLE $table_job_accessories");
+
+        // Reset order number to start
+        $order_start = get_option('wp_staff_diary_order_start', '01100');
+        update_option('wp_staff_diary_order_current', $order_start);
+
+        wp_send_json_success(array(
+            'message' => 'All jobs deleted successfully!',
+            'deleted' => array(
+                'jobs' => $jobs_count,
+                'payments' => $payments_count,
+                'images' => $images_count,
+                'accessories' => $accessories_count
+            ),
+            'new_order_start' => $order_start
+        ));
+    }
 }
