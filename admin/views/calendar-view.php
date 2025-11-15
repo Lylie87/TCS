@@ -32,12 +32,27 @@ $end_date = clone $week_start;
 $end_date->modify('+6 days');
 $end_date_str = $end_date->format('Y-m-d');
 
-// Get entries for the current week
-$entries = $db->get_user_entries($current_user->ID, $start_date, $end_date_str);
-
-// Get ALL jobs with unknown fitting dates (not limited to current week)
+// Get entries for the current week - filter by FITTING DATE for calendar view
 global $wpdb;
 $table_diary = $wpdb->prefix . 'staff_diary_entries';
+$entries = $wpdb->get_results($wpdb->prepare(
+    "SELECT * FROM $table_diary
+     WHERE user_id = %d
+     AND is_cancelled = 0
+     AND fitting_date_unknown = 0
+     AND (
+         (fitting_date BETWEEN %s AND %s)
+         OR (fitting_date IS NULL AND job_date BETWEEN %s AND %s)
+     )
+     ORDER BY fitting_date DESC, job_date DESC, created_at DESC",
+    $current_user->ID,
+    $start_date,
+    $end_date_str,
+    $start_date,
+    $end_date_str
+));
+
+// Get ALL jobs with unknown fitting dates (not limited to current week)
 $unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
     "SELECT * FROM $table_diary
      WHERE user_id = %d
