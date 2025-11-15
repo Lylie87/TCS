@@ -152,6 +152,8 @@ class WP_Staff_Diary {
 
         // AJAX handlers - Database Management (Danger Zone)
         $this->loader->add_action('wp_ajax_wp_staff_diary_delete_all_jobs', $plugin_admin, 'delete_all_jobs');
+        $this->loader->add_action('wp_ajax_wp_staff_diary_diagnostics', $plugin_admin, 'run_database_diagnostics');
+        $this->loader->add_action('wp_ajax_wp_staff_diary_repair', $plugin_admin, 'repair_database');
 
         // AJAX handlers - Customers
         // NOTE: Customer handlers now managed by Customers module
