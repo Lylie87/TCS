@@ -95,6 +95,12 @@ class WP_Staff_Diary_Admin {
             'My Jobs This Week',
             array($this, 'render_dashboard_widget')
         );
+
+        wp_add_dashboard_widget(
+            'wp_staff_diary_payments_widget',
+            'Payment Overview',
+            array($this, 'render_payments_widget')
+        );
     }
 
     /**
@@ -139,6 +145,82 @@ class WP_Staff_Diary_Admin {
 
         // Include the dashboard widget view
         include WP_STAFF_DIARY_PATH . 'admin/views/dashboard-widget.php';
+    }
+
+    /**
+     * Render payments dashboard widget
+     */
+    public function render_payments_widget() {
+        $current_user = wp_get_current_user();
+        $db = new WP_Staff_Diary_Database();
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get VAT settings
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        // Get all non-cancelled, non-quotation jobs for current user
+        $all_jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE user_id = %d
+             AND is_cancelled = 0
+             AND status != 'quotation'
+             ORDER BY job_date DESC",
+            $current_user->ID
+        ));
+
+        // Calculate totals and categorize jobs
+        $total_outstanding = 0;
+        $total_received = 0;
+        $jobs_with_balance = array();
+        $recent_payments = array();
+
+        foreach ($all_jobs as $job) {
+            $subtotal = $db->calculate_job_subtotal($job->id);
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+
+            $payments = $db->get_entry_total_payments($job->id);
+            $balance = $total - $payments;
+
+            $total_received += $payments;
+
+            if ($balance > 0.01) { // Outstanding balance
+                $total_outstanding += $balance;
+                $jobs_with_balance[] = array(
+                    'job' => $job,
+                    'total' => $total,
+                    'payments' => $payments,
+                    'balance' => $balance
+                );
+            }
+        }
+
+        // Get recent payments (last 5)
+        $recent_payments = $wpdb->get_results($wpdb->prepare(
+            "SELECT p.*, e.order_number
+             FROM {$wpdb->prefix}staff_diary_payments p
+             JOIN $table_diary e ON p.entry_id = e.id
+             WHERE e.user_id = %d
+             ORDER BY p.recorded_at DESC
+             LIMIT 5",
+            $current_user->ID
+        ));
+
+        // Sort jobs with balance by balance amount (highest first)
+        usort($jobs_with_balance, function($a, $b) {
+            return $b['balance'] <=> $a['balance'];
+        });
+
+        // Limit to top 5 jobs with outstanding balance
+        $jobs_with_balance = array_slice($jobs_with_balance, 0, 5);
+
+        // Include the payments widget view
+        include WP_STAFF_DIARY_PATH . 'admin/views/payments-widget.php';
     }
 
     /**
