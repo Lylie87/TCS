@@ -166,9 +166,9 @@
 
             // Fitter
             if (entry.fitter_id !== undefined && entry.fitter_id !== null) {
-                $('#fitter-id').val(entry.fitter_id);
+                $('#fitter').val(entry.fitter_id);
             } else {
-                $('#fitter-id').val('');
+                $('#fitter').val('');
             }
 
             // Addresses
@@ -312,7 +312,7 @@
                 nonce: wpStaffDiary.nonce,
                 entry_id: $('#entry-id').val(),
                 customer_id: $('#customer-id').val(),
-                fitter_id: $('#fitter-id').val(),
+                fitter_id: $('#fitter').val(),
                 job_date: $('#job-date').val(),
                 job_time: $('#job-time').val(),
                 fitting_date: $('#fitting-date').val(),
@@ -1050,7 +1050,7 @@
             const formData = new FormData();
             formData.append('action', 'upload_job_image');
             formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('entry_id', entryId);
+            formData.append('diary_entry_id', entryId);
             formData.append('image', file);
 
             $.ajax({
@@ -1142,7 +1142,7 @@
             const formData = new FormData();
             formData.append('action', 'upload_job_image');
             formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('entry_id', entryId);
+            formData.append('diary_entry_id', entryId);
             formData.append('image', file);
 
             $.ajax({
