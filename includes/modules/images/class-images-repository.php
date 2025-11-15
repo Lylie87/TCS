@@ -31,7 +31,7 @@ class WP_Staff_Diary_Images_Repository extends WP_Staff_Diary_Base_Repository {
             'diary_entry_id' => $diary_entry_id,
             'image_url' => $image_url,
             'attachment_id' => $attachment_id,
-            'caption' => $caption,
+            'image_caption' => $caption,  // Database column is image_caption, not caption
             'uploaded_at' => current_time('mysql')
         );
 
