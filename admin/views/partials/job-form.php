@@ -81,9 +81,9 @@ $accessories = $db->get_all_accessories();
                     <option value="">None</option>
                     <?php
                     $fitters = get_option('wp_staff_diary_fitters', array());
-                    foreach ($fitters as $fitter):
+                    foreach ($fitters as $fitter_id => $fitter):
                     ?>
-                        <option value="<?php echo esc_attr($fitter['id']); ?>">
+                        <option value="<?php echo esc_attr($fitter_id); ?>">
                             <?php echo esc_html($fitter['name']); ?>
                         </option>
                     <?php endforeach; ?>
