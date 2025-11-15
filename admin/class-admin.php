@@ -1186,6 +1186,137 @@ class WP_Staff_Diary_Admin {
         $pdf_generator->generate_quote_pdf($quote_id, 'D');
     }
 
+    /**
+     * AJAX: Email Quote to Customer
+     */
+    public function email_quote() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $quote_id = intval($_POST['quote_id']);
+        $recipient_email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $custom_message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
+
+        // Verify permissions
+        $quote = $this->db->get_entry($quote_id);
+        $user_id = get_current_user_id();
+
+        if (!$quote || ($quote->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        // Verify it's a quotation
+        if ($quote->status !== 'quotation') {
+            wp_send_json_error(array('message' => 'This entry is not a quotation'));
+        }
+
+        // Get customer
+        $customer = $quote->customer_id ? $this->db->get_customer($quote->customer_id) : null;
+
+        // If no email provided, try to use customer email
+        if (empty($recipient_email) && $customer && !empty($customer->customer_email)) {
+            $recipient_email = $customer->customer_email;
+        }
+
+        if (empty($recipient_email)) {
+            wp_send_json_error(array('message' => 'No email address provided and customer has no email on file'));
+        }
+
+        // Validate email
+        if (!is_email($recipient_email)) {
+            wp_send_json_error(array('message' => 'Invalid email address'));
+        }
+
+        // Generate PDF
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_send_json_error(array('message' => 'PDF generation not available. TCPDF library not installed.'));
+        }
+
+        $pdf_result = $pdf_generator->generate_quote_pdf($quote_id, 'F');
+
+        if (!$pdf_result['success']) {
+            wp_send_json_error(array('message' => 'Failed to generate PDF: ' . $pdf_result['message']));
+        }
+
+        // Get company details
+        $company_name = get_option('wp_staff_diary_company_name', get_bloginfo('name'));
+        $company_email = get_option('wp_staff_diary_company_email', get_option('admin_email'));
+        $company_phone = get_option('wp_staff_diary_company_phone', '');
+
+        // Calculate total
+        $subtotal = $this->db->calculate_job_subtotal($quote_id);
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+        $total = $subtotal;
+        if ($vat_enabled == '1') {
+            $total = $subtotal * (1 + ($vat_rate / 100));
+        }
+
+        // Email subject
+        $subject = 'Quotation ' . $quote->order_number . ' from ' . $company_name;
+
+        // Email body
+        $customer_name = $customer ? $customer->customer_name : 'Valued Customer';
+
+        $body = "Dear " . $customer_name . ",\n\n";
+        $body .= "Thank you for your enquiry. Please find attached our quotation.\n\n";
+
+        if (!empty($custom_message)) {
+            $body .= $custom_message . "\n\n";
+        }
+
+        $body .= "Quotation Details:\n";
+        $body .= "Quote Number: " . $quote->order_number . "\n";
+        $body .= "Total Amount: £" . number_format($total, 2) . "\n";
+        if ($vat_enabled == '1') {
+            $body .= "(Including VAT at " . $vat_rate . "%)\n";
+        }
+        $body .= "\n";
+
+        $body .= "This quotation is valid for 30 days from the date of issue.\n\n";
+
+        $body .= "If you would like to proceed with this quotation or have any questions, please don't hesitate to contact us";
+        if ($company_phone) {
+            $body .= " on " . $company_phone;
+        }
+        $body .= ".\n\n";
+
+        $body .= "We look forward to working with you.\n\n";
+        $body .= "Kind regards,\n";
+        $body .= $company_name . "\n";
+
+        if ($company_phone) {
+            $body .= "Tel: " . $company_phone . "\n";
+        }
+        if ($company_email) {
+            $body .= "Email: " . $company_email . "\n";
+        }
+
+        // Email headers
+        $headers = array(
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ' . $company_name . ' <' . $company_email . '>',
+            'Reply-To: ' . $company_email
+        );
+
+        // Attachments
+        $attachments = array($pdf_result['filepath']);
+
+        // Send email
+        $sent = wp_mail($recipient_email, $subject, $body, $headers, $attachments);
+
+        if ($sent) {
+            wp_send_json_success(array(
+                'message' => 'Quote sent successfully to ' . $recipient_email
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => 'Failed to send email. Please check your email configuration.'
+            ));
+        }
+    }
+
     // ==================== CUSTOMER AJAX HANDLERS ====================
 
     /**

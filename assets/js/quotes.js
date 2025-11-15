@@ -885,11 +885,15 @@
         // Showing all quote information in a readable format
         let html = '<div class="quote-details-view">';
 
-        // Header with PDF button
+        // Header with PDF and Email buttons
         html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">';
         html += '<h2 style="margin: 0;">Quote #' + quote.order_number + '</h2>';
-        html += '<button type="button" class="button button-primary" id="generate-quote-pdf-btn" data-quote-id="' + quote.id + '">';
+        html += '<div>';
+        html += '<button type="button" class="button button-primary" id="generate-quote-pdf-btn" data-quote-id="' + quote.id + '" style="margin-right: 5px;">';
         html += '<span class="dashicons dashicons-pdf"></span> Generate PDF</button>';
+        html += '<button type="button" class="button button-primary" id="email-quote-btn" data-quote-id="' + quote.id + '" data-customer-email="' + (quote.customer && quote.customer.customer_email ? quote.customer.customer_email : '') + '">';
+        html += '<span class="dashicons dashicons-email"></span> Email Quote</button>';
+        html += '</div>';
         html += '</div>';
 
         html += '<div class="quote-status">Status: <span class="status-badge status-quotation">Quotation</span></div>';
@@ -978,6 +982,13 @@
         $('#generate-quote-pdf-btn').off('click').on('click', function() {
             generateQuotePDF($(this).data('quote-id'));
         });
+
+        // Attach Email quote handler
+        $('#email-quote-btn').off('click').on('click', function() {
+            const quoteId = $(this).data('quote-id');
+            const customerEmail = $(this).data('customer-email');
+            showEmailQuoteModal(quoteId, customerEmail);
+        });
     }
 
     /**
@@ -1017,6 +1028,102 @@
             },
             complete: function() {
                 $btn.prop('disabled', false).html(originalText);
+            }
+        });
+    }
+
+    /**
+     * Show Email Quote Modal
+     */
+    function showEmailQuoteModal(quoteId, customerEmail) {
+        let html = '<div id="email-quote-modal-content">';
+        html += '<h2>Email Quote to Customer</h2>';
+        html += '<form id="email-quote-form">';
+        html += '<div class="form-field">';
+        html += '<label for="email-quote-recipient">Recipient Email <span class="required">*</span></label>';
+        html += '<input type="email" id="email-quote-recipient" required value="' + (customerEmail || '') + '" />';
+        if (!customerEmail) {
+            html += '<p class="description">Customer has no email on file. Please enter an email address.</p>';
+        }
+        html += '</div>';
+        html += '<div class="form-field">';
+        html += '<label for="email-quote-message">Custom Message (Optional)</label>';
+        html += '<textarea id="email-quote-message" rows="4" placeholder="Add a personal message to the email..."></textarea>';
+        html += '<p class="description">This message will be included in the email body along with the quote details.</p>';
+        html += '</div>';
+        html += '<div class="modal-footer">';
+        html += '<button type="submit" class="button button-primary"><span class="dashicons dashicons-email"></span> Send Email</button>';
+        html += '<button type="button" class="button" id="cancel-email-quote">Cancel</button>';
+        html += '</div>';
+        html += '</form>';
+        html += '</div>';
+
+        // Create or update modal
+        if ($('#email-quote-modal').length === 0) {
+            $('body').append('<div id="email-quote-modal" class="wp-staff-diary-modal" style="display: none;"><div class="wp-staff-diary-modal-content" style="max-width: 500px;"><span class="wp-staff-diary-modal-close">&times;</span><div id="email-quote-modal-body"></div></div></div>');
+        }
+
+        $('#email-quote-modal-body').html(html);
+        $('#email-quote-modal').fadeIn(200);
+
+        // Form submit handler
+        $('#email-quote-form').off('submit').on('submit', function(e) {
+            e.preventDefault();
+            const email = $('#email-quote-recipient').val();
+            const message = $('#email-quote-message').val();
+            emailQuote(quoteId, email, message);
+        });
+
+        // Cancel button
+        $('#cancel-email-quote').off('click').on('click', function() {
+            $('#email-quote-modal').fadeOut(200);
+        });
+
+        // Close button
+        $('#email-quote-modal .wp-staff-diary-modal-close').off('click').on('click', function() {
+            $('#email-quote-modal').fadeOut(200);
+        });
+    }
+
+    /**
+     * Email Quote to Customer
+     */
+    function emailQuote(quoteId, email, message) {
+        const $submitBtn = $('#email-quote-form button[type="submit"]');
+        const originalText = $submitBtn.html();
+
+        $submitBtn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'email_quote',
+                nonce: wpStaffDiary.nonce,
+                quote_id: quoteId,
+                email: email,
+                message: message
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Close modal
+                    $('#email-quote-modal').fadeOut(200);
+
+                    // Show success message in quote view
+                    const successMsg = $('<div class="notice notice-success" style="margin: 10px 0; padding: 10px;"><p>' + response.data.message + '</p></div>');
+                    $('#quote-details-content').prepend(successMsg);
+                    setTimeout(function() {
+                        successMsg.fadeOut(300, function() { $(this).remove(); });
+                    }, 5000);
+                } else {
+                    alert('Error sending email: ' + (response.data.message || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Failed to send email. Please try again.');
+            },
+            complete: function() {
+                $submitBtn.prop('disabled', false).html(originalText);
             }
         });
     }
