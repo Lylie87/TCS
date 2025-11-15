@@ -58,6 +58,8 @@ class WP_Staff_Diary_Activator {
             area varchar(255) DEFAULT NULL,
             size varchar(255) DEFAULT NULL,
             product_description text DEFAULT NULL,
+            product_source varchar(20) DEFAULT 'manual',
+            woocommerce_product_id bigint(20) DEFAULT NULL,
             sq_mtr_qty decimal(10,2) DEFAULT NULL,
             price_per_sq_mtr decimal(10,2) DEFAULT NULL,
             fitting_cost decimal(10,2) DEFAULT 0.00,
@@ -73,7 +75,8 @@ class WP_Staff_Diary_Activator {
             KEY fitter_id (fitter_id),
             KEY job_date (job_date),
             KEY fitting_date (fitting_date),
-            KEY status (status)
+            KEY status (status),
+            KEY woocommerce_product_id (woocommerce_product_id)
         ) $charset_collate;";
 
         // Table for job images

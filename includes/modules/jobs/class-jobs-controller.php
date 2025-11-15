@@ -90,6 +90,8 @@ class WP_Staff_Diary_Jobs_Controller extends WP_Staff_Diary_Base_Controller {
             'area' => !empty($_POST['area']) ? sanitize_text_field($_POST['area']) : null,
             'size' => !empty($_POST['size']) ? sanitize_text_field($_POST['size']) : null,
             'product_description' => !empty($_POST['product_description']) ? sanitize_textarea_field($_POST['product_description']) : null,
+            'product_source' => !empty($_POST['product_source']) ? sanitize_text_field($_POST['product_source']) : 'manual',
+            'woocommerce_product_id' => !empty($_POST['woocommerce_product_id']) ? intval($_POST['woocommerce_product_id']) : null,
             'sq_mtr_qty' => !empty($_POST['sq_mtr_qty']) ? floatval($_POST['sq_mtr_qty']) : null,
             'price_per_sq_mtr' => !empty($_POST['price_per_sq_mtr']) ? floatval($_POST['price_per_sq_mtr']) : null,
             'fitting_cost' => !empty($_POST['fitting_cost']) ? floatval($_POST['fitting_cost']) : 0,

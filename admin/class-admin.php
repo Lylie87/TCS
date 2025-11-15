@@ -1215,4 +1215,59 @@ class WP_Staff_Diary_Admin {
             wp_send_json_error(array('message' => 'Failed to delete customer'));
         }
     }
+
+    // ==================== WOOCOMMERCE AJAX HANDLERS ====================
+
+    /**
+     * AJAX: Search WooCommerce products
+     */
+    public function search_woocommerce_products() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        // Check if WooCommerce is active
+        if (!class_exists('WooCommerce')) {
+            wp_send_json_error(array('message' => 'WooCommerce is not active'));
+            return;
+        }
+
+        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+
+        if (empty($search)) {
+            wp_send_json_success(array('products' => array()));
+            return;
+        }
+
+        // Query WooCommerce products
+        $args = array(
+            'post_type' => 'product',
+            'posts_per_page' => 20,
+            'post_status' => 'publish',
+            's' => $search,
+            'orderby' => 'relevance',
+        );
+
+        $query = new WP_Query($args);
+        $products = array();
+
+        if ($query->have_posts()) {
+            while ($query->have_posts()) {
+                $query->the_post();
+                $product = wc_get_product(get_the_ID());
+
+                if ($product) {
+                    $products[] = array(
+                        'id' => $product->get_id(),
+                        'name' => $product->get_name(),
+                        'sku' => $product->get_sku(),
+                        'price' => $product->get_regular_price(),
+                        'description' => wp_trim_words($product->get_description(), 20),
+                        'short_description' => $product->get_short_description(),
+                    );
+                }
+            }
+            wp_reset_postdata();
+        }
+
+        wp_send_json_success(array('products' => $products));
+    }
 }

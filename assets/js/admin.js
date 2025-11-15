@@ -518,6 +518,164 @@
         });
 
         // ===========================================
+        // WOOCOMMERCE PRODUCT INTEGRATION
+        // ===========================================
+
+        let wcProductSearchTimeout = null;
+        let selectedWCProductId = 0;
+
+        // Product source toggle
+        $('input[name="product_source"]').on('change', function() {
+            const source = $(this).val();
+
+            if (source === 'woocommerce') {
+                $('#woocommerce-product-selector').slideDown();
+                $('#product-details-fields').find('input, textarea').prop('disabled', true);
+            } else {
+                $('#woocommerce-product-selector').slideUp();
+                $('#selected-wc-product-display').hide();
+                $('#woocommerce-product-search').val('');
+                $('#woocommerce-product-results').html('').hide();
+                $('#woocommerce-product-id').val('');
+                selectedWCProductId = 0;
+                $('#product-details-fields').find('input, textarea').prop('disabled', false);
+            }
+        });
+
+        // WooCommerce product search with debounce
+        $('#woocommerce-product-search').on('keyup', function() {
+            const searchTerm = $(this).val();
+
+            clearTimeout(wcProductSearchTimeout);
+
+            if (searchTerm.length < 2) {
+                $('#woocommerce-product-results').html('').hide();
+                return;
+            }
+
+            wcProductSearchTimeout = setTimeout(function() {
+                searchWCProducts(searchTerm);
+            }, 300);
+        });
+
+        /**
+         * Search WooCommerce products
+         */
+        function searchWCProducts(searchTerm) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'search_woocommerce_products',
+                    nonce: wpStaffDiary.nonce,
+                    search: searchTerm
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayWCProductResults(response.data.products);
+                    }
+                },
+                error: function() {
+                    console.error('Error searching WooCommerce products');
+                }
+            });
+        }
+
+        /**
+         * Display WooCommerce product search results
+         */
+        function displayWCProductResults(products) {
+            if (products.length === 0) {
+                $('#woocommerce-product-results').html('<div class="search-result-item">No products found</div>').show();
+                positionWCProductDropdown();
+                return;
+            }
+
+            let html = '';
+            products.forEach(function(product) {
+                const price = product.price ? `£${parseFloat(product.price).toFixed(2)}` : 'Price not set';
+                const sku = product.sku ? ` (SKU: ${product.sku})` : '';
+
+                html += `<div class="search-result-item wc-product-result" data-product-id="${product.id}" data-product-name="${product.name}" data-product-price="${product.price}" data-product-description="${product.description}">
+                    <strong>${product.name}</strong>${sku}<br>
+                    <span style="color: #2271b1; font-weight: 600;">${price}</span>
+                </div>`;
+            });
+
+            $('#woocommerce-product-results').html(html).show();
+            positionWCProductDropdown();
+        }
+
+        /**
+         * Position the WooCommerce product search dropdown
+         */
+        function positionWCProductDropdown() {
+            const $input = $('#woocommerce-product-search');
+            const $dropdown = $('#woocommerce-product-results');
+
+            if ($input.length && $dropdown.is(':visible')) {
+                const inputOffset = $input.offset();
+                const inputHeight = $input.outerHeight();
+                const inputWidth = $input.outerWidth();
+
+                $dropdown.css({
+                    'top': (inputOffset.top + inputHeight) + 'px',
+                    'left': inputOffset.left + 'px',
+                    'width': inputWidth + 'px'
+                });
+            }
+        }
+
+        // Select WooCommerce product from search results
+        $(document).on('click', '.wc-product-result', function() {
+            const productId = $(this).data('product-id');
+            const productName = $(this).data('product-name');
+            const productPrice = $(this).data('product-price');
+            const productDescription = $(this).data('product-description');
+
+            if (productId) {
+                selectWCProduct(productId, productName, productPrice, productDescription);
+            }
+        });
+
+        /**
+         * Select WooCommerce product and auto-populate fields
+         */
+        function selectWCProduct(productId, productName, productPrice, productDescription) {
+            selectedWCProductId = productId;
+            $('#woocommerce-product-id').val(productId);
+            $('#selected-wc-product-name').text(productName);
+            $('#selected-wc-product-display').show();
+            $('#woocommerce-product-search').val('').hide();
+            $('#woocommerce-product-results').html('').hide();
+
+            // Auto-populate product fields
+            $('#product-description').val(productDescription || productName);
+            $('#price-per-sq-mtr').val(productPrice || '');
+
+            // Enable the fields temporarily to allow edits
+            $('#product-details-fields').find('input, textarea').prop('disabled', false);
+
+            // Trigger calculations
+            updateCalculations();
+        }
+
+        // Clear WooCommerce product selection
+        $('#clear-wc-product-btn').on('click', function() {
+            selectedWCProductId = 0;
+            $('#woocommerce-product-id').val('');
+            $('#selected-wc-product-display').hide();
+            $('#woocommerce-product-search').val('').show();
+
+            // Clear product fields
+            $('#product-description').val('');
+            $('#price-per-sq-mtr').val('');
+            $('#sq-mtr-qty').val('');
+
+            updateCalculations();
+        });
+
+        // ===========================================
         // ADDRESS HANDLING
         // ===========================================
 

@@ -63,6 +63,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_0_23();
         }
 
+        // Upgrade to v2.2.0 - Add WooCommerce integration fields
+        if (version_compare($from_version, '2.2.0', '<')) {
+            self::upgrade_to_2_2_0();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
@@ -356,6 +361,28 @@ class WP_Staff_Diary_Upgrade {
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'fitting_cost'");
         if (empty($column_exists)) {
             $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitting_cost decimal(10,2) DEFAULT 0.00 AFTER price_per_sq_mtr");
+        }
+    }
+
+    /**
+     * Upgrade to version 2.2.0
+     * Add WooCommerce integration fields
+     */
+    private static function upgrade_to_2_2_0() {
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Add product_source column (manual or woocommerce)
+        $source_column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'product_source'");
+        if (empty($source_column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN product_source varchar(20) DEFAULT 'manual' AFTER product_description");
+        }
+
+        // Add woocommerce_product_id column
+        $wc_id_column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'woocommerce_product_id'");
+        if (empty($wc_id_column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN woocommerce_product_id bigint(20) DEFAULT NULL AFTER product_source");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY woocommerce_product_id (woocommerce_product_id)");
         }
     }
 }

@@ -147,6 +147,9 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_update_accessory', $plugin_admin, 'update_accessory');
         $this->loader->add_action('wp_ajax_delete_accessory', $plugin_admin, 'delete_accessory');
 
+        // AJAX handlers - WooCommerce Integration
+        $this->loader->add_action('wp_ajax_search_woocommerce_products', $plugin_admin, 'search_woocommerce_products');
+
         // AJAX handlers - Customers
         // NOTE: Customer handlers now managed by Customers module
         // Keeping these for backwards compatibility fallback
