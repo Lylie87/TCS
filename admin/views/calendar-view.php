@@ -326,8 +326,8 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                     <h3>Job Details</h3>
                     <div class="form-grid">
                         <div class="form-field">
-                            <label for="job-date">Job Date <span class="required">*</span></label>
-                            <input type="date" id="job-date" name="job_date" required>
+                            <label for="job-date">Order Date <span class="required">*</span></label>
+                            <input type="date" id="job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>" required>
                         </div>
                         <?php if ($job_time_type === 'time'): ?>
                         <div class="form-field">
@@ -338,6 +338,10 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         <div class="form-field">
                             <label for="fitting-date">Fitting Date</label>
                             <input type="date" id="fitting-date" name="fitting_date">
+                            <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                <input type="checkbox" id="fitting-date-unknown" name="fitting_date_unknown" value="1">
+                                <span>Fitting Date Unknown (stock needs to be ordered)</span>
+                            </label>
                         </div>
                         <?php if ($job_time_type === 'ampm'): ?>
                         <div class="form-field">
@@ -363,25 +367,69 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <!-- Product Section -->
                 <div class="form-section">
                     <h3>Product Details</h3>
-                    <div class="form-field">
-                        <label for="product-description">Product Description</label>
-                        <textarea id="product-description" name="product_description" rows="3"></textarea>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="sq-mtr-qty">Sq.Mtr / Quantity</label>
-                            <input type="number" id="sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0">
+
+                    <!-- Product Source Toggle -->
+                    <div class="form-field" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600;">Product Source</label>
+                        <div style="display: flex; gap: 20px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="product_source" id="product-source-manual" value="manual" checked>
+                                <span>Manual Entry</span>
+                            </label>
+                            <?php if (class_exists('WooCommerce')): ?>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="product_source" id="product-source-woocommerce" value="woocommerce">
+                                <span>WooCommerce Product</span>
+                            </label>
+                            <?php else: ?>
+                            <p class="description" style="color: #d63638; margin: 0;">
+                                <strong>WooCommerce not detected.</strong> Install WooCommerce to select products from your store.
+                            </p>
+                            <?php endif; ?>
                         </div>
+                    </div>
+
+                    <!-- WooCommerce Product Search (hidden by default) -->
+                    <?php if (class_exists('WooCommerce')): ?>
+                    <div id="woocommerce-product-selector" style="display: none; margin-bottom: 20px;">
                         <div class="form-field">
-                            <label for="price-per-sq-mtr">Price per Sq.Mtr (£)</label>
-                            <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
+                            <label for="woocommerce-product-search">Search WooCommerce Products</label>
+                            <div style="position: relative;">
+                                <input type="text" id="woocommerce-product-search" placeholder="Type to search products..." autocomplete="off" style="width: 100%;">
+                                <input type="hidden" id="woocommerce-product-id" name="woocommerce_product_id" value="">
+                                <div id="woocommerce-product-results" class="search-results"></div>
+                            </div>
+                            <div id="selected-wc-product-display" style="display: none; margin-top: 10px; padding: 10px; background: #f0f0f1; border-radius: 4px;">
+                                <strong>Selected Product:</strong> <span id="selected-wc-product-name"></span>
+                                <button type="button" class="button button-small" id="clear-wc-product-btn" style="margin-left: 10px;">Change</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="form-field" style="margin-top: 15px;">
-                        <label for="fitting-cost">Fitting Cost (£)</label>
-                        <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
-                        <p class="description">Customer cost for fitting the product</p>
+                    <?php endif; ?>
+
+                    <!-- Product Details Fields -->
+                    <div id="product-details-fields">
+                        <div class="form-field">
+                            <label for="product-description">Product Description</label>
+                            <textarea id="product-description" name="product_description" rows="3"></textarea>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="sq-mtr-qty">Sq.Mtr / Quantity</label>
+                                <input type="number" id="sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0">
+                            </div>
+                            <div class="form-field">
+                                <label for="price-per-sq-mtr">Price per Sq.Mtr (£)</label>
+                                <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="form-field" style="margin-top: 15px;">
+                            <label for="fitting-cost">Fitting Cost (£)</label>
+                            <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
+                            <p class="description">Customer cost for fitting the product</p>
+                        </div>
                     </div>
+
                     <div class="calculation-display">
                         <strong>Product Total:</strong> £<span id="product-total-display">0.00</span>
                     </div>
