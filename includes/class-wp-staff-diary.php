@@ -166,9 +166,11 @@ class WP_Staff_Diary {
 
         // AJAX handlers - PDF Generation
         $this->loader->add_action('wp_ajax_generate_pdf', $plugin_admin, 'generate_pdf');
+        $this->loader->add_action('wp_ajax_generate_quote_pdf', $plugin_admin, 'generate_quote_pdf');
 
         // Action for direct PDF download
         $this->loader->add_action('admin_post_wp_staff_diary_download_pdf', $plugin_admin, 'download_pdf');
+        $this->loader->add_action('admin_post_wp_staff_diary_download_quote_pdf', $plugin_admin, 'download_quote_pdf');
 
         // AJAX handlers - Quotes
         $this->loader->add_action('wp_ajax_convert_quote_to_job', $plugin_admin, 'convert_quote_to_job');

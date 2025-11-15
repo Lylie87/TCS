@@ -884,27 +884,141 @@
         // This would create a detailed view similar to job sheet
         // Showing all quote information in a readable format
         let html = '<div class="quote-details-view">';
-        html += '<h2>Quote #' + quote.order_number + '</h2>';
+
+        // Header with PDF button
+        html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">';
+        html += '<h2 style="margin: 0;">Quote #' + quote.order_number + '</h2>';
+        html += '<button type="button" class="button button-primary" id="generate-quote-pdf-btn" data-quote-id="' + quote.id + '">';
+        html += '<span class="dashicons dashicons-pdf"></span> Generate PDF</button>';
+        html += '</div>';
+
         html += '<div class="quote-status">Status: <span class="status-badge status-quotation">Quotation</span></div>';
+        html += '<p style="color: #666; font-size: 13px;">Created: ' + new Date(quote.created_at).toLocaleDateString('en-GB') + '</p>';
 
         if (quote.customer) {
-            html += '<h3>Customer</h3>';
+            html += '<h3>Customer Details</h3>';
             html += '<p><strong>' + quote.customer.customer_name + '</strong><br>';
             if (quote.customer.customer_phone) html += 'Phone: ' + quote.customer.customer_phone + '<br>';
             if (quote.customer.customer_email) html += 'Email: ' + quote.customer.customer_email + '</p>';
         }
 
+        // Fitting Address
+        if (quote.fitting_address_line_1) {
+            html += '<h3>Fitting Address</h3>';
+            html += '<p>';
+            if (quote.fitting_address_line_1) html += quote.fitting_address_line_1 + '<br>';
+            if (quote.fitting_address_line_2) html += quote.fitting_address_line_2 + '<br>';
+            if (quote.fitting_address_line_3) html += quote.fitting_address_line_3 + '<br>';
+            if (quote.fitting_postcode) html += quote.fitting_postcode;
+            html += '</p>';
+        }
+
+        // Billing Address (if different)
+        if (quote.billing_address_different == 1 && quote.billing_address_line_1) {
+            html += '<h3>Billing Address</h3>';
+            html += '<p>';
+            if (quote.billing_address_line_1) html += quote.billing_address_line_1 + '<br>';
+            if (quote.billing_address_line_2) html += quote.billing_address_line_2 + '<br>';
+            if (quote.billing_address_line_3) html += quote.billing_address_line_3 + '<br>';
+            if (quote.billing_postcode) html += quote.billing_postcode;
+            html += '</p>';
+        }
+
         html += '<h3>Product Details</h3>';
         html += '<p>' + (quote.product_description || 'No description') + '</p>';
-        html += '<p>Quantity: ' + (quote.sq_mtr_qty || '0') + ' @ £' + (quote.price_per_sq_mtr || '0') + '/unit</p>';
-        html += '<p>Fitting Cost: £' + (quote.fitting_cost || '0') + '</p>';
+        html += '<p>Quantity: ' + (quote.sq_mtr_qty || '0') + ' m² @ £' + (quote.price_per_sq_mtr || '0') + '/m²</p>';
+        if (quote.fitting_cost && parseFloat(quote.fitting_cost) > 0) {
+            html += '<p>Fitting Cost: £' + parseFloat(quote.fitting_cost).toFixed(2) + '</p>';
+        }
 
-        html += '<h3>Total</h3>';
-        html += '<p><strong>£' + (quote.total || '0').toFixed(2) + '</strong></p>';
+        // Accessories
+        if (quote.accessories && quote.accessories.length > 0) {
+            html += '<h3>Accessories</h3>';
+            html += '<ul>';
+            quote.accessories.forEach(function(acc) {
+                html += '<li>' + acc.accessory_name + ' - Qty: ' + acc.quantity + ' @ £' + parseFloat(acc.price_per_unit).toFixed(2) + ' = £' + parseFloat(acc.total_price).toFixed(2) + '</li>';
+            });
+            html += '</ul>';
+        }
+
+        // Financial Summary
+        html += '<h3>Quote Summary</h3>';
+        html += '<table style="width: 100%; border-collapse: collapse;">';
+        html += '<tr><td>Subtotal:</td><td style="text-align: right;">£' + (quote.subtotal || quote.total || '0').toFixed(2) + '</td></tr>';
+
+        if (vatEnabled == 1) {
+            const vat = quote.vat || (quote.total * (vatRate / (100 + parseFloat(vatRate))));
+            html += '<tr><td>VAT (' + vatRate + '%):</td><td style="text-align: right;">£' + parseFloat(vat).toFixed(2) + '</td></tr>';
+        }
+
+        html += '<tr style="font-weight: bold; font-size: 16px; border-top: 2px solid #ddd;"><td>Total:</td><td style="text-align: right;">£' + parseFloat(quote.total || '0').toFixed(2) + '</td></tr>';
+        html += '</table>';
+
+        // Notes
+        if (quote.notes) {
+            html += '<h3>Additional Notes</h3>';
+            html += '<p>' + quote.notes.replace(/\n/g, '<br>') + '</p>';
+        }
+
+        // Photos
+        if (quote.images && quote.images.length > 0) {
+            html += '<h3>Photos</h3>';
+            html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
+            quote.images.forEach(function(img) {
+                html += '<img src="' + img.image_url + '" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;" />';
+            });
+            html += '</div>';
+        }
 
         html += '</div>';
 
         $('#quote-details-content').html(html);
+
+        // Attach PDF generation handler
+        $('#generate-quote-pdf-btn').off('click').on('click', function() {
+            generateQuotePDF($(this).data('quote-id'));
+        });
+    }
+
+    /**
+     * Generate Quote PDF
+     */
+    function generateQuotePDF(quoteId) {
+        const $btn = $('#generate-quote-pdf-btn');
+        const originalText = $btn.html();
+
+        $btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Generating PDF...');
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'generate_quote_pdf',
+                nonce: wpStaffDiary.nonce,
+                quote_id: quoteId
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Open PDF in new tab
+                    window.open(response.data.url, '_blank');
+
+                    // Show success message
+                    const successMsg = $('<div class="notice notice-success" style="margin: 10px 0; padding: 10px;"><p>PDF generated successfully!</p></div>');
+                    $('#quote-details-content').prepend(successMsg);
+                    setTimeout(function() {
+                        successMsg.fadeOut(300, function() { $(this).remove(); });
+                    }, 3000);
+                } else {
+                    alert('Error generating PDF: ' + (response.data.message || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Failed to generate PDF. Please try again.');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html(originalText);
+            }
+        });
     }
 
     /**

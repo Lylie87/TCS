@@ -1108,6 +1108,84 @@ class WP_Staff_Diary_Admin {
         $pdf_generator->generate_job_sheet($entry_id, 'D');
     }
 
+    /**
+     * AJAX: Generate Quote PDF
+     */
+    public function generate_quote_pdf() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $quote_id = intval($_POST['quote_id']);
+
+        // Verify permissions
+        $quote = $this->db->get_entry($quote_id);
+        $user_id = get_current_user_id();
+
+        if (!$quote || ($quote->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        // Verify it's a quotation
+        if ($quote->status !== 'quotation') {
+            wp_send_json_error(array('message' => 'This entry is not a quotation'));
+        }
+
+        // Create PDF generator
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_send_json_error(array(
+                'message' => 'PDF generation not available. TCPDF library not installed. Please see libs/README.md for installation instructions.'
+            ));
+        }
+
+        // Generate and save PDF
+        $result = $pdf_generator->generate_quote_pdf($quote_id, 'F');
+
+        if ($result['success']) {
+            wp_send_json_success(array(
+                'message' => 'Quote PDF generated successfully',
+                'url' => $result['url']
+            ));
+        } else {
+            wp_send_json_error(array('message' => $result['message']));
+        }
+    }
+
+    /**
+     * Download Quote PDF (direct output)
+     */
+    public function download_quote_pdf() {
+        if (!isset($_GET['quote_id']) || !isset($_GET['nonce'])) {
+            wp_die('Invalid request');
+        }
+
+        if (!wp_verify_nonce($_GET['nonce'], 'wp_staff_diary_nonce')) {
+            wp_die('Invalid nonce');
+        }
+
+        $quote_id = intval($_GET['quote_id']);
+        $quote = $this->db->get_entry($quote_id);
+        $user_id = get_current_user_id();
+
+        if (!$quote || ($quote->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_die('Permission denied');
+        }
+
+        if ($quote->status !== 'quotation') {
+            wp_die('This entry is not a quotation');
+        }
+
+        // Create PDF generator
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_die('PDF generation not available. Please install TCPDF library.');
+        }
+
+        // Generate and output PDF (D = download)
+        $pdf_generator->generate_quote_pdf($quote_id, 'D');
+    }
+
     // ==================== CUSTOMER AJAX HANDLERS ====================
 
     /**
