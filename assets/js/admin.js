@@ -1261,6 +1261,120 @@
         }
 
         // ===========================================
+        // PAYMENT REMINDERS
+        // ===========================================
+
+        /**
+         * Send payment reminder button click
+         */
+        $(document).on('click', '#send-payment-reminder-btn', function() {
+            const entryId = $(this).data('entry-id');
+            const customerEmail = $(this).data('customer-email');
+            const customerName = $(this).data('customer-name');
+            const balance = $(this).data('balance');
+
+            if (!customerEmail) {
+                alert('Customer has no email address on file');
+                return;
+            }
+
+            if (parseFloat(balance) <= 0) {
+                alert('This job has no outstanding balance');
+                return;
+            }
+
+            showPaymentReminderModal(entryId, customerEmail, customerName, balance);
+        });
+
+        /**
+         * Show payment reminder modal
+         */
+        function showPaymentReminderModal(entryId, customerEmail, customerName, balance) {
+            let html = '<div id="payment-reminder-modal-content">';
+            html += '<h2>Send Payment Reminder</h2>';
+            html += '<p><strong>Customer:</strong> ' + customerName + '</p>';
+            html += '<p><strong>Email:</strong> ' + customerEmail + '</p>';
+            html += '<p><strong>Outstanding Balance:</strong> £' + parseFloat(balance).toFixed(2) + '</p>';
+            html += '<form id="payment-reminder-form">';
+            html += '<div class="form-field">';
+            html += '<label for="payment-reminder-message">Custom Message (Optional)</label>';
+            html += '<textarea id="payment-reminder-message" rows="6" placeholder="Leave blank to use default reminder template..."></textarea>';
+            html += '<p class="description">A professional payment reminder will be sent to the customer.</p>';
+            html += '</div>';
+            html += '<div class="modal-footer">';
+            html += '<button type="submit" class="button button-primary"><span class="dashicons dashicons-email"></span> Send Reminder</button>';
+            html += '<button type="button" class="button close-payment-reminder-modal">Cancel</button>';
+            html += '</div>';
+            html += '</form>';
+            html += '</div>';
+
+            // Create modal if doesn't exist
+            if ($('#payment-reminder-modal').length === 0) {
+                $('body').append('<div id="payment-reminder-modal" class="wp-staff-diary-modal"><div class="wp-staff-diary-modal-content"><span class="wp-staff-diary-modal-close">&times;</span><div id="payment-reminder-modal-body"></div></div></div>');
+            }
+
+            $('#payment-reminder-modal-body').html(html);
+            $('#payment-reminder-modal').fadeIn(200);
+
+            // Form submit handler
+            $('#payment-reminder-form').off('submit').on('submit', function(e) {
+                e.preventDefault();
+                sendPaymentReminder(entryId, $('#payment-reminder-message').val());
+            });
+
+            // Close modal handlers
+            $('.close-payment-reminder-modal, #payment-reminder-modal .wp-staff-diary-modal-close').off('click').on('click', function() {
+                $('#payment-reminder-modal').fadeOut(200);
+            });
+
+            $('#payment-reminder-modal').off('click').on('click', function(e) {
+                if (e.target.id === 'payment-reminder-modal') {
+                    $(this).fadeOut(200);
+                }
+            });
+        }
+
+        /**
+         * Send payment reminder
+         */
+        function sendPaymentReminder(entryId, customMessage) {
+            const $form = $('#payment-reminder-form');
+            const $submitBtn = $form.find('button[type="submit"]');
+            const originalText = $submitBtn.html();
+
+            $submitBtn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'send_payment_reminder',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId,
+                    custom_message: customMessage
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Payment reminder sent successfully!');
+                        $('#payment-reminder-modal').fadeOut(200);
+                        // Reload entry to see updated reminder history
+                        if (typeof loadEntryForEdit === 'function') {
+                            loadEntryForEdit(entryId);
+                        }
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to send reminder'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while sending the reminder.');
+                },
+                complete: function() {
+                    $submitBtn.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+
+        // ===========================================
         // UTILITY FUNCTIONS
         // ===========================================
 

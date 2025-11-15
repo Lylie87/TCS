@@ -83,6 +83,20 @@ if (isset($_POST['wp_staff_diary_save_vat'])) {
     echo '<div class="notice notice-success is-dismissible"><p>VAT settings saved successfully!</p></div>';
 }
 
+// Save payment reminder settings
+if (isset($_POST['wp_staff_diary_save_reminders'])) {
+    check_admin_referer('wp_staff_diary_reminders_nonce');
+
+    update_option('wp_staff_diary_payment_reminders_enabled', isset($_POST['payment_reminders_enabled']) ? '1' : '0');
+    update_option('wp_staff_diary_payment_reminder_1_days', sanitize_text_field($_POST['payment_reminder_1_days']));
+    update_option('wp_staff_diary_payment_reminder_2_days', sanitize_text_field($_POST['payment_reminder_2_days']));
+    update_option('wp_staff_diary_payment_reminder_3_days', sanitize_text_field($_POST['payment_reminder_3_days']));
+    update_option('wp_staff_diary_payment_reminder_subject', sanitize_text_field($_POST['payment_reminder_subject']));
+    update_option('wp_staff_diary_payment_reminder_message', sanitize_textarea_field($_POST['payment_reminder_message']));
+
+    echo '<div class="notice notice-success is-dismissible"><p>Payment reminder settings saved successfully!</p></div>';
+}
+
 // Save terms and conditions
 if (isset($_POST['wp_staff_diary_save_terms'])) {
     check_admin_referer('wp_staff_diary_terms_nonce');
@@ -140,6 +154,14 @@ $order_current = get_option('wp_staff_diary_order_current', '01100');
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 
+// Payment reminder settings
+$payment_reminders_enabled = get_option('wp_staff_diary_payment_reminders_enabled', '1');
+$payment_reminder_1_days = get_option('wp_staff_diary_payment_reminder_1_days', '7');
+$payment_reminder_2_days = get_option('wp_staff_diary_payment_reminder_2_days', '14');
+$payment_reminder_3_days = get_option('wp_staff_diary_payment_reminder_3_days', '21');
+$payment_reminder_subject = get_option('wp_staff_diary_payment_reminder_subject', 'Payment Reminder - Invoice {order_number}');
+$payment_reminder_message = get_option('wp_staff_diary_payment_reminder_message', "Dear {customer_name},\n\nThis is a friendly reminder that payment is still outstanding for the following job:\n\nInvoice Number: {order_number}\nJob Date: {job_date}\nTotal Amount: {total_amount}\nAmount Outstanding: {balance}\n\nIf you have already made this payment, please disregard this reminder.\n\nThank you for your business.");
+
 // Terms and conditions
 $terms_conditions = get_option('wp_staff_diary_terms_conditions', '');
 
@@ -178,6 +200,7 @@ $github_token = get_option('wp_staff_diary_github_token', '');
         <a href="#company" class="nav-tab" data-tab="company">Company Details</a>
         <a href="#orders" class="nav-tab" data-tab="orders">Order Settings</a>
         <a href="#vat" class="nav-tab" data-tab="vat">VAT</a>
+        <a href="#payment-reminders" class="nav-tab" data-tab="payment-reminders">Payment Reminders</a>
         <a href="#statuses" class="nav-tab" data-tab="statuses">Job Statuses</a>
         <a href="#payment-methods" class="nav-tab" data-tab="payment-methods">Payment Methods</a>
         <a href="#accessories" class="nav-tab" data-tab="accessories">Accessories</a>
@@ -480,6 +503,100 @@ $github_token = get_option('wp_staff_diary_github_token', '');
                 <input type="submit" name="wp_staff_diary_save_vat" class="button button-primary" value="Save VAT Settings">
             </p>
         </form>
+    </div>
+
+    <!-- Payment Reminders Tab -->
+    <div id="payment-reminders-tab" class="settings-tab" style="display:none;">
+        <h2>Payment Reminder Settings</h2>
+        <p>Configure automatic payment reminders for jobs with outstanding balances.</p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('wp_staff_diary_reminders_nonce'); ?>
+
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">Enable Payment Reminders</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="payment_reminders_enabled" id="payment_reminders_enabled" value="1" <?php checked($payment_reminders_enabled, '1'); ?>>
+                                Automatically schedule payment reminders for jobs with outstanding balances
+                            </label>
+                            <p class="description">When enabled, reminders will be automatically scheduled based on the job date.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="payment_reminder_1_days">First Reminder (Days)</label>
+                        </th>
+                        <td>
+                            <input type="number" name="payment_reminder_1_days" id="payment_reminder_1_days" value="<?php echo esc_attr($payment_reminder_1_days); ?>" class="small-text" min="0" step="1">
+                            <span>days after job date</span>
+                            <p class="description">Set to 0 to disable first reminder.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="payment_reminder_2_days">Second Reminder (Days)</label>
+                        </th>
+                        <td>
+                            <input type="number" name="payment_reminder_2_days" id="payment_reminder_2_days" value="<?php echo esc_attr($payment_reminder_2_days); ?>" class="small-text" min="0" step="1">
+                            <span>days after job date</span>
+                            <p class="description">Set to 0 to disable second reminder.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="payment_reminder_3_days">Final Reminder (Days)</label>
+                        </th>
+                        <td>
+                            <input type="number" name="payment_reminder_3_days" id="payment_reminder_3_days" value="<?php echo esc_attr($payment_reminder_3_days); ?>" class="small-text" min="0" step="1">
+                            <span>days after job date</span>
+                            <p class="description">Set to 0 to disable final reminder.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="payment_reminder_subject">Email Subject</label>
+                        </th>
+                        <td>
+                            <input type="text" name="payment_reminder_subject" id="payment_reminder_subject" value="<?php echo esc_attr($payment_reminder_subject); ?>" class="regular-text">
+                            <p class="description">Available placeholders: {order_number}, {customer_name}</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="payment_reminder_message">Email Message Template</label>
+                        </th>
+                        <td>
+                            <textarea name="payment_reminder_message" id="payment_reminder_message" rows="10" class="large-text"><?php echo esc_textarea($payment_reminder_message); ?></textarea>
+                            <p class="description">Available placeholders: {customer_name}, {order_number}, {job_date}, {total_amount}, {balance}</p>
+                            <p class="description">Company details and signature will be automatically added to the email.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="submit">
+                <input type="submit" name="wp_staff_diary_save_reminders" class="button button-primary" value="Save Payment Reminder Settings">
+            </p>
+        </form>
+
+        <div style="margin-top: 30px; padding: 15px; background: #fff; border-left: 4px solid #2271b1;">
+            <h3 style="margin-top: 0;">How Payment Reminders Work</h3>
+            <ul style="list-style: disc; padding-left: 20px;">
+                <li><strong>Automatic Scheduling:</strong> When a job is created or converted from a quote, payment reminders are automatically scheduled based on the settings above.</li>
+                <li><strong>Smart Sending:</strong> Reminders are only sent if there's an outstanding balance. If payment is received, remaining reminders are automatically cancelled.</li>
+                <li><strong>Manual Reminders:</strong> You can also send manual payment reminders from the job details page at any time.</li>
+                <li><strong>Email Requirements:</strong> Customer must have a valid email address on file to receive reminders.</li>
+                <li><strong>Reminder History:</strong> All sent reminders are logged and can be viewed in the job details.</li>
+            </ul>
+        </div>
     </div>
 
     <!-- Job Statuses Tab -->

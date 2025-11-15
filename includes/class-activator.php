@@ -166,6 +166,24 @@ class WP_Staff_Diary_Activator {
             KEY sent_at (sent_at)
         ) $charset_collate;";
 
+        // Table for payment reminder schedules
+        $table_reminder_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        $sql_reminder_schedule = "CREATE TABLE $table_reminder_schedule (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) NOT NULL,
+            reminder_type varchar(50) NOT NULL,
+            scheduled_for datetime NOT NULL,
+            sent_at datetime DEFAULT NULL,
+            status varchar(20) DEFAULT 'pending',
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY scheduled_for (scheduled_for),
+            KEY status (status),
+            KEY reminder_type (reminder_type)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_customers);
         dbDelta($sql_diary);
@@ -174,6 +192,7 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_accessories);
         dbDelta($sql_job_accessories);
         dbDelta($sql_notification_logs);
+        dbDelta($sql_reminder_schedule);
 
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);
@@ -203,6 +222,14 @@ class WP_Staff_Diary_Activator {
 
         // Terms and conditions
         add_option('wp_staff_diary_terms_conditions', '');
+
+        // Payment reminder settings
+        add_option('wp_staff_diary_payment_reminders_enabled', '1');
+        add_option('wp_staff_diary_payment_reminder_1_days', '7');  // First reminder after 7 days
+        add_option('wp_staff_diary_payment_reminder_2_days', '14'); // Second reminder after 14 days
+        add_option('wp_staff_diary_payment_reminder_3_days', '21'); // Final reminder after 21 days
+        add_option('wp_staff_diary_payment_reminder_subject', 'Payment Reminder - Invoice {order_number}');
+        add_option('wp_staff_diary_payment_reminder_message', "Dear {customer_name},\n\nThis is a friendly reminder that payment is still outstanding for the following job:\n\nInvoice Number: {order_number}\nJob Date: {job_date}\nTotal Amount: {total_amount}\nAmount Outstanding: {balance}\n\nIf you have already made this payment, please disregard this reminder.\n\nThank you for your business.");
 
         // Job statuses
         add_option('wp_staff_diary_statuses', array(

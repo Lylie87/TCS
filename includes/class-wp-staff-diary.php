@@ -177,6 +177,13 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_get_fitter_availability', $plugin_admin, 'get_fitter_availability');
         $this->loader->add_action('wp_ajax_email_quote', $plugin_admin, 'email_quote');
 
+        // AJAX handlers - Payment Reminders
+        $this->loader->add_action('wp_ajax_send_payment_reminder', $plugin_admin, 'send_payment_reminder');
+
+        // WP-Cron for payment reminders
+        $this->loader->add_action('init', $plugin_admin, 'setup_payment_reminder_cron');
+        $this->loader->add_action('wp_staff_diary_process_reminders', $plugin_admin, 'process_scheduled_reminders');
+
         // AJAX handlers - Customer History
         $this->loader->add_action('wp_ajax_get_customer_jobs', $plugin_admin, 'get_customer_jobs');
     }

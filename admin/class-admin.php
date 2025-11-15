@@ -2047,4 +2047,266 @@ class WP_Staff_Diary_Admin {
             wp_send_json_error(array('message' => 'Failed to convert quote to job'));
         }
     }
+
+    // ==================== PAYMENT REMINDER METHODS ====================
+
+    /**
+     * Send payment reminder (manual or automated)
+     */
+    public function send_payment_reminder() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+        $custom_message = isset($_POST['custom_message']) ? sanitize_textarea_field($_POST['custom_message']) : '';
+
+        // Get job details
+        $job = $this->db->get_entry($entry_id);
+        if (!$job) {
+            wp_send_json_error(array('message' => 'Job not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($job->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Get customer
+        $customer = $job->customer_id ? $this->db->get_customer($job->customer_id) : null;
+        if (!$customer || empty($customer->customer_email)) {
+            wp_send_json_error(array('message' => 'Customer has no email address on file'));
+            return;
+        }
+
+        // Calculate balance
+        $subtotal = $this->db->calculate_job_subtotal($entry_id);
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        $vat_amount = 0;
+        $total = $subtotal;
+        if ($vat_enabled == '1') {
+            $vat_amount = $subtotal * ($vat_rate / 100);
+            $total = $subtotal + $vat_amount;
+        }
+
+        $payments = $this->db->get_entry_total_payments($entry_id);
+        $balance = $total - $payments;
+
+        // Check if there's actually a balance
+        if ($balance <= 0.01) {
+            wp_send_json_error(array('message' => 'No outstanding balance for this job'));
+            return;
+        }
+
+        // Send reminder email
+        $result = $this->send_payment_reminder_email($job, $customer, $total, $balance, $custom_message);
+
+        if ($result['success']) {
+            wp_send_json_success(array(
+                'message' => 'Payment reminder sent successfully to ' . $customer->customer_email
+            ));
+        } else {
+            wp_send_json_error(array('message' => $result['message']));
+        }
+    }
+
+    /**
+     * Send payment reminder email
+     */
+    private function send_payment_reminder_email($job, $customer, $total, $balance, $custom_message = '') {
+        // Get company details
+        $company_name = get_option('wp_staff_diary_company_name', get_bloginfo('name'));
+        $company_email = get_option('wp_staff_diary_company_email', get_option('admin_email'));
+
+        // Build email
+        $subject = get_option('wp_staff_diary_payment_reminder_subject', 'Payment Reminder - Invoice {order_number}');
+        $message_template = get_option('wp_staff_diary_payment_reminder_message');
+
+        // Replace placeholders in subject
+        $subject = str_replace('{order_number}', $job->order_number, $subject);
+        $subject = str_replace('{customer_name}', $customer->customer_name, $subject);
+
+        // Build message body
+        if (!empty($custom_message)) {
+            $body = $custom_message . "\n\n";
+        } else {
+            $body = str_replace('{customer_name}', $customer->customer_name, $message_template);
+            $body = str_replace('{order_number}', $job->order_number, $body);
+            $body = str_replace('{job_date}', date('d/m/Y', strtotime($job->job_date)), $body);
+            $body = str_replace('{total_amount}', '£' . number_format($total, 2), $body);
+            $body = str_replace('{balance}', '£' . number_format($balance, 2), $body);
+        }
+
+        // Add company signature
+        $body .= "\n\n---\n";
+        $body .= $company_name . "\n";
+
+        $company_phone = get_option('wp_staff_diary_company_phone', '');
+        if (!empty($company_phone)) {
+            $body .= "Phone: " . $company_phone . "\n";
+        }
+
+        if (!empty($company_email)) {
+            $body .= "Email: " . $company_email . "\n";
+        }
+
+        // Email headers
+        $headers = array(
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ' . $company_name . ' <' . $company_email . '>',
+            'Reply-To: ' . $company_email
+        );
+
+        // Send email
+        $sent = wp_mail($customer->customer_email, $subject, $body, $headers);
+
+        // Log the notification
+        $this->db->log_notification(
+            $job->id,
+            'payment_reminder',
+            $customer->customer_email,
+            'email',
+            $sent ? 'sent' : 'failed',
+            $sent ? null : 'wp_mail() returned false'
+        );
+
+        if ($sent) {
+            return array('success' => true);
+        } else {
+            return array(
+                'success' => false,
+                'message' => 'Failed to send email. Please check your email configuration.'
+            );
+        }
+    }
+
+    /**
+     * Process scheduled payment reminders (called by WP-Cron)
+     */
+    public function process_scheduled_reminders() {
+        // Check if reminders are enabled
+        $reminders_enabled = get_option('wp_staff_diary_payment_reminders_enabled', '1');
+        if ($reminders_enabled != '1') {
+            return;
+        }
+
+        // Get pending reminders
+        $pending_reminders = $this->db->get_pending_reminders();
+
+        foreach ($pending_reminders as $reminder) {
+            // Get job details
+            $job = $this->db->get_entry($reminder->diary_entry_id);
+            if (!$job || $job->is_cancelled) {
+                // Cancel reminder if job not found or cancelled
+                $this->db->cancel_scheduled_reminders($reminder->diary_entry_id);
+                continue;
+            }
+
+            // Calculate current balance
+            $subtotal = $this->db->calculate_job_subtotal($reminder->diary_entry_id);
+            $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+            $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+
+            $payments = $this->db->get_entry_total_payments($reminder->diary_entry_id);
+            $balance = $total - $payments;
+
+            // If balance is paid, cancel remaining reminders
+            if ($balance <= 0.01) {
+                $this->db->cancel_scheduled_reminders($reminder->diary_entry_id);
+                continue;
+            }
+
+            // Get customer
+            $customer = $job->customer_id ? $this->db->get_customer($job->customer_id) : null;
+            if (!$customer || empty($customer->customer_email)) {
+                // Mark as failed and continue
+                $this->db->mark_reminder_sent($reminder->id);
+                $this->db->log_notification(
+                    $job->id,
+                    'payment_reminder_' . $reminder->reminder_type,
+                    'N/A',
+                    'email',
+                    'failed',
+                    'No customer email on file'
+                );
+                continue;
+            }
+
+            // Send reminder
+            $result = $this->send_payment_reminder_email($job, $customer, $total, $balance);
+
+            // Mark as sent
+            $this->db->mark_reminder_sent($reminder->id);
+        }
+    }
+
+    /**
+     * Schedule automatic payment reminders for a job
+     */
+    public function schedule_automatic_reminders($entry_id) {
+        // Check if reminders are enabled
+        $reminders_enabled = get_option('wp_staff_diary_payment_reminders_enabled', '1');
+        if ($reminders_enabled != '1') {
+            return;
+        }
+
+        $job = $this->db->get_entry($entry_id);
+        if (!$job || $job->status === 'quotation') {
+            return;
+        }
+
+        // Get reminder settings
+        $reminder_1_days = intval(get_option('wp_staff_diary_payment_reminder_1_days', '7'));
+        $reminder_2_days = intval(get_option('wp_staff_diary_payment_reminder_2_days', '14'));
+        $reminder_3_days = intval(get_option('wp_staff_diary_payment_reminder_3_days', '21'));
+
+        // Use job_date as the starting point
+        $job_date = new DateTime($job->job_date);
+
+        // Schedule reminders
+        if ($reminder_1_days > 0) {
+            $reminder_1_date = clone $job_date;
+            $reminder_1_date->modify("+{$reminder_1_days} days");
+            $this->db->schedule_payment_reminder($entry_id, 'reminder_1', $reminder_1_date->format('Y-m-d H:i:s'));
+        }
+
+        if ($reminder_2_days > 0) {
+            $reminder_2_date = clone $job_date;
+            $reminder_2_date->modify("+{$reminder_2_days} days");
+            $this->db->schedule_payment_reminder($entry_id, 'reminder_2', $reminder_2_date->format('Y-m-d H:i:s'));
+        }
+
+        if ($reminder_3_days > 0) {
+            $reminder_3_date = clone $job_date;
+            $reminder_3_date->modify("+{$reminder_3_days} days");
+            $this->db->schedule_payment_reminder($entry_id, 'reminder_3', $reminder_3_date->format('Y-m-d H:i:s'));
+        }
+    }
+
+    /**
+     * Setup WP-Cron for payment reminders
+     */
+    public function setup_payment_reminder_cron() {
+        if (!wp_next_scheduled('wp_staff_diary_process_reminders')) {
+            wp_schedule_event(time(), 'twicedaily', 'wp_staff_diary_process_reminders');
+        }
+    }
+
+    /**
+     * Clear payment reminder cron on deactivation
+     */
+    public static function clear_payment_reminder_cron() {
+        $timestamp = wp_next_scheduled('wp_staff_diary_process_reminders');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'wp_staff_diary_process_reminders');
+        }
+    }
 }

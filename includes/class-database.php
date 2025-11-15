@@ -515,4 +515,157 @@ class WP_Staff_Diary_Database {
             array('id' => $entry_id)
         );
     }
+
+    // ==================== NOTIFICATION & REMINDER METHODS ====================
+
+    /**
+     * Log a notification
+     */
+    public function log_notification($diary_entry_id, $notification_type, $recipient, $method, $status, $error_message = null) {
+        global $wpdb;
+        $table_logs = $wpdb->prefix . 'staff_diary_notification_logs';
+
+        $wpdb->insert($table_logs, array(
+            'diary_entry_id' => $diary_entry_id,
+            'notification_type' => $notification_type,
+            'recipient' => $recipient,
+            'method' => $method,
+            'status' => $status,
+            'error_message' => $error_message
+        ));
+
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Get notification logs for a job
+     */
+    public function get_notification_logs($diary_entry_id) {
+        global $wpdb;
+        $table_logs = $wpdb->prefix . 'staff_diary_notification_logs';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_logs WHERE diary_entry_id = %d ORDER BY sent_at DESC",
+            $diary_entry_id
+        ));
+    }
+
+    /**
+     * Schedule a payment reminder
+     */
+    public function schedule_payment_reminder($diary_entry_id, $reminder_type, $scheduled_for) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        // Check if reminder already scheduled
+        $exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table_schedule
+             WHERE diary_entry_id = %d
+             AND reminder_type = %s
+             AND status = 'pending'",
+            $diary_entry_id,
+            $reminder_type
+        ));
+
+        if ($exists) {
+            // Update scheduled time
+            return $wpdb->update(
+                $table_schedule,
+                array('scheduled_for' => $scheduled_for),
+                array('id' => $exists)
+            );
+        }
+
+        $wpdb->insert($table_schedule, array(
+            'diary_entry_id' => $diary_entry_id,
+            'reminder_type' => $reminder_type,
+            'scheduled_for' => $scheduled_for,
+            'status' => 'pending'
+        ));
+
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Get pending reminders
+     */
+    public function get_pending_reminders($before_time = null) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        if ($before_time === null) {
+            $before_time = current_time('mysql');
+        }
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_schedule
+             WHERE status = 'pending'
+             AND scheduled_for <= %s
+             ORDER BY scheduled_for ASC",
+            $before_time
+        ));
+    }
+
+    /**
+     * Mark reminder as sent
+     */
+    public function mark_reminder_sent($reminder_id) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        return $wpdb->update(
+            $table_schedule,
+            array(
+                'sent_at' => current_time('mysql'),
+                'status' => 'sent'
+            ),
+            array('id' => $reminder_id)
+        );
+    }
+
+    /**
+     * Cancel scheduled reminders for a job
+     */
+    public function cancel_scheduled_reminders($diary_entry_id) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        return $wpdb->update(
+            $table_schedule,
+            array('status' => 'cancelled'),
+            array(
+                'diary_entry_id' => $diary_entry_id,
+                'status' => 'pending'
+            )
+        );
+    }
+
+    /**
+     * Get jobs with outstanding balance for reminders
+     */
+    public function get_jobs_needing_reminders() {
+        global $wpdb;
+
+        // Get all non-cancelled, non-quotation jobs
+        $jobs = $wpdb->get_results(
+            "SELECT * FROM {$this->table_diary}
+             WHERE is_cancelled = 0
+             AND status != 'quotation'
+             AND status != 'cancelled'
+             ORDER BY job_date DESC"
+        );
+
+        $jobs_needing_reminders = array();
+
+        foreach ($jobs as $job) {
+            $balance = $this->calculate_job_balance($job->id);
+
+            if ($balance > 0.01) {
+                $job->balance = $balance;
+                $jobs_needing_reminders[] = $job;
+            }
+        }
+
+        return $jobs_needing_reminders;
+    }
 }
