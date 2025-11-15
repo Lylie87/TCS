@@ -1071,6 +1071,12 @@
             formData.append('diary_entry_id', entryId);
             formData.append('image', file);
 
+            console.log('=== UPLOAD IMAGE DEBUG ===');
+            console.log('Entry ID:', entryId);
+            console.log('File:', file);
+            console.log('Nonce:', wpStaffDiary.nonce);
+            console.log('Action:', 'upload_job_image');
+
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
@@ -1078,6 +1084,7 @@
                 processData: false,
                 contentType: false,
                 success: function(response) {
+                    console.log('Upload response:', response);
                     if (response.success) {
                         alert('Photo uploaded successfully!');
                         viewEntryDetails(entryId); // Reload the view
@@ -1085,8 +1092,10 @@
                         alert('Error: ' + (response.data.message || 'Failed to upload photo'));
                     }
                 },
-                error: function() {
-                    alert('An error occurred while uploading the photo.');
+                error: function(xhr, status, error) {
+                    console.error('Upload AJAX error:', xhr, status, error);
+                    console.error('Response text:', xhr.responseText);
+                    alert('An error occurred while uploading the photo. Check console for details.');
                 }
             });
         });
