@@ -1068,7 +1068,7 @@
             const formData = new FormData();
             formData.append('action', 'upload_job_image');
             formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('entry_id', entryId);
+            formData.append('diary_entry_id', entryId);
             formData.append('image', file);
 
             $.ajax({
@@ -1160,7 +1160,7 @@
             const formData = new FormData();
             formData.append('action', 'upload_job_image');
             formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('entry_id', entryId);
+            formData.append('diary_entry_id', entryId);
             formData.append('image', file);
 
             $.ajax({
