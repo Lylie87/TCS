@@ -457,6 +457,16 @@ class WP_Staff_Diary_Admin {
             // Get customer information if linked
             if ($entry->customer_id) {
                 $customer = $this->db->get_customer($entry->customer_id);
+                if ($customer) {
+                    // Add formatted customer address
+                    $address_parts = array_filter([
+                        $customer->address_line_1,
+                        $customer->address_line_2,
+                        $customer->address_line_3,
+                        $customer->postcode
+                    ]);
+                    $customer->customer_address = implode("\n", $address_parts);
+                }
                 $entry->customer = $customer;
             }
 

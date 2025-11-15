@@ -810,6 +810,8 @@
                     entry_id: entryId
                 },
                 success: function(response) {
+                    console.log('GET DIARY ENTRY RESPONSE:', response);
+                    console.log('Entry data:', response.data);
                     if (response.success) {
                         displayEntryDetails(response.data);
                     } else {
