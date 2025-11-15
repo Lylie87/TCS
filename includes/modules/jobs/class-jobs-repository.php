@@ -199,8 +199,52 @@ class WP_Staff_Diary_Jobs_Repository extends WP_Staff_Diary_Base_Repository {
         // Calculate totals
         $entry->total_payments = $this->get_total_payments($entry_id);
         $entry->accessories_total = $this->get_accessories_total($entry_id);
-        $entry->subtotal = $this->calculate_subtotal($entry);
-        $entry->balance = $entry->subtotal - $entry->total_payments;
+
+        // Calculate product total, subtotal before VAT, VAT, and final total
+        $product_total = floatval($entry->sq_mtr_qty) * floatval($entry->price_per_sq_mtr);
+        $fitting_cost = floatval($entry->fitting_cost);
+        $subtotal_before_vat = $product_total + $fitting_cost + $entry->accessories_total;
+
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        $entry->vat_rate = $vat_rate;
+        $entry->vat_amount = 0;
+
+        if ($vat_enabled == '1') {
+            $entry->vat_amount = ($subtotal_before_vat * floatval($vat_rate)) / 100;
+        }
+
+        $entry->subtotal = $subtotal_before_vat;
+        $entry->total = $subtotal_before_vat + $entry->vat_amount;
+        $entry->balance = $entry->total - $entry->total_payments;
+
+        // Add formatted date fields
+        $date_format = get_option('wp_staff_diary_date_format', 'd/m/Y');
+        $time_format = get_option('wp_staff_diary_time_format', 'H:i');
+
+        if ($entry->job_date) {
+            $entry->job_date_formatted = date($date_format, strtotime($entry->job_date));
+        }
+
+        if ($entry->job_time) {
+            $entry->job_time_formatted = date($time_format, strtotime($entry->job_time));
+        }
+
+        if ($entry->fitting_date) {
+            $entry->fitting_date_formatted = date($date_format, strtotime($entry->fitting_date));
+        }
+
+        // Add customer address formatted field if customer exists
+        if ($entry->customer) {
+            $address_parts = array_filter([
+                $entry->customer->address_line_1,
+                $entry->customer->address_line_2,
+                $entry->customer->address_line_3,
+                $entry->customer->postcode
+            ]);
+            $entry->customer->customer_address = implode("\n", $address_parts);
+        }
 
         return $entry;
     }
@@ -242,7 +286,7 @@ class WP_Staff_Diary_Jobs_Repository extends WP_Staff_Diary_Base_Repository {
      * @return float Subtotal with VAT
      */
     private function calculate_subtotal($entry) {
-        $product_total = floatval($entry->quantity) * floatval($entry->price_per_sqmtr);
+        $product_total = floatval($entry->sq_mtr_qty) * floatval($entry->price_per_sq_mtr);
         $fitting_cost = floatval($entry->fitting_cost);
         $accessories_total = $entry->accessories_total;
 

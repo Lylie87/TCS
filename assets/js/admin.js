@@ -161,14 +161,15 @@
             $('#job-time').val(entry.job_time);
             $('#fitting-date').val(entry.fitting_date);
             $('#fitting-time-period').val(entry.fitting_time_period);
+            $('#fitting-date-unknown').prop('checked', entry.fitting_date_unknown == 1);
             $('#area').val(entry.area);
             $('#size').val(entry.size);
 
             // Fitter
             if (entry.fitter_id !== undefined && entry.fitter_id !== null) {
-                $('#fitter-id').val(entry.fitter_id);
+                $('#fitter').val(entry.fitter_id);
             } else {
-                $('#fitter-id').val('');
+                $('#fitter').val('');
             }
 
             // Addresses
@@ -312,11 +313,12 @@
                 nonce: wpStaffDiary.nonce,
                 entry_id: $('#entry-id').val(),
                 customer_id: $('#customer-id').val(),
-                fitter_id: $('#fitter-id').val(),
+                fitter_id: $('#fitter').val(),
                 job_date: $('#job-date').val(),
                 job_time: $('#job-time').val(),
                 fitting_date: $('#fitting-date').val(),
                 fitting_time_period: $('#fitting-time-period').val(),
+                fitting_date_unknown: $('#fitting-date-unknown').is(':checked') ? 1 : 0,
                 billing_address_line_1: $('#billing-address-line-1').val(),
                 billing_address_line_2: $('#billing-address-line-2').val(),
                 billing_address_line_3: $('#billing-address-line-3').val(),

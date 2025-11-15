@@ -262,6 +262,7 @@ class WP_Staff_Diary_Admin {
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
             'fitting_date' => !empty($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null,
             'fitting_time_period' => !empty($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null,
+            'fitting_date_unknown' => !empty($_POST['fitting_date_unknown']) ? 1 : 0,
             'billing_address_line_1' => !empty($_POST['billing_address_line_1']) ? sanitize_text_field($_POST['billing_address_line_1']) : null,
             'billing_address_line_2' => !empty($_POST['billing_address_line_2']) ? sanitize_text_field($_POST['billing_address_line_2']) : null,
             'billing_address_line_3' => !empty($_POST['billing_address_line_3']) ? sanitize_text_field($_POST['billing_address_line_3']) : null,
