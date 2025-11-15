@@ -1560,6 +1560,101 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * AJAX: Get fitter availability
+     * Returns availability for a specific fitter over a date range
+     */
+    public function get_fitter_availability() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
+        $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : date('Y-m-d');
+        $days = isset($_POST['days']) ? intval($_POST['days']) : 14; // Default 2 weeks
+
+        if ($fitter_id === null) {
+            wp_send_json_error(array('message' => 'Fitter ID is required'));
+            return;
+        }
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Calculate date range
+        $end_date = date('Y-m-d', strtotime($start_date . ' + ' . $days . ' days'));
+
+        // Get all jobs for this fitter in the date range (excluding cancelled and quotations)
+        $jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT fitting_date, fitting_time_period, order_number, status
+             FROM $table_diary
+             WHERE fitter_id = %d
+             AND is_cancelled = 0
+             AND status != 'quotation'
+             AND fitting_date_unknown = 0
+             AND fitting_date BETWEEN %s AND %s
+             ORDER BY fitting_date ASC",
+            $fitter_id,
+            $start_date,
+            $end_date
+        ));
+
+        // Organize jobs by date
+        $availability = array();
+        $current = new DateTime($start_date);
+        $end = new DateTime($end_date);
+
+        while ($current <= $end) {
+            $date_str = $current->format('Y-m-d');
+            $day_of_week = $current->format('N'); // 1=Monday, 7=Sunday
+
+            // Skip Sundays by default (can be configured later)
+            if ($day_of_week == 7) {
+                $current->modify('+1 day');
+                continue;
+            }
+
+            $availability[$date_str] = array(
+                'date' => $date_str,
+                'day_name' => $current->format('l'),
+                'jobs' => array(),
+                'am_available' => true,
+                'pm_available' => true,
+                'all_day_booked' => false
+            );
+
+            $current->modify('+1 day');
+        }
+
+        // Mark booked slots
+        foreach ($jobs as $job) {
+            if (isset($availability[$job->fitting_date])) {
+                $availability[$job->fitting_date]['jobs'][] = array(
+                    'order_number' => $job->order_number,
+                    'time_period' => $job->fitting_time_period,
+                    'status' => $job->status
+                );
+
+                // Update availability based on time period
+                $time_period = strtolower($job->fitting_time_period);
+                if ($time_period === 'am') {
+                    $availability[$job->fitting_date]['am_available'] = false;
+                } elseif ($time_period === 'pm') {
+                    $availability[$job->fitting_date]['pm_available'] = false;
+                } elseif ($time_period === 'all-day') {
+                    $availability[$job->fitting_date]['am_available'] = false;
+                    $availability[$job->fitting_date]['pm_available'] = false;
+                    $availability[$job->fitting_date]['all_day_booked'] = true;
+                }
+            }
+        }
+
+        wp_send_json_success(array(
+            'availability' => array_values($availability),
+            'fitter_id' => $fitter_id,
+            'start_date' => $start_date,
+            'end_date' => $end_date
+        ));
+    }
+
+    /**
      * AJAX: Convert quote to job
      * Updates the quote entry with fitting details and changes status to pending
      */

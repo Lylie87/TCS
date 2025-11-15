@@ -13,6 +13,7 @@
     let currentQuoteId = null;
     let selectedCustomerId = null;
     let selectedWCProductId = null;
+    let currentAvailability = []; // Store availability data for conflict checking
 
     /**
      * Initialize quotes page functionality
@@ -234,7 +235,150 @@
     function openConvertToJobModal(quoteId) {
         $('#convert-quote-id').val(quoteId);
         $('#convert-to-job-form')[0].reset();
+        $('#fitter-availability-display').hide();
+        $('#availability-calendar').empty();
         $('#convert-to-job-modal').fadeIn(200);
+
+        // Add fitter selection handler to load availability
+        $('#convert-fitter').off('change').on('change', function() {
+            const fitterId = $(this).val();
+            if (fitterId) {
+                loadFitterAvailability(fitterId);
+            } else {
+                $('#fitter-availability-display').hide();
+            }
+        });
+    }
+
+    /**
+     * Load fitter availability
+     */
+    function loadFitterAvailability(fitterId) {
+        $('#fitter-availability-display').show();
+        $('#availability-loading').show();
+        $('#availability-calendar').empty();
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'get_fitter_availability',
+                nonce: wpStaffDiary.nonce,
+                fitter_id: fitterId,
+                start_date: new Date().toISOString().split('T')[0],
+                days: 14
+            },
+            success: function(response) {
+                $('#availability-loading').hide();
+                if (response.success) {
+                    currentAvailability = response.data.availability;
+                    displayFitterAvailability(response.data.availability);
+                } else {
+                    $('#availability-calendar').html('<p style="color: #d63638;">Error loading availability</p>');
+                }
+            },
+            error: function() {
+                $('#availability-loading').hide();
+                $('#availability-calendar').html('<p style="color: #d63638;">Failed to load availability</p>');
+            }
+        });
+    }
+
+    /**
+     * Display fitter availability calendar
+     */
+    function displayFitterAvailability(availability) {
+        const $calendar = $('#availability-calendar');
+        $calendar.empty();
+
+        if (!availability || availability.length === 0) {
+            $calendar.html('<p>No availability data found.</p>');
+            return;
+        }
+
+        availability.forEach(function(day) {
+            let statusClass = 'available';
+            let statusColor = '#4caf50';
+            let statusText = 'Available';
+
+            if (day.all_day_booked) {
+                statusClass = 'fully-booked';
+                statusColor = '#f44336';
+                statusText = 'Fully Booked';
+            } else if (!day.am_available || !day.pm_available) {
+                statusClass = 'partially-booked';
+                statusColor = '#ff9800';
+                if (!day.am_available && day.pm_available) {
+                    statusText = 'PM Available';
+                } else if (day.am_available && !day.pm_available) {
+                    statusText = 'AM Available';
+                }
+            }
+
+            const dateObj = new Date(day.date + 'T00:00:00');
+            const formattedDate = dateObj.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short'
+            });
+
+            let jobsHtml = '';
+            if (day.jobs && day.jobs.length > 0) {
+                jobsHtml = '<div style="margin-top: 5px; font-size: 10px; color: #666;">';
+                day.jobs.forEach(function(job) {
+                    const period = job.time_period ? ' (' + job.time_period.toUpperCase() + ')' : '';
+                    jobsHtml += '<div>' + job.order_number + period + '</div>';
+                });
+                jobsHtml += '</div>';
+            }
+
+            const $dayCard = $('<div class="availability-day-card" style="' +
+                'padding: 10px;' +
+                'border: 2px solid ' + statusColor + ';' +
+                'border-radius: 4px;' +
+                'background: white;' +
+                'cursor: pointer;' +
+                'transition: all 0.2s;' +
+                '" data-date="' + day.date + '" data-available="' + (statusClass === 'available' ? '1' : '0') + '"></div>');
+
+            $dayCard.html(
+                '<div style="font-weight: bold; margin-bottom: 3px;">' + day.day_name.substring(0, 3) + '</div>' +
+                '<div style="font-size: 14px; margin-bottom: 3px;">' + formattedDate + '</div>' +
+                '<div style="font-size: 11px; color: ' + statusColor + '; font-weight: 600;">' + statusText + '</div>' +
+                jobsHtml
+            );
+
+            // Add click handler to select date
+            $dayCard.on('click', function() {
+                const date = $(this).data('date');
+                $('#convert-fitting-date').val(date);
+
+                // Highlight selected
+                $('.availability-day-card').css('box-shadow', 'none');
+                $(this).css('box-shadow', '0 0 0 3px #2271b1');
+
+                // Pre-select time period if partially booked
+                if (!day.am_available && day.pm_available) {
+                    $('#convert-fitting-time-period').val('pm');
+                } else if (day.am_available && !day.pm_available) {
+                    $('#convert-fitting-time-period').val('am');
+                }
+            });
+
+            // Hover effect
+            $dayCard.on('mouseenter', function() {
+                if ($(this).data('available') === '1' || statusClass === 'partially-booked') {
+                    $(this).css('transform', 'translateY(-2px)');
+                    $(this).css('box-shadow', '0 4px 8px rgba(0,0,0,0.1)');
+                }
+            }).on('mouseleave', function() {
+                $(this).css('transform', 'translateY(0)');
+                if ($(this).css('box-shadow').indexOf('rgb(34, 113, 177)') === -1) {
+                    $(this).css('box-shadow', 'none');
+                }
+            });
+
+            $calendar.append($dayCard);
+        });
     }
 
     /**
@@ -257,6 +401,45 @@
         if (!fitterId) {
             alert('Please select a fitter.');
             return;
+        }
+
+        // Check for scheduling conflicts
+        if (fittingDate && fittingTimePeriod) {
+            const selectedCard = $('.availability-day-card[data-date="' + fittingDate + '"]');
+            if (selectedCard.length > 0) {
+                const dayData = selectedCard.data();
+
+                // Find the corresponding day in availability data
+                const availabilityDay = currentAvailability.find(function(day) {
+                    return day.date === fittingDate;
+                });
+
+                if (availabilityDay) {
+                    const timePeriod = fittingTimePeriod.toLowerCase();
+                    let conflict = false;
+                    let conflictMessage = '';
+
+                    if (availabilityDay.all_day_booked) {
+                        conflict = true;
+                        conflictMessage = 'This fitter is fully booked on this date.';
+                    } else if (timePeriod === 'am' && !availabilityDay.am_available) {
+                        conflict = true;
+                        conflictMessage = 'This fitter already has a morning job on this date.';
+                    } else if (timePeriod === 'pm' && !availabilityDay.pm_available) {
+                        conflict = true;
+                        conflictMessage = 'This fitter already has an afternoon job on this date.';
+                    } else if (timePeriod === 'all-day' && (!availabilityDay.am_available || !availabilityDay.pm_available)) {
+                        conflict = true;
+                        conflictMessage = 'This fitter is partially booked on this date. An all-day job would conflict.';
+                    }
+
+                    if (conflict) {
+                        if (!confirm(conflictMessage + '\n\nDo you want to proceed anyway? This may result in a double-booking.')) {
+                            return;
+                        }
+                    }
+                }
+            }
         }
 
         $.ajax({
