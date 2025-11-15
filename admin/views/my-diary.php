@@ -117,7 +117,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             <thead>
                 <tr>
                     <th style="width: 10%;">Order #</th>
-                    <th style="width: 10%;">Job Date</th>
+                    <th style="width: 10%;">Order Date</th>
                     <th style="width: 18%;">Customer</th>
                     <th style="width: 12%;">Fitter</th>
                     <th style="width: 13%;">Product</th>
