@@ -636,22 +636,11 @@
 
         /**
          * Position the WooCommerce product search dropdown
+         * Note: Positioning is now handled by CSS (position: absolute)
          */
         function positionWCProductDropdown() {
-            const $input = $('#woocommerce-product-search');
-            const $dropdown = $('#woocommerce-product-results');
-
-            if ($input.length && $dropdown.is(':visible')) {
-                const inputOffset = $input.offset();
-                const inputHeight = $input.outerHeight();
-                const inputWidth = $input.outerWidth();
-
-                $dropdown.css({
-                    'top': (inputOffset.top + inputHeight) + 'px',
-                    'left': inputOffset.left + 'px',
-                    'width': inputWidth + 'px'
-                });
-            }
+            // No longer needed - CSS handles positioning with absolute positioning
+            // Keeping function stub for backwards compatibility
         }
 
         // Select WooCommerce product from search results
