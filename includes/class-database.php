@@ -18,11 +18,12 @@ class WP_Staff_Diary_Database {
 
     /**
      * Get diary entries for a specific user
+     * Excludes quotes (status = 'quotation') - quotes have their own page
      */
     public function get_user_entries($user_id, $start_date = null, $end_date = null) {
         global $wpdb;
 
-        $sql = "SELECT * FROM {$this->table_diary} WHERE user_id = %d";
+        $sql = "SELECT * FROM {$this->table_diary} WHERE user_id = %d AND status != 'quotation'";
         $params = array($user_id);
 
         if ($start_date && $end_date) {

@@ -52,6 +52,7 @@ class WP_Staff_Diary_Admin {
 
         // Get statuses and payment methods from settings
         $statuses = get_option('wp_staff_diary_statuses', array(
+            'quotation' => 'Quotation',
             'pending' => 'Pending',
             'in-progress' => 'In Progress',
             'completed' => 'Completed',
@@ -135,25 +136,35 @@ class WP_Staff_Diary_Admin {
      * Add admin menu pages
      */
     public function add_plugin_admin_menu() {
-        // Main menu - My Jobs
+        // Main menu - Staff Diary
         add_menu_page(
-            'My Jobs',
-            'Job Planner',
+            'Staff Diary',
+            'Staff Diary',
             'edit_posts',
             'wp-staff-diary',
             array($this, 'display_my_diary_page'),
             'dashicons-calendar-alt',
-            30
+            2
         );
 
-        // Submenu - My Jobs (duplicate for clarity)
+        // Submenu - Dashboard (previously "My Jobs")
         add_submenu_page(
             'wp-staff-diary',
-            'My Jobs',
-            'My Jobs',
+            'Dashboard',
+            'Dashboard',
             'edit_posts',
             'wp-staff-diary',
             array($this, 'display_my_diary_page')
+        );
+
+        // Submenu - Quotes
+        add_submenu_page(
+            'wp-staff-diary',
+            'Quotes',
+            'Quotes',
+            'edit_posts',
+            'wp-staff-diary-quotes',
+            array($this, 'display_quotes_page')
         );
 
         // Submenu - All Staff Jobs (only for managers/admins)
@@ -219,6 +230,13 @@ class WP_Staff_Diary_Admin {
      */
     public function display_settings_page() {
         require_once WP_STAFF_DIARY_PATH . 'admin/views/settings.php';
+    }
+
+    /**
+     * Display Quotes page
+     */
+    public function display_quotes_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/quotes.php';
     }
 
     /**
@@ -675,6 +693,7 @@ class WP_Staff_Diary_Admin {
 
         // Get current statuses
         $statuses = get_option('wp_staff_diary_statuses', array(
+            'quotation' => 'Quotation',
             'pending' => 'Pending',
             'in-progress' => 'In Progress',
             'completed' => 'Completed',
@@ -713,7 +732,7 @@ class WP_Staff_Diary_Admin {
         $status_key = sanitize_text_field($_POST['status_key']);
 
         // Prevent deletion of default statuses
-        $default_statuses = array('pending', 'in-progress', 'completed', 'cancelled');
+        $default_statuses = array('quotation', 'pending', 'in-progress', 'completed', 'cancelled');
         if (in_array($status_key, $default_statuses)) {
             wp_send_json_error(array('message' => 'Cannot delete default statuses'));
         }

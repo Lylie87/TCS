@@ -33,6 +33,7 @@ $end_date->modify('+6 days');
 $end_date_str = $end_date->format('Y-m-d');
 
 // Get entries for the current week - filter by FITTING DATE for calendar view
+// Exclude quotes (status = 'quotation') from calendar
 global $wpdb;
 $table_diary = $wpdb->prefix . 'staff_diary_entries';
 $entries = $wpdb->get_results($wpdb->prepare(
@@ -40,6 +41,7 @@ $entries = $wpdb->get_results($wpdb->prepare(
      WHERE user_id = %d
      AND is_cancelled = 0
      AND fitting_date_unknown = 0
+     AND status != 'quotation'
      AND (
          (fitting_date BETWEEN %s AND %s)
          OR (fitting_date IS NULL AND job_date BETWEEN %s AND %s)
@@ -53,11 +55,13 @@ $entries = $wpdb->get_results($wpdb->prepare(
 ));
 
 // Get ALL jobs with unknown fitting dates (not limited to current week)
+// Exclude quotes from this section as well
 $unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
     "SELECT * FROM $table_diary
      WHERE user_id = %d
      AND fitting_date_unknown = 1
      AND is_cancelled = 0
+     AND status != 'quotation'
      ORDER BY job_date DESC",
     $current_user->ID
 ));
