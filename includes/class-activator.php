@@ -45,6 +45,7 @@ class WP_Staff_Diary_Activator {
             job_date date DEFAULT NULL,
             job_time time DEFAULT NULL,
             fitting_date date DEFAULT NULL,
+            fitting_date_unknown tinyint(1) DEFAULT 0,
             fitting_time_period varchar(10) DEFAULT NULL,
             billing_address_line_1 varchar(255) DEFAULT NULL,
             billing_address_line_2 varchar(255) DEFAULT NULL,
@@ -58,6 +59,8 @@ class WP_Staff_Diary_Activator {
             area varchar(255) DEFAULT NULL,
             size varchar(255) DEFAULT NULL,
             product_description text DEFAULT NULL,
+            product_source varchar(20) DEFAULT 'manual',
+            woocommerce_product_id bigint(20) DEFAULT NULL,
             sq_mtr_qty decimal(10,2) DEFAULT NULL,
             price_per_sq_mtr decimal(10,2) DEFAULT NULL,
             fitting_cost decimal(10,2) DEFAULT 0.00,
@@ -73,7 +76,9 @@ class WP_Staff_Diary_Activator {
             KEY fitter_id (fitter_id),
             KEY job_date (job_date),
             KEY fitting_date (fitting_date),
-            KEY status (status)
+            KEY fitting_date_unknown (fitting_date_unknown),
+            KEY status (status),
+            KEY woocommerce_product_id (woocommerce_product_id)
         ) $charset_collate;";
 
         // Table for job images
@@ -142,6 +147,25 @@ class WP_Staff_Diary_Activator {
             KEY accessory_id (accessory_id)
         ) $charset_collate;";
 
+        // Table for notification logs
+        $table_notification_logs = $wpdb->prefix . 'staff_diary_notification_logs';
+
+        $sql_notification_logs = "CREATE TABLE $table_notification_logs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) DEFAULT NULL,
+            notification_type varchar(50) NOT NULL,
+            recipient varchar(255) NOT NULL,
+            method varchar(20) NOT NULL,
+            status varchar(20) NOT NULL,
+            error_message text DEFAULT NULL,
+            sent_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY notification_type (notification_type),
+            KEY status (status),
+            KEY sent_at (sent_at)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_customers);
         dbDelta($sql_diary);
@@ -149,6 +173,7 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_payments);
         dbDelta($sql_accessories);
         dbDelta($sql_job_accessories);
+        dbDelta($sql_notification_logs);
 
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);

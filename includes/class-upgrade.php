@@ -63,6 +63,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_0_23();
         }
 
+        // Upgrade to v2.2.0 - Add WooCommerce integration fields
+        if (version_compare($from_version, '2.2.0', '<')) {
+            self::upgrade_to_2_2_0();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
@@ -357,5 +362,57 @@ class WP_Staff_Diary_Upgrade {
         if (empty($column_exists)) {
             $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitting_cost decimal(10,2) DEFAULT 0.00 AFTER price_per_sq_mtr");
         }
+    }
+
+    /**
+     * Upgrade to version 2.2.0
+     * Add WooCommerce integration fields, fitting_date_unknown field, and notifications table
+     */
+    private static function upgrade_to_2_2_0() {
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Add product_source column (manual or woocommerce)
+        $source_column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'product_source'");
+        if (empty($source_column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN product_source varchar(20) DEFAULT 'manual' AFTER product_description");
+        }
+
+        // Add woocommerce_product_id column
+        $wc_id_column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'woocommerce_product_id'");
+        if (empty($wc_id_column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN woocommerce_product_id bigint(20) DEFAULT NULL AFTER product_source");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY woocommerce_product_id (woocommerce_product_id)");
+        }
+
+        // Add fitting_date_unknown column
+        $fitting_unknown_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'fitting_date_unknown'");
+        if (empty($fitting_unknown_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN fitting_date_unknown tinyint(1) DEFAULT 0 AFTER fitting_date");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY fitting_date_unknown (fitting_date_unknown)");
+        }
+
+        // Create notification logs table
+        $table_notification_logs = $wpdb->prefix . 'staff_diary_notification_logs';
+        $charset_collate = $wpdb->get_charset_collate();
+
+        $sql_notification_logs = "CREATE TABLE $table_notification_logs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) DEFAULT NULL,
+            notification_type varchar(50) NOT NULL,
+            recipient varchar(255) NOT NULL,
+            method varchar(20) NOT NULL,
+            status varchar(20) NOT NULL,
+            error_message text DEFAULT NULL,
+            sent_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY notification_type (notification_type),
+            KEY status (status),
+            KEY sent_at (sent_at)
+        ) $charset_collate;";
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql_notification_logs);
     }
 }
