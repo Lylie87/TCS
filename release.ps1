@@ -17,9 +17,9 @@ Write-Host "Step 1: Cleaning up old dist folder..." -ForegroundColor Yellow
 $distDir = Join-Path (Get-Location) "dist"
 if (Test-Path $distDir) {
     Remove-Item $distDir -Recurse -Force
-    Write-Host "  ✓ Dist folder cleaned" -ForegroundColor Green
+    Write-Host "  OK: Dist folder cleaned" -ForegroundColor Green
 } else {
-    Write-Host "  ✓ No dist folder to clean" -ForegroundColor Green
+    Write-Host "  OK: No dist folder to clean" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -30,9 +30,9 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Git pull failed"
     }
-    Write-Host "  ✓ Latest changes pulled successfully" -ForegroundColor Green
+    Write-Host "  OK: Latest changes pulled successfully" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Failed to pull changes: $_" -ForegroundColor Red
+    Write-Host "  ERROR: Failed to pull changes: $_" -ForegroundColor Red
     Write-Host ""
     Write-Host "Please resolve git issues and try again." -ForegroundColor Yellow
     exit 1
@@ -46,9 +46,9 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed"
     }
-    Write-Host "  ✓ Build completed successfully" -ForegroundColor Green
+    Write-Host "  OK: Build completed successfully" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Build failed: $_" -ForegroundColor Red
+    Write-Host "  ERROR: Build failed: $_" -ForegroundColor Red
     exit 1
 }
 Write-Host ""
@@ -60,9 +60,9 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Release upload failed"
     }
-    Write-Host "  ✓ Release uploaded successfully" -ForegroundColor Green
+    Write-Host "  OK: Release uploaded successfully" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Release upload failed: $_" -ForegroundColor Red
+    Write-Host "  ERROR: Release upload failed: $_" -ForegroundColor Red
     exit 1
 }
 Write-Host ""
@@ -74,6 +74,6 @@ Write-Host ""
 Write-Host "Your plugin is now live on GitHub!" -ForegroundColor Cyan
 Write-Host "You can update it in WordPress by:" -ForegroundColor Cyan
 Write-Host "  1. Go to Plugins page" -ForegroundColor White
-Write-Host '  2. Click Clear Cache & Refresh' -ForegroundColor White
-Write-Host '  3. Click Update Now' -ForegroundColor White
+Write-Host "  2. Click the Clear Cache button" -ForegroundColor White
+Write-Host "  3. Click Update Now" -ForegroundColor White
 Write-Host ""
