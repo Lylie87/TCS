@@ -30,9 +30,9 @@ Write-Host ""
 Write-Host "Step 1: Cleaning dist folder..." -ForegroundColor Yellow
 if (Test-Path "dist") {
     Remove-Item -Path "dist" -Recurse -Force
-    Write-Host "✓ Dist folder cleaned" -ForegroundColor Green
+    Write-Host "[OK] Dist folder cleaned" -ForegroundColor Green
 } else {
-    Write-Host "✓ Dist folder doesn't exist (nothing to clean)" -ForegroundColor Green
+    Write-Host "[OK] Dist folder doesn't exist (nothing to clean)" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -50,7 +50,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to pull latest changes" -ForegroundColor Red
     exit 1
 }
-Write-Host "✓ Latest changes pulled" -ForegroundColor Green
+Write-Host "[OK] Latest changes pulled" -ForegroundColor Green
 Write-Host ""
 
 # Step 3: Build distribution package
@@ -77,8 +77,9 @@ Write-Host "Release Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Version $Version has been:" -ForegroundColor Green
-Write-Host "  ✓ Built and packaged" -ForegroundColor Green
-Write-Host "  ✓ Uploaded to GitHub releases" -ForegroundColor Green
+Write-Host "  [OK] Built and packaged" -ForegroundColor Green
+Write-Host "  [OK] Uploaded to GitHub releases" -ForegroundColor Green
 Write-Host ""
 Write-Host "You can view the release at:" -ForegroundColor Cyan
-Write-Host "https://github.com/Lylie87/TCS/releases/tag/v$Version" -ForegroundColor Cyan
+$releaseUrl = "https://github.com/Lylie87/TCS/releases/tag/v$Version"
+Write-Host $releaseUrl -ForegroundColor Cyan
