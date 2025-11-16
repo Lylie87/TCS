@@ -19,7 +19,7 @@ Write-Host ""
 # Look for zip in dist folder
 $rootDir = Get-Location
 $distDir = Join-Path $rootDir "dist"
-$zipName = "wp-staff-diary-v$version.zip"
+$zipName = "wp-staff-diary.zip"
 $zipPath = Join-Path $distDir $zipName
 
 # Check if dist folder ZIP exists

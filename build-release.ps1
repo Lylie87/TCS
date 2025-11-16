@@ -29,7 +29,7 @@ if (-not $Version) {
 $rootDir = Get-Location
 $distDir = Join-Path $rootDir "dist"
 $pluginDir = Join-Path $distDir "wp-staff-diary"
-$zipFile = Join-Path $distDir "wp-staff-diary-v$Version.zip"
+$zipFile = Join-Path $distDir "wp-staff-diary.zip"
 
 # Clean up old dist folder if it exists
 if (Test-Path $distDir) {
@@ -93,7 +93,7 @@ foreach ($item in $items) {
 
 Write-Host ""
 Write-Host "Creating zip file with 7-Zip..." -ForegroundColor Yellow
-Write-Host "  Output: wp-staff-diary-v$Version.zip" -ForegroundColor Gray
+Write-Host "  Output: wp-staff-diary.zip" -ForegroundColor Gray
 
 # Remove old zip if exists
 if (Test-Path $zipFile) {

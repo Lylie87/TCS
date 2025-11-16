@@ -239,7 +239,6 @@ class WP_Staff_Diary_GitHub_Updater {
                 'wp-staff-diary.zip',
                 'WP Staff Diary.zip',
                 'wp_staff_diary.zip',
-                "wp-staff-diary-v{$version}.zip", // New versioned format
             );
             foreach ($release->assets as $asset) {
                 if (in_array($asset->name, $possible_names)) {
