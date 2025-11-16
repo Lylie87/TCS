@@ -14,20 +14,8 @@
         let currentEntryId = 0;
         let selectedCustomerId = 0;
         let customerSearchTimeout = null;
-
-        // ===========================================
-        // UTILITY FUNCTIONS
-        // ===========================================
-
-        /**
-         * Escape HTML to prevent XSS attacks
-         */
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        let currentDiscountType = null;
+        let currentDiscountValue = 0;
 
         // ===========================================
         // NAVIGATION & UI CONTROLS
@@ -106,6 +94,8 @@
         function openEntryModal() {
             currentEntryId = 0;
             selectedCustomerId = 0;
+            currentDiscountType = null;
+            currentDiscountValue = 0;
             $('#modal-title').text('Add New Job');
             $('#diary-entry-form')[0].reset();
             $('#entry-id').val('');
@@ -138,9 +128,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Data is wrapped in response.data.entry by the modular jobs controller
-                        const entry = response.data.entry || response.data;
-                        populateEntryForm(entry);
+                        populateEntryForm(response.data);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
@@ -174,6 +162,7 @@
 
             // Job details
             $('#job-date').val(entry.job_date);
+            $('#quote-date').val(entry.quote_date);
             $('#job-time').val(entry.job_time);
             $('#fitting-date').val(entry.fitting_date);
             $('#fitting-time-period').val(entry.fitting_time_period);
@@ -213,6 +202,15 @@
             $('#price-per-sq-mtr').val(entry.price_per_sq_mtr);
             $('#fitting-cost').val(entry.fitting_cost || 0);
 
+            // Discount information
+            if (entry.discount_type && entry.discount_value > 0) {
+                currentDiscountType = entry.discount_type;
+                currentDiscountValue = parseFloat(entry.discount_value);
+            } else {
+                currentDiscountType = null;
+                currentDiscountValue = 0;
+            }
+
             // Accessories
             $('.accessory-checkbox').prop('checked', false);
             $('.accessory-quantity').prop('disabled', true).val(1);
@@ -230,7 +228,6 @@
             // Notes and status
             $('#notes').val(entry.notes);
             $('#status').val(entry.status);
-            $('#job-type').val(entry.job_type || 'residential');
 
             // Photos section - show when editing existing entry
             if (entry.id && entry.id > 0) {
@@ -240,19 +237,8 @@
                 if (entry.images && entry.images.length > 0) {
                     let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
                     entry.images.forEach(function(image) {
-                        const categoryColors = {
-                            'before': '#3b82f6',
-                            'during': '#f59e0b',
-                            'after': '#10b981',
-                            'general': '#6b7280'
-                        };
-                        const category = image.image_category || 'general';
-                        const categoryColor = categoryColors[category] || categoryColors['general'];
-                        const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
-
                         photosHtml += `<div style="position: relative;">
-                            <img src="${escapeHtml(image.image_url)}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${escapeHtml(image.image_url)}', '_blank')">
-                            <span style="position: absolute; top: 5px; right: 5px; background: ${categoryColor}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">${categoryLabel}</span>
+                            <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
                         </div>`;
                     });
                     photosHtml += '</div>';
@@ -336,10 +322,6 @@
                 });
             });
 
-            console.log('=== SAVE ENTRY DEBUG ===');
-            console.log('Fitter dropdown value:', $('#fitter').val());
-            console.log('Fitter dropdown HTML:', $('#fitter')[0]);
-
             const formData = {
                 action: 'save_diary_entry',
                 nonce: wpStaffDiary.nonce,
@@ -347,6 +329,7 @@
                 customer_id: $('#customer-id').val(),
                 fitter_id: $('#fitter').val(),
                 job_date: $('#job-date').val(),
+                quote_date: $('#quote-date').val(),
                 job_time: $('#job-time').val(),
                 fitting_date: $('#fitting-date').val(),
                 fitting_time_period: $('#fitting-time-period').val(),
@@ -368,7 +351,6 @@
                 fitting_cost: $('#fitting-cost').val(),
                 notes: $('#notes').val(),
                 status: $('#status').val(),
-                job_type: $('#job-type').val(),
                 accessories: accessories
             };
 
@@ -814,16 +796,45 @@
             $('#subtotal-display').text(subtotal.toFixed(2));
 
             // VAT
+            let total = subtotal;
             if (typeof vatEnabled !== 'undefined' && vatEnabled == 1) {
                 const vatAmount = subtotal * (vatRate / 100);
                 $('#vat-display').text(vatAmount.toFixed(2));
-
-                // Total
-                const total = subtotal + vatAmount;
-                $('#total-display').text(total.toFixed(2));
-            } else {
-                $('#total-display').text(subtotal.toFixed(2));
+                total = subtotal + vatAmount;
             }
+
+            // Apply discount if exists
+            if (currentDiscountType && currentDiscountValue > 0) {
+                let discountAmount = 0;
+                if (currentDiscountType === 'percentage') {
+                    discountAmount = (total * currentDiscountValue) / 100;
+                } else {
+                    discountAmount = Math.min(currentDiscountValue, total);
+                }
+
+                // Show discount rows
+                $('#original-total-row').show();
+                $('#discount-row').show();
+                $('#original-total-display').text(total.toFixed(2));
+
+                // Update discount label and amount
+                const discountLabel = currentDiscountType === 'percentage'
+                    ? currentDiscountValue.toFixed(2) + '%'
+                    : '£' + currentDiscountValue.toFixed(2);
+                $('#discount-label-display').text(discountLabel);
+                $('#discount-amount-display').text(discountAmount.toFixed(2));
+
+                // Calculate final total
+                total = total - discountAmount;
+                $('#total-label').text('Final Total:');
+            } else {
+                // Hide discount rows
+                $('#original-total-row').hide();
+                $('#discount-row').hide();
+                $('#total-label').text('Total:');
+            }
+
+            $('#total-display').text(total.toFixed(2));
         }
 
         // ===========================================
@@ -843,18 +854,8 @@
                     entry_id: entryId
                 },
                 success: function(response) {
-                    console.log('=== GET DIARY ENTRY DEBUG ===');
-                    console.log('Full response:', JSON.stringify(response, null, 2));
                     if (response.success) {
-                        // Data is wrapped in response.data.entry by the modular jobs controller
-                        const entry = response.data.entry || response.data;
-                        console.log('Order number:', entry.order_number);
-                        console.log('Customer:', entry.customer);
-                        console.log('Status:', entry.status);
-                        console.log('Subtotal:', entry.subtotal);
-                        console.log('Total:', entry.total);
-                        console.log('Fitter ID:', entry.fitter_id);
-                        displayEntryDetails(entry);
+                        displayEntryDetails(response.data);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
@@ -982,103 +983,17 @@
             const balanceAmount = balance > 0 ? `£${balance.toFixed(2)}` : '£0.00';
             html += `<tr class="${balanceClass}"><td><strong>${balanceLabel}</strong></td><td class="amount"><strong>${balanceAmount}</strong></td></tr>`;
             html += '</table>';
-
-            // Payment Progress Visualization
-            if (entry.total > 0) {
-                const totalPaid = Math.max(0, parseFloat(entry.total) - balance);
-                let percentPaid = (totalPaid / entry.total) * 100;
-
-                // Clamp percentage between 0 and 100 to handle edge cases
-                percentPaid = Math.min(100, Math.max(0, percentPaid));
-
-                // Check for invalid numbers
-                if (isNaN(percentPaid)) {
-                    percentPaid = 0;
-                }
-
-                // Group payments by type
-                const paymentsByType = {
-                    'deposit': 0,
-                    'partial': 0,
-                    'final': 0,
-                    'full': 0
-                };
-                if (entry.payments && entry.payments.length > 0) {
-                    entry.payments.forEach(function(payment) {
-                        const type = payment.payment_type || 'partial';
-                        const amount = parseFloat(payment.amount);
-                        if (!isNaN(amount) && amount > 0) {
-                            paymentsByType[type] = (paymentsByType[type] || 0) + amount;
-                        }
-                    });
-                }
-
-                html += '<div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 4px;">';
-                html += '<h4 style="margin-top: 0; margin-bottom: 10px; color: #2c3e50;">Payment Progress</h4>';
-
-                // Progress bar
-                html += '<div style="position: relative; background: #e0e0e0; height: 30px; border-radius: 15px; overflow: hidden; margin-bottom: 15px;">';
-                if (totalPaid > 0) {
-                    html += `<div style="position: absolute; left: 0; top: 0; height: 100%; width: ${percentPaid}%; background: linear-gradient(90deg, #10b981 0%, #34d399 100%); transition: width 0.3s ease;"></div>`;
-                }
-                html += `<div style="position: absolute; width: 100%; text-align: center; line-height: 30px; font-weight: 600; color: ${totalPaid > 0 ? '#fff' : '#666'}; text-shadow: ${totalPaid > 0 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none'};">${percentPaid.toFixed(1)}% Paid</div>`;
-                html += '</div>';
-
-                // Payment breakdown
-                html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">';
-                html += `<div><strong>Total Due:</strong> £${parseFloat(entry.total).toFixed(2)}</div>`;
-                html += `<div><strong>Total Paid:</strong> <span style="color: #10b981;">£${totalPaid.toFixed(2)}</span></div>`;
-                if (paymentsByType['deposit'] > 0) {
-                    html += `<div><strong>Deposits:</strong> £${paymentsByType['deposit'].toFixed(2)}</div>`;
-                }
-                if (paymentsByType['partial'] > 0) {
-                    html += `<div><strong>Partial Payments:</strong> £${paymentsByType['partial'].toFixed(2)}</div>`;
-                }
-                if (paymentsByType['final'] > 0) {
-                    html += `<div><strong>Final Payments:</strong> £${paymentsByType['final'].toFixed(2)}</div>`;
-                }
-                if (paymentsByType['full'] > 0) {
-                    html += `<div><strong>Full Payments:</strong> £${paymentsByType['full'].toFixed(2)}</div>`;
-                }
-                html += '</div>';
-                html += '</div>';
-            }
-
             html += '</div>';
 
             // Photos Section
             html += '<div class="detail-section">';
             html += '<h3>Photos</h3>';
             if (entry.images && entry.images.length > 0) {
-                // Group images by category
-                const beforeImages = entry.images.filter(img => img.image_category === 'before');
-                const duringImages = entry.images.filter(img => img.image_category === 'during');
-                const afterImages = entry.images.filter(img => img.image_category === 'after');
-                const generalImages = entry.images.filter(img => !img.image_category || img.image_category === 'general');
-
-                // Show before/after comparison button if we have both
-                if (beforeImages.length > 0 && afterImages.length > 0) {
-                    html += `<button type="button" class="button" id="view-comparison-btn" data-entry-id="${entry.id}" style="margin-bottom: 15px;">
-                        <span class="dashicons dashicons-image-flip-horizontal"></span> View Before/After Comparison
-                    </button>`;
-                }
-
                 html += '<div class="job-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">';
                 entry.images.forEach(function(image) {
-                    const categoryColors = {
-                        'before': '#3b82f6',
-                        'during': '#f59e0b',
-                        'after': '#10b981',
-                        'general': '#6b7280'
-                    };
-                    const category = image.image_category || 'general';
-                    const categoryColor = categoryColors[category] || categoryColors['general'];
-                    const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
-
                     html += `<div class="job-image-item" style="position: relative;">
-                        <img src="${escapeHtml(image.image_url)}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${escapeHtml(image.image_url)}', '_blank')">
-                        <span style="position: absolute; top: 5px; right: 5px; background: ${categoryColor}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">${categoryLabel}</span>
-                        ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${escapeHtml(image.image_caption)}</p>` : ''}
+                        <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                        ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
                     </div>`;
                 });
                 html += '</div>';
@@ -1138,6 +1053,43 @@
                 html += '</div>';
             }
 
+            // Send Discount Offer Section
+            if (entry.is_cancelled != 1 && entry.customer && entry.customer.customer_email) {
+                html += '<div class="detail-section">';
+                html += '<h3>Send Discount Offer</h3>';
+
+                // Show existing discount if applied
+                if (entry.discount_type && entry.discount_value) {
+                    const discountDisplay = entry.discount_type === 'percentage' ? entry.discount_value + '%' : '£' + parseFloat(entry.discount_value).toFixed(2);
+                    html += `<div class="notice notice-info inline" style="margin-bottom: 15px; padding: 10px;">
+                        <strong>Current Discount:</strong> ${discountDisplay} (${entry.discount_type})
+                        ${entry.discount_applied_date ? ' - Sent on ' + entry.discount_applied_date : ''}
+                    </div>`;
+                }
+
+                html += `<div class="discount-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                    <p style="margin-top: 0;">Send a special discount offer to <strong>${entry.customer.customer_email}</strong></p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px;"><strong>Discount Amount:</strong></label>
+                            <input type="number" id="discount-value-${entry.id}" step="0.01" min="0.01" value="5" style="width: 100%;" placeholder="Enter amount">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px;"><strong>Discount Type:</strong></label>
+                            <select id="discount-type-${entry.id}" style="width: 100%;">
+                                <option value="percentage">Percentage (%)</option>
+                                <option value="fixed">Fixed Amount (£)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="button" class="button button-primary" id="send-discount-btn" data-entry-id="${entry.id}">
+                        <span class="dashicons dashicons-email"></span> Send Discount Email
+                    </button>
+                    <p class="description" style="margin: 10px 0 0 0;">This will send an email to the customer with the discount offer and a link to accept the quote.</p>
+                </div>`;
+                html += '</div>';
+            }
+
             // Actions
             html += '<div class="detail-section detail-actions">';
             if (entry.is_cancelled != 1) {
@@ -1160,69 +1112,6 @@
         // PHOTOS - Upload
         // ===========================================
 
-        // Helper function to show photo category selection modal
-        function showPhotoCategoryModal(file, entryId, callback) {
-            // Prevent duplicate modals
-            if ($('#photo-category-modal').length > 0) {
-                return;
-            }
-
-            const categoryHtml = `
-                <div style="padding: 20px;">
-                    <h3 style="margin-top: 0;">Photo Category</h3>
-                    <p>Select the category for this photo:</p>
-                    <select id="photo-category-select" style="width: 100%; padding: 8px; margin-bottom: 15px;">
-                        <option value="before">Before</option>
-                        <option value="during">During</option>
-                        <option value="after">After</option>
-                        <option value="general">General</option>
-                    </select>
-                    <p>Add a caption (optional):</p>
-                    <input type="text" id="photo-caption-input" placeholder="Enter photo caption..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
-                    <div style="text-align: right;">
-                        <button type="button" class="button" id="cancel-photo-upload" style="margin-right: 10px;">Cancel</button>
-                        <button type="button" class="button button-primary" id="confirm-photo-upload">Upload Photo</button>
-                    </div>
-                </div>
-            `;
-
-            // Create temporary modal
-            $('body').append(`
-                <div id="photo-category-modal" style="display: none; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
-                    <div style="background-color: #fff; margin: 10% auto; padding: 0; border: 1px solid #888; width: 400px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        ${categoryHtml}
-                    </div>
-                </div>
-            `);
-
-            $('#photo-category-modal').fadeIn();
-
-            // Handle cancel
-            $('#cancel-photo-upload').on('click', function() {
-                $('#photo-category-modal').remove();
-                $(document).off('keydown.photoCategoryModal');
-                callback(null);
-            });
-
-            // Handle confirm
-            $('#confirm-photo-upload').on('click', function() {
-                const category = $('#photo-category-select').val();
-                const caption = $('#photo-caption-input').val();
-                $('#photo-category-modal').remove();
-                $(document).off('keydown.photoCategoryModal');
-                callback({category: category, caption: caption});
-            });
-
-            // Handle escape key
-            $(document).on('keydown.photoCategoryModal', function(e) {
-                if (e.key === 'Escape' || e.keyCode === 27) {
-                    $('#photo-category-modal').remove();
-                    $(document).off('keydown.photoCategoryModal');
-                    callback(null);
-                }
-            });
-        }
-
         // Photo upload button click
         $(document).on('click', '#upload-photo-btn', function() {
             const entryId = $(this).data('entry-id');
@@ -1233,55 +1122,37 @@
         $(document).on('change', '[id^="photo-upload-input-"]:not(#photo-upload-input-form)', function() {
             const entryId = $(this).attr('id').replace('photo-upload-input-', '');
             const file = this.files[0];
-            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
-                $input.val('');
                 return;
             }
 
-            // Show category selection modal
-            showPhotoCategoryModal(file, entryId, function(result) {
-                if (!result) {
-                    // User cancelled
-                    $input.val('');
-                    return;
-                }
+            const formData = new FormData();
+            formData.append('action', 'upload_job_image');
+            formData.append('nonce', wpStaffDiary.nonce);
+            formData.append('diary_entry_id', entryId);
+            formData.append('image', file);
 
-                const formData = new FormData();
-                formData.append('action', 'upload_job_image');
-                formData.append('nonce', wpStaffDiary.nonce);
-                formData.append('diary_entry_id', entryId);
-                formData.append('image', file);
-                formData.append('category', result.category);
-                if (result.caption) {
-                    formData.append('caption', result.caption);
-                }
-
-                $.ajax({
-                    url: wpStaffDiary.ajaxUrl,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        if (response.success) {
-                            alert('Photo uploaded successfully!');
-                            viewEntryDetails(entryId); // Reload the view
-                        } else {
-                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
-                        }
-                        $input.val('');
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Upload error:', xhr.responseText);
-                        alert('An error occurred while uploading the photo.');
-                        $input.val('');
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        alert('Photo uploaded successfully!');
+                        viewEntryDetails(entryId); // Reload the view
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
                     }
-                });
+                },
+                error: function() {
+                    alert('An error occurred while uploading the photo.');
+                }
             });
         });
 
@@ -1343,200 +1214,43 @@
         $(document).on('change', '#photo-upload-input-form', function() {
             const entryId = $(this).data('entry-id');
             const file = this.files[0];
-            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
-                $input.val('');
                 return;
             }
 
-            // Show category selection modal
-            showPhotoCategoryModal(file, entryId, function(result) {
-                if (!result) {
-                    // User cancelled
-                    $input.val('');
-                    return;
-                }
+            const formData = new FormData();
+            formData.append('action', 'upload_job_image');
+            formData.append('nonce', wpStaffDiary.nonce);
+            formData.append('diary_entry_id', entryId);
+            formData.append('image', file);
 
-                const formData = new FormData();
-                formData.append('action', 'upload_job_image');
-                formData.append('nonce', wpStaffDiary.nonce);
-                formData.append('diary_entry_id', entryId);
-                formData.append('image', file);
-                formData.append('category', result.category);
-                if (result.caption) {
-                    formData.append('caption', result.caption);
-                }
-
-                $.ajax({
-                    url: wpStaffDiary.ajaxUrl,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        if (response.success) {
-                            alert('Photo uploaded successfully!');
-                            // Reload entry to show new photo
-                            loadEntryForEdit(entryId);
-                        } else {
-                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
-                        }
-                        $input.val('');
-                    },
-                    error: function() {
-                        alert('An error occurred while uploading the photo.');
-                        $input.val('');
-                    }
-                });
-            });
-        });
-
-        // Before/After comparison button click
-        $(document).on('click', '#view-comparison-btn', function() {
-            const entryId = $(this).data('entry-id');
-
-            // Fetch full entry data
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
-                data: {
-                    action: 'get_diary_entry',
-                    nonce: wpStaffDiary.nonce,
-                    entry_id: entryId
-                },
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function(response) {
-                    if (response.success && response.data.entry) {
-                        showBeforeAfterComparison(response.data.entry);
+                    if (response.success) {
+                        alert('Photo uploaded successfully!');
+                        // Reload entry to show new photo
+                        loadEntryForEdit(entryId);
                     } else {
-                        alert('Error loading photos');
+                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
                     }
                 },
                 error: function() {
-                    alert('Failed to load photos');
+                    alert('An error occurred while uploading the photo.');
                 }
             });
+
+            // Clear the file input
+            $(this).val('');
         });
-
-        // Show before/after comparison modal
-        function showBeforeAfterComparison(entry) {
-            // Prevent duplicate modals
-            if ($('#comparison-modal').length > 0) {
-                return;
-            }
-
-            // Validate entry has images
-            if (!entry.images || entry.images.length === 0) {
-                alert('No images found for this job');
-                return;
-            }
-
-            const beforeImages = entry.images.filter(img => img.image_category === 'before');
-            const afterImages = entry.images.filter(img => img.image_category === 'after');
-            const duringImages = entry.images.filter(img => img.image_category === 'during');
-
-            let comparisonHtml = `
-                <div style="padding: 20px;">
-                    <h2 style="margin-top: 0;">Before/After Comparison - ${escapeHtml(entry.order_number)}</h2>
-                    <div style="margin-bottom: 20px;">
-                        <p style="color: #666;">Job Date: ${new Date(entry.job_date).toLocaleDateString('en-GB')}</p>
-                    </div>
-            `;
-
-            // Create side-by-side comparisons
-            const maxPairs = Math.max(beforeImages.length, afterImages.length);
-            for (let i = 0; i < maxPairs; i++) {
-                comparisonHtml += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #ddd; padding-bottom: 20px;">';
-
-                // Before column
-                comparisonHtml += '<div>';
-                comparisonHtml += '<h3 style="color: #3b82f6; margin-bottom: 10px;"><span class="dashicons dashicons-arrow-left-alt"></span> Before</h3>';
-                if (beforeImages[i]) {
-                    comparisonHtml += `
-                        <img src="${escapeHtml(beforeImages[i].image_url)}" alt="Before" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #3b82f6;" onclick="window.open('${escapeHtml(beforeImages[i].image_url)}', '_blank')">
-                        ${beforeImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${escapeHtml(beforeImages[i].image_caption)}</p>` : ''}
-                    `;
-                } else {
-                    comparisonHtml += '<p style="color: #999; font-style: italic;">No before photo</p>';
-                }
-                comparisonHtml += '</div>';
-
-                // After column
-                comparisonHtml += '<div>';
-                comparisonHtml += '<h3 style="color: #10b981; margin-bottom: 10px;"><span class="dashicons dashicons-arrow-right-alt"></span> After</h3>';
-                if (afterImages[i]) {
-                    comparisonHtml += `
-                        <img src="${escapeHtml(afterImages[i].image_url)}" alt="After" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #10b981;" onclick="window.open('${escapeHtml(afterImages[i].image_url)}', '_blank')">
-                        ${afterImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${escapeHtml(afterImages[i].image_caption)}</p>` : ''}
-                    `;
-                } else {
-                    comparisonHtml += '<p style="color: #999; font-style: italic;">No after photo</p>';
-                }
-                comparisonHtml += '</div>';
-
-                comparisonHtml += '</div>';
-            }
-
-            // Show during photos if any
-            if (duringImages.length > 0) {
-                comparisonHtml += '<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">';
-                comparisonHtml += '<h3 style="color: #f59e0b; margin-bottom: 15px;"><span class="dashicons dashicons-images-alt2"></span> During Progress</h3>';
-                comparisonHtml += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">';
-                duringImages.forEach(function(image) {
-                    comparisonHtml += `
-                        <div>
-                            <img src="${escapeHtml(image.image_url)}" alt="During" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #f59e0b;" onclick="window.open('${escapeHtml(image.image_url)}', '_blank')">
-                            ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${escapeHtml(image.image_caption)}</p>` : ''}
-                        </div>
-                    `;
-                });
-                comparisonHtml += '</div></div>';
-            }
-
-            comparisonHtml += `
-                    <div style="text-align: right; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                        <button type="button" class="button button-primary" id="close-comparison-modal">Close</button>
-                    </div>
-                </div>
-            `;
-
-            // Create comparison modal
-            $('body').append(`
-                <div id="comparison-modal" style="display: none; position: fixed; z-index: 999998; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
-                    <div style="background-color: #fff; margin: 2% auto; max-width: 1200px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
-                        ${comparisonHtml}
-                    </div>
-                </div>
-            `);
-
-            $('#comparison-modal').fadeIn();
-
-            // Cleanup function
-            function closeComparisonModal() {
-                $('#comparison-modal').remove();
-                $(document).off('keydown.comparisonModal');
-            }
-
-            // Handle close button
-            $('#close-comparison-modal').on('click', closeComparisonModal);
-
-            // Close on background click
-            $('#comparison-modal').on('click', function(e) {
-                if (e.target.id === 'comparison-modal') {
-                    closeComparisonModal();
-                }
-            });
-
-            // Handle escape key
-            $(document).on('keydown.comparisonModal', function(e) {
-                if (e.key === 'Escape' || e.keyCode === 27) {
-                    closeComparisonModal();
-                }
-            });
-        }
 
         // Record payment button click in edit form
         $(document).on('click', '#record-payment-form-btn', function() {
@@ -1611,590 +1325,324 @@
         }
 
         // ===========================================
-        // PAYMENT REMINDERS
+        // ACCESSORIES MANAGEMENT (Settings Page)
         // ===========================================
 
         /**
-         * Send payment reminder button click
+         * Edit accessory - Toggle inline edit mode
          */
-        $(document).on('click', '#send-payment-reminder-btn', function() {
-            const entryId = $(this).data('entry-id');
-            const customerEmail = $(this).data('customer-email');
-            const customerName = $(this).data('customer-name');
-            const balance = $(this).data('balance');
+        $(document).on('click', '.edit-accessory', function() {
+            const $row = $(this).closest('tr');
+            const accessoryId = $(this).data('id');
 
-            if (!customerEmail) {
-                alert('Customer has no email address on file');
-                return;
-            }
+            // Show edit inputs, hide display spans
+            $row.find('.accessory-name-display, .accessory-price-display, .accessory-active-display').hide();
+            $row.find('.accessory-name-edit, .accessory-price-edit, .accessory-active-edit').show();
 
-            if (parseFloat(balance) <= 0) {
-                alert('This job has no outstanding balance');
-                return;
-            }
-
-            showPaymentReminderModal(entryId, customerEmail, customerName, balance);
+            // Show save/cancel buttons, hide edit/delete buttons
+            $row.find('.edit-accessory, .delete-accessory').hide();
+            $row.find('.save-accessory, .cancel-accessory-edit').show();
         });
 
         /**
-         * Show payment reminder modal
+         * Cancel accessory edit - Revert to display mode
          */
-        function showPaymentReminderModal(entryId, customerEmail, customerName, balance) {
-            let html = '<div id="payment-reminder-modal-content">';
-            html += '<h2>Send Payment Reminder</h2>';
-            html += '<p><strong>Customer:</strong> ' + customerName + '</p>';
-            html += '<p><strong>Email:</strong> ' + customerEmail + '</p>';
-            html += '<p><strong>Outstanding Balance:</strong> £' + parseFloat(balance).toFixed(2) + '</p>';
-            html += '<form id="payment-reminder-form">';
-            html += '<div class="form-field">';
-            html += '<label for="payment-reminder-message">Custom Message (Optional)</label>';
-            html += '<textarea id="payment-reminder-message" rows="6" placeholder="Leave blank to use default reminder template..."></textarea>';
-            html += '<p class="description">A professional payment reminder will be sent to the customer.</p>';
-            html += '</div>';
-            html += '<div class="modal-footer">';
-            html += '<button type="submit" class="button button-primary"><span class="dashicons dashicons-email"></span> Send Reminder</button>';
-            html += '<button type="button" class="button close-payment-reminder-modal">Cancel</button>';
-            html += '</div>';
-            html += '</form>';
-            html += '</div>';
+        $(document).on('click', '.cancel-accessory-edit', function() {
+            const $row = $(this).closest('tr');
 
-            // Create modal if doesn't exist
-            if ($('#payment-reminder-modal').length === 0) {
-                $('body').append('<div id="payment-reminder-modal" class="wp-staff-diary-modal"><div class="wp-staff-diary-modal-content"><span class="wp-staff-diary-modal-close">&times;</span><div id="payment-reminder-modal-body"></div></div></div>');
-            }
+            // Hide edit inputs, show display spans
+            $row.find('.accessory-name-edit, .accessory-price-edit, .accessory-active-edit').hide();
+            $row.find('.accessory-name-display, .accessory-price-display, .accessory-active-display').show();
 
-            $('#payment-reminder-modal-body').html(html);
-            $('#payment-reminder-modal').fadeIn(200);
+            // Hide save/cancel buttons, show edit/delete buttons
+            $row.find('.save-accessory, .cancel-accessory-edit').hide();
+            $row.find('.edit-accessory, .delete-accessory').show();
 
-            // Form submit handler
-            $('#payment-reminder-form').off('submit').on('submit', function(e) {
-                e.preventDefault();
-                sendPaymentReminder(entryId, $('#payment-reminder-message').val());
-            });
-
-            // Close modal handlers
-            $('.close-payment-reminder-modal, #payment-reminder-modal .wp-staff-diary-modal-close').off('click').on('click', function() {
-                $('#payment-reminder-modal').fadeOut(200);
-            });
-
-            $('#payment-reminder-modal').off('click').on('click', function(e) {
-                if (e.target.id === 'payment-reminder-modal') {
-                    $(this).fadeOut(200);
-                }
-            });
-        }
+            // Reset inputs to original values
+            $row.find('.accessory-name-edit').val($row.find('.accessory-name-display').text());
+            $row.find('.accessory-price-edit').val($row.find('.accessory-price-display').text().replace('£', '').replace(',', ''));
+        });
 
         /**
-         * Send payment reminder
+         * Save accessory - Update via AJAX
          */
-        function sendPaymentReminder(entryId, customMessage) {
-            const $form = $('#payment-reminder-form');
-            const $submitBtn = $form.find('button[type="submit"]');
-            const originalText = $submitBtn.html();
+        $(document).on('click', '.save-accessory', function() {
+            const $button = $(this);
+            const $row = $button.closest('tr');
+            const accessoryId = $button.data('id');
 
-            $submitBtn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
+            const accessoryName = $row.find('.accessory-name-edit').val().trim();
+            const price = parseFloat($row.find('.accessory-price-edit').val());
+            const isActive = $row.find('.accessory-active-edit').is(':checked') ? 1 : 0;
+
+            // Validation
+            if (!accessoryName) {
+                alert('Accessory name is required');
+                return;
+            }
+
+            if (isNaN(price) || price < 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+
+            // Disable button during save
+            $button.prop('disabled', true).text('Saving...');
 
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'send_payment_reminder',
+                    action: 'update_accessory',
+                    nonce: wpStaffDiary.nonce,
+                    accessory_id: accessoryId,
+                    accessory_name: accessoryName,
+                    price: price,
+                    is_active: isActive
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Update display values
+                        $row.find('.accessory-name-display').text(accessoryName);
+                        $row.find('.accessory-price-display').text('£' + price.toFixed(2));
+                        $row.find('.accessory-active-display').text(isActive ? 'Yes' : 'No');
+
+                        // Switch back to display mode
+                        $row.find('.accessory-name-edit, .accessory-price-edit, .accessory-active-edit').hide();
+                        $row.find('.accessory-name-display, .accessory-price-display, .accessory-active-display').show();
+                        $row.find('.save-accessory, .cancel-accessory-edit').hide();
+                        $row.find('.edit-accessory, .delete-accessory').show();
+
+                        // Show success message
+                        alert('Accessory updated successfully');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while updating the accessory');
+                },
+                complete: function() {
+                    $button.prop('disabled', false).text('Save');
+                }
+            });
+        });
+
+        /**
+         * Delete accessory - Remove via AJAX
+         */
+        $(document).on('click', '.delete-accessory', function() {
+            if (!confirm('Are you sure you want to delete this accessory? This action cannot be undone.')) {
+                return;
+            }
+
+            const $button = $(this);
+            const $row = $button.closest('tr');
+            const accessoryId = $button.data('id');
+
+            $button.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'delete_accessory',
+                    nonce: wpStaffDiary.nonce,
+                    accessory_id: accessoryId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $row.fadeOut(300, function() {
+                            $(this).remove();
+
+                            // Check if table is empty
+                            if ($('#accessories-table tbody tr').length === 0) {
+                                $('#accessories-table tbody').html(
+                                    '<tr><td colspan="4" style="text-align: center; color: #666;">No accessories added yet. Add your first accessory below.</td></tr>'
+                                );
+                            }
+                        });
+                        alert('Accessory deleted successfully');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                        $button.prop('disabled', false).text('Delete');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the accessory');
+                    $button.prop('disabled', false).text('Delete');
+                }
+            });
+        });
+
+        /**
+         * Add new accessory - Create via AJAX
+         */
+        $(document).on('click', '#add-accessory-btn', function() {
+            const $button = $(this);
+            const accessoryName = $('#new-accessory-name').val().trim();
+            const price = parseFloat($('#new-accessory-price').val());
+
+            // Validation
+            if (!accessoryName) {
+                alert('Please enter an accessory name');
+                return;
+            }
+
+            if (isNaN(price) || price < 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+
+            $button.prop('disabled', true).text('Adding...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'add_accessory',
+                    nonce: wpStaffDiary.nonce,
+                    accessory_name: accessoryName,
+                    price: price
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const accessoryId = response.data.accessory.id;
+
+                        // Remove "no accessories" message if it exists
+                        $('#accessories-table tbody tr td[colspan]').closest('tr').remove();
+
+                        // Add new row to table
+                        const newRow = `
+                            <tr data-accessory-id="${accessoryId}">
+                                <td>
+                                    <span class="accessory-name-display">${accessoryName}</span>
+                                    <input type="text" class="accessory-name-edit regular-text" value="${accessoryName}" style="display:none;">
+                                </td>
+                                <td>
+                                    <span class="accessory-price-display">£${price.toFixed(2)}</span>
+                                    <input type="number" class="accessory-price-edit small-text" value="${price}" step="0.01" min="0" style="display:none;">
+                                </td>
+                                <td>
+                                    <span class="accessory-active-display">Yes</span>
+                                    <input type="checkbox" class="accessory-active-edit" checked style="display:none;">
+                                </td>
+                                <td>
+                                    <button type="button" class="button button-small edit-accessory" data-id="${accessoryId}">Edit</button>
+                                    <button type="button" class="button button-small save-accessory" data-id="${accessoryId}" style="display:none;">Save</button>
+                                    <button type="button" class="button button-small cancel-accessory-edit" style="display:none;">Cancel</button>
+                                    <button type="button" class="button button-small button-link-delete delete-accessory" data-id="${accessoryId}">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+
+                        $('#accessories-table tbody').append(newRow);
+
+                        // Clear form
+                        $('#new-accessory-name').val('');
+                        $('#new-accessory-price').val('0.00');
+
+                        alert('Accessory added successfully');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while adding the accessory');
+                },
+                complete: function() {
+                    $button.prop('disabled', false).text('Add Accessory');
+                }
+            });
+        });
+
+        // ===========================================
+        // DISCOUNT OFFERS
+        // ===========================================
+
+        /**
+         * Send discount email button click
+         */
+        $(document).on('click', '#send-discount-btn', function() {
+            const $button = $(this);
+            const entryId = $button.data('entry-id');
+            const discountType = $(`#discount-type-${entryId}`).val();
+            const discountValue = parseFloat($(`#discount-value-${entryId}`).val());
+
+            // Validation
+            if (!discountValue || discountValue <= 0) {
+                alert('Please enter a valid discount amount');
+                return;
+            }
+
+            if (discountType === 'percentage' && discountValue > 100) {
+                alert('Percentage discount cannot exceed 100%');
+                return;
+            }
+
+            // Confirmation
+            const discountDisplay = discountType === 'percentage' ? discountValue + '%' : '£' + discountValue.toFixed(2);
+            if (!confirm(`Are you sure you want to send a ${discountDisplay} discount offer to the customer?`)) {
+                return;
+            }
+
+            // Disable button and show loading
+            $button.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'send_discount_email',
                     nonce: wpStaffDiary.nonce,
                     entry_id: entryId,
-                    custom_message: customMessage
+                    discount_type: discountType,
+                    discount_value: discountValue
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert('Payment reminder sent successfully!');
-                        $('#payment-reminder-modal').fadeOut(200);
-                        // Reload entry to see updated reminder history
-                        if (typeof loadEntryForEdit === 'function') {
-                            loadEntryForEdit(entryId);
-                        }
+                        alert('Discount email sent successfully!');
+                        // Reload the entry details to show updated discount info
+                        viewEntryDetails(entryId);
                     } else {
-                        alert('Error: ' + (response.data.message || 'Failed to send reminder'));
+                        alert('Error: ' + response.data.message);
+                        $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
                     }
                 },
                 error: function() {
-                    alert('An error occurred while sending the reminder.');
-                },
-                complete: function() {
-                    $submitBtn.prop('disabled', false).html(originalText);
+                    alert('An error occurred while sending the discount email');
+                    $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
                 }
             });
-        }
-
-        // ===========================================
-        // JOB TEMPLATES
-        // ===========================================
-
-        /**
-         * Save current form as template button click
-         */
-        $(document).on('click', '#save-as-template-btn', function() {
-            showSaveTemplateModal();
         });
 
-        /**
-         * Load from template button click
-         */
-        $(document).on('click', '#load-from-template-btn', function() {
-            showTemplateSelectionModal();
-        });
+        // ===========================================
+        // CURRENCY SETTINGS (Settings Page)
+        // ===========================================
 
         /**
-         * Show save template modal
+         * Auto-update currency symbol when currency code changes
          */
-        function showSaveTemplateModal() {
-            // Get current form values
-            const formData = {
-                product_description: $('#product-description').val() || '',
-                sq_mtr_qty: $('#sq-mtr-qty').val() || '',
-                price_per_sq_mtr: $('#price-per-sq-mtr').val() || '',
-                fitting_cost: $('#fitting-cost').val() || '',
-                accessories: []
+        $('#currency_code').on('change', function() {
+            const currencySymbols = {
+                'GBP': '£',
+                'USD': '$',
+                'EUR': '€',
+                'AUD': 'A$',
+                'CAD': 'C$',
+                'NZD': 'NZ$',
+                'JPY': '¥',
+                'CHF': 'CHF',
+                'SEK': 'kr',
+                'NOK': 'kr',
+                'DKK': 'kr'
             };
 
-            // Get selected accessories
-            $('.accessory-checkbox:checked').each(function() {
-                const accessoryId = $(this).data('accessory-id');
-                const quantity = $('.accessory-quantity[data-accessory-id="' + accessoryId + '"]').val();
-                formData.accessories.push({
-                    id: accessoryId,
-                    name: $(this).data('accessory-name'),
-                    price: $(this).data('price'),
-                    quantity: quantity
-                });
-            });
-
-            let html = '<div id="save-template-modal-content">';
-            html += '<h2>Save as Template</h2>';
-            html += '<form id="save-template-form">';
-            html += '<div class="form-field">';
-            html += '<label for="template-name">Template Name <span class="required">*</span></label>';
-            html += '<input type="text" id="template-name" class="regular-text" required>';
-            html += '</div>';
-            html += '<div class="form-field">';
-            html += '<label for="template-description">Description (Optional)</label>';
-            html += '<textarea id="template-description" rows="3"></textarea>';
-            html += '</div>';
-            html += '<div class="modal-footer">';
-            html += '<button type="submit" class="button button-primary">Save Template</button>';
-            html += '<button type="button" class="button close-save-template-modal">Cancel</button>';
-            html += '</div>';
-            html += '</form>';
-            html += '</div>';
-
-            // Create modal if doesn't exist
-            if ($('#save-template-modal').length === 0) {
-                $('body').append('<div id="save-template-modal" class="wp-staff-diary-modal"><div class="wp-staff-diary-modal-content"><span class="wp-staff-diary-modal-close">&times;</span><div id="save-template-modal-body"></div></div></div>');
-            }
-
-            $('#save-template-modal-body').html(html);
-            $('#save-template-modal').fadeIn(200);
-
-            // Form submit handler
-            $('#save-template-form').off('submit').on('submit', function(e) {
-                e.preventDefault();
-                saveJobTemplate(formData, $('#template-name').val(), $('#template-description').val());
-            });
-
-            // Close modal handlers
-            $('.close-save-template-modal, #save-template-modal .wp-staff-diary-modal-close').off('click').on('click', function() {
-                $('#save-template-modal').fadeOut(200);
-            });
-
-            $('#save-template-modal').off('click').on('click', function(e) {
-                if (e.target.id === 'save-template-modal') {
-                    $(this).fadeOut(200);
-                }
-            });
-        }
-
-        /**
-         * Save job template
-         */
-        function saveJobTemplate(formData, templateName, templateDescription) {
-            const $submitBtn = $('#save-template-form button[type="submit"]');
-            const originalText = $submitBtn.html();
-
-            $submitBtn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Saving...');
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'save_job_template',
-                    nonce: wpStaffDiary.nonce,
-                    template_name: templateName,
-                    template_description: templateDescription,
-                    product_description: formData.product_description,
-                    sq_mtr_qty: formData.sq_mtr_qty,
-                    price_per_sq_mtr: formData.price_per_sq_mtr,
-                    fitting_cost: formData.fitting_cost,
-                    accessories: formData.accessories
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert('Template saved successfully!');
-                        $('#save-template-modal').fadeOut(200);
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to save template'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while saving the template.');
-                },
-                complete: function() {
-                    $submitBtn.prop('disabled', false).html(originalText);
-                }
-            });
-        }
-
-        /**
-         * Show template selection modal
-         */
-        function showTemplateSelectionModal() {
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'get_job_templates',
-                    nonce: wpStaffDiary.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        displayTemplateSelectionModal(response.data.templates);
-                    } else {
-                        alert('Error loading templates: ' + (response.data.message || 'Unknown error'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while loading templates.');
-                }
-            });
-        }
-
-        /**
-         * Display template selection modal
-         */
-        function displayTemplateSelectionModal(templates) {
-            let html = '<div id="template-selection-modal-content">';
-            html += '<h2>Load from Template</h2>';
-
-            if (templates.length === 0) {
-                html += '<p>No templates available. Save your first template using "Save as Template" button.</p>';
-                html += '<div class="modal-footer">';
-                html += '<button type="button" class="button close-template-selection-modal">Close</button>';
-                html += '</div>';
-            } else {
-                html += '<div class="template-list" style="max-height: 400px; overflow-y: auto;">';
-                templates.forEach(function(template) {
-                    html += '<div class="template-item" style="padding: 15px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 4px; cursor: pointer;" data-template-id="' + template.id + '">';
-                    html += '<h3 style="margin: 0 0 5px 0;">' + template.template_name + '</h3>';
-                    if (template.template_description) {
-                        html += '<p style="margin: 0 0 5px 0; color: #666;">' + template.template_description + '</p>';
-                    }
-                    if (template.product_description) {
-                        html += '<p style="margin: 0; font-size: 12px; color: #999;">Product: ' + template.product_description.substring(0, 60) + (template.product_description.length > 60 ? '...' : '') + '</p>';
-                    }
-                    html += '<div style="margin-top: 10px;">';
-                    html += '<button type="button" class="button button-primary button-small load-template-btn" data-template-id="' + template.id + '">Load</button>';
-                    html += '<button type="button" class="button button-small delete-template-btn" data-template-id="' + template.id + '" style="margin-left: 5px;">Delete</button>';
-                    html += '</div>';
-                    html += '</div>';
-                });
-                html += '</div>';
-                html += '<div class="modal-footer" style="margin-top: 15px;">';
-                html += '<button type="button" class="button close-template-selection-modal">Cancel</button>';
-                html += '</div>';
-            }
-
-            html += '</div>';
-
-            // Create modal if doesn't exist
-            if ($('#template-selection-modal').length === 0) {
-                $('body').append('<div id="template-selection-modal" class="wp-staff-diary-modal"><div class="wp-staff-diary-modal-content"><span class="wp-staff-diary-modal-close">&times;</span><div id="template-selection-modal-body"></div></div></div>');
-            }
-
-            $('#template-selection-modal-body').html(html);
-            $('#template-selection-modal').fadeIn(200);
-
-            // Load template button click
-            $(document).on('click', '.load-template-btn', function() {
-                const templateId = $(this).data('template-id');
-                loadJobTemplate(templateId);
-            });
-
-            // Delete template button click
-            $(document).on('click', '.delete-template-btn', function() {
-                const templateId = $(this).data('template-id');
-                if (confirm('Are you sure you want to delete this template?')) {
-                    deleteJobTemplate(templateId);
-                }
-            });
-
-            // Close modal handlers
-            $('.close-template-selection-modal, #template-selection-modal .wp-staff-diary-modal-close').off('click').on('click', function() {
-                $('#template-selection-modal').fadeOut(200);
-            });
-
-            $('#template-selection-modal').off('click').on('click', function(e) {
-                if (e.target.id === 'template-selection-modal') {
-                    $(this).fadeOut(200);
-                }
-            });
-        }
-
-        /**
-         * Load job template
-         */
-        function loadJobTemplate(templateId) {
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'get_job_template',
-                    nonce: wpStaffDiary.nonce,
-                    template_id: templateId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        const template = response.data.template;
-
-                        // Fill form fields
-                        $('#product-description').val(template.product_description || '');
-                        $('#sq-mtr-qty').val(template.sq_mtr_qty || '');
-                        $('#price-per-sq-mtr').val(template.price_per_sq_mtr || '');
-                        $('#fitting-cost').val(template.fitting_cost || '0.00');
-
-                        // Clear all accessory selections first
-                        $('.accessory-checkbox').prop('checked', false);
-                        $('.accessory-quantity').prop('disabled', true).val('1');
-
-                        // Load accessories
-                        if (template.accessories && template.accessories.length > 0) {
-                            template.accessories.forEach(function(accessory) {
-                                const checkbox = $('.accessory-checkbox[data-accessory-id="' + accessory.id + '"]');
-                                const quantityInput = $('.accessory-quantity[data-accessory-id="' + accessory.id + '"]');
-
-                                checkbox.prop('checked', true);
-                                quantityInput.prop('disabled', false).val(accessory.quantity);
-                            });
-                        }
-
-                        // Trigger calculation update
-                        if (typeof updateCalculations === 'function') {
-                            updateCalculations();
-                        }
-
-                        $('#template-selection-modal').fadeOut(200);
-                        alert('Template loaded successfully!');
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to load template'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while loading the template.');
-                }
-            });
-        }
-
-        /**
-         * Delete job template
-         */
-        function deleteJobTemplate(templateId) {
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'delete_job_template',
-                    nonce: wpStaffDiary.nonce,
-                    template_id: templateId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert('Template deleted successfully!');
-                        // Refresh template list
-                        showTemplateSelectionModal();
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to delete template'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while deleting the template.');
-                }
-            });
-        }
-
-        // ===========================================
-        // BULK ACTIONS
-        // ===========================================
-
-        /**
-         * Select all checkboxes for bulk actions
-         */
-        $(document).on('change', '#select-all-jobs', function() {
-            $('.bulk-select-job').prop('checked', $(this).is(':checked'));
-            updateBulkActionButtons();
-        });
-
-        /**
-         * Individual checkbox change
-         */
-        $(document).on('change', '.bulk-select-job', function() {
-            updateBulkActionButtons();
-
-            // Update select all checkbox
-            const totalCheckboxes = $('.bulk-select-job').length;
-            const checkedCheckboxes = $('.bulk-select-job:checked').length;
-            $('#select-all-jobs').prop('checked', totalCheckboxes === checkedCheckboxes);
-        });
-
-        /**
-         * Update bulk action buttons visibility and count
-         */
-        function updateBulkActionButtons() {
-            const selectedCount = $('.bulk-select-job:checked').length;
-
-            if (selectedCount > 0) {
-                $('#bulk-actions-bar').show();
-                $('#selected-count').text(selectedCount);
-            } else {
-                $('#bulk-actions-bar').hide();
-            }
-        }
-
-        /**
-         * Bulk update status
-         */
-        $(document).on('click', '#bulk-update-status-btn', function() {
-            const selectedIds = getSelectedJobIds();
-
-            if (selectedIds.length === 0) {
-                alert('Please select jobs first');
-                return;
-            }
-
-            const newStatus = prompt('Enter new status (pending, in-progress, completed, cancelled):');
-
-            if (!newStatus) {
-                return;
-            }
-
-            if (confirm(`Update status for ${selectedIds.length} job(s) to "${newStatus}"?`)) {
-                performBulkAction('bulk_update_status', {entry_ids: selectedIds, new_status: newStatus}, this);
+            const selectedCode = $(this).val();
+            if (currencySymbols[selectedCode]) {
+                $('#currency_symbol').val(currencySymbols[selectedCode]);
             }
         });
-
-        /**
-         * Bulk delete jobs
-         */
-        $(document).on('click', '#bulk-delete-btn', function() {
-            const selectedIds = getSelectedJobIds();
-
-            if (selectedIds.length === 0) {
-                alert('Please select jobs first');
-                return;
-            }
-
-            if (confirm(`Are you sure you want to delete ${selectedIds.length} job(s)? This action cannot be undone.`)) {
-                performBulkAction('bulk_delete_jobs', {entry_ids: selectedIds}, this);
-            }
-        });
-
-        /**
-         * Bulk export to CSV
-         */
-        $(document).on('click', '#bulk-export-btn', function() {
-            const selectedIds = getSelectedJobIds();
-
-            if (selectedIds.length === 0) {
-                alert('Please select jobs first');
-                return;
-            }
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'bulk_export_jobs',
-                    nonce: wpStaffDiary.nonce,
-                    entry_ids: selectedIds
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Convert to CSV and download
-                        const csvContent = response.data.csv_data.map(row =>
-                            row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')
-                        ).join('\n');
-
-                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const link = document.createElement('a');
-                        const url = URL.createObjectURL(blob);
-
-                        link.setAttribute('href', url);
-                        link.setAttribute('download', response.data.filename);
-                        link.style.visibility = 'hidden';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-
-                        alert('Export completed successfully!');
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Export failed'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred during export');
-                }
-            });
-        });
-
-        /**
-         * Get selected job IDs
-         */
-        function getSelectedJobIds() {
-            const ids = [];
-            $('.bulk-select-job:checked').each(function() {
-                ids.push($(this).val());
-            });
-            return ids;
-        }
-
-        /**
-         * Perform bulk action
-         */
-        function performBulkAction(action, data, btnElement) {
-            const $btn = $(btnElement);
-            const originalText = $btn.text();
-
-            $btn.prop('disabled', true).text('Processing...');
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: action,
-                    nonce: wpStaffDiary.nonce,
-                    ...data
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload(); // Reload to show updated jobs
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Action failed'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text(originalText);
-                }
-            });
-        }
 
         // ===========================================
         // UTILITY FUNCTIONS

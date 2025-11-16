@@ -39,6 +39,13 @@ if (isset($_POST['wp_staff_diary_save_settings'])) {
     update_option('wp_staff_diary_job_time_type', sanitize_text_field($_POST['job_time_type']));
     update_option('wp_staff_diary_fitting_time_length', isset($_POST['fitting_time_length']) ? '1' : '0');
 
+    // Currency settings
+    update_option('wp_staff_diary_currency_symbol', sanitize_text_field($_POST['currency_symbol']));
+    update_option('wp_staff_diary_currency_code', sanitize_text_field($_POST['currency_code']));
+    update_option('wp_staff_diary_currency_position', sanitize_text_field($_POST['currency_position']));
+    update_option('wp_staff_diary_decimal_separator', sanitize_text_field($_POST['decimal_separator']));
+    update_option('wp_staff_diary_thousands_separator', sanitize_text_field($_POST['thousands_separator']));
+
     echo '<div class="notice notice-success is-dismissible"><p>General settings saved successfully!</p></div>';
 }
 
@@ -139,6 +146,20 @@ if (isset($_POST['wp_staff_diary_save_github'])) {
     }
 }
 
+// Save quotation settings
+if (isset($_POST['wp_staff_diary_save_quotation'])) {
+    check_admin_referer('wp_staff_diary_quotation_nonce');
+
+    update_option('wp_staff_diary_quote_enable_auto_discount', isset($_POST['quote_enable_auto_discount']) ? '1' : '0');
+    update_option('wp_staff_diary_quote_auto_discount_days', absint($_POST['quote_auto_discount_days']));
+    update_option('wp_staff_diary_quote_auto_discount_type', sanitize_text_field($_POST['quote_auto_discount_type']));
+    update_option('wp_staff_diary_quote_auto_discount_value', floatval($_POST['quote_auto_discount_value']));
+    update_option('wp_staff_diary_quote_validity_days', absint($_POST['quote_validity_days']));
+    update_option('wp_staff_diary_quote_email_template', wp_kses_post($_POST['quote_email_template']));
+
+    echo '<div class="notice notice-success is-dismissible"><p>Quotation settings saved successfully!</p></div>';
+}
+
 // Get current settings
 $date_format = get_option('wp_staff_diary_date_format', 'd/m/Y');
 $time_format = get_option('wp_staff_diary_time_format', 'H:i');
@@ -148,6 +169,20 @@ $default_status = get_option('wp_staff_diary_default_status', 'pending');
 // Job time options
 $job_time_type = get_option('wp_staff_diary_job_time_type', 'ampm'); // 'ampm' or 'time' or 'none'
 $fitting_time_length = get_option('wp_staff_diary_fitting_time_length', '0');
+
+// Currency settings with WooCommerce fallback
+$wc_active = class_exists('WooCommerce');
+$wc_currency = $wc_active ? get_woocommerce_currency() : 'GBP';
+$wc_symbol = $wc_active ? get_woocommerce_currency_symbol() : '£';
+$wc_position = $wc_active ? get_option('woocommerce_currency_pos', 'left') : 'left';
+$wc_decimal_sep = $wc_active ? wc_get_price_decimal_separator() : '.';
+$wc_thousand_sep = $wc_active ? wc_get_price_thousand_separator() : ',';
+
+$currency_symbol = get_option('wp_staff_diary_currency_symbol', $wc_symbol);
+$currency_code = get_option('wp_staff_diary_currency_code', $wc_currency);
+$currency_position = get_option('wp_staff_diary_currency_position', $wc_position);
+$decimal_separator = get_option('wp_staff_diary_decimal_separator', $wc_decimal_sep);
+$thousands_separator = get_option('wp_staff_diary_thousands_separator', $wc_thousand_sep);
 
 // Company details
 $company_name = get_option('wp_staff_diary_company_name', '');
@@ -215,6 +250,36 @@ $fitters = get_option('wp_staff_diary_fitters', array());
 
 // GitHub settings
 $github_token = get_option('wp_staff_diary_github_token', '');
+
+// Quotation settings
+$quote_enable_auto_discount = get_option('wp_staff_diary_quote_enable_auto_discount', '0');
+$quote_auto_discount_days = get_option('wp_staff_diary_quote_auto_discount_days', '7');
+$quote_auto_discount_type = get_option('wp_staff_diary_quote_auto_discount_type', 'percentage');
+$quote_auto_discount_value = get_option('wp_staff_diary_quote_auto_discount_value', '5');
+$quote_validity_days = get_option('wp_staff_diary_quote_validity_days', '30');
+$quote_email_template = get_option('wp_staff_diary_quote_email_template', '');
+
+// If no template set, use default
+if (empty($quote_email_template)) {
+    $quote_email_template = "Dear {customer_name},
+
+Thank you for your interest in our services. We provided you with a quote on {quote_date} for {product_description}.
+
+We're pleased to offer you a special {discount_type_label} discount on this quote:
+
+Original Amount: {original_amount}
+Discount: {discount_display}
+Final Amount: {final_amount}
+
+This offer is valid until {expiry_date}. To accept this quote and secure your booking, please click the link below:
+
+{quote_link}
+
+If you have any questions, please don't hesitate to contact us.
+
+Best regards,
+{company_name}";
+}
 ?>
 
 <div class="wrap wp-staff-diary-wrap">
@@ -231,6 +296,7 @@ $github_token = get_option('wp_staff_diary_github_token', '');
         <a href="#payment-methods" class="nav-tab" data-tab="payment-methods">Payment Methods</a>
         <a href="#accessories" class="nav-tab" data-tab="accessories">Accessories</a>
         <a href="#fitters" class="nav-tab" data-tab="fitters">Fitters</a>
+        <a href="#quotation" class="nav-tab" data-tab="quotation">Quotation Settings</a>
         <a href="#github" class="nav-tab" data-tab="github">GitHub Updates</a>
         <a href="#terms" class="nav-tab" data-tab="terms">Terms & Conditions</a>
         <a href="#info" class="nav-tab" data-tab="info">Plugin Info</a>
@@ -329,6 +395,84 @@ $github_token = get_option('wp_staff_diary_github_token', '');
                                 Allow users to specify job duration (e.g., 3 hours)
                             </label>
                             <p class="description">When enabled, users can allocate a specific time length to each job.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">Currency Settings</h3>
+            <?php if ($wc_active): ?>
+                <div class="notice notice-info inline" style="margin: 10px 0; padding: 10px;">
+                    <p><strong>WooCommerce Detected:</strong> Default values are pulled from your WooCommerce settings. You can override them below.</p>
+                </div>
+            <?php endif; ?>
+
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">
+                            <label for="currency_code">Currency Code</label>
+                        </th>
+                        <td>
+                            <select name="currency_code" id="currency_code" class="regular-text">
+                                <option value="GBP" <?php selected($currency_code, 'GBP'); ?>>GBP - British Pound</option>
+                                <option value="USD" <?php selected($currency_code, 'USD'); ?>>USD - US Dollar</option>
+                                <option value="EUR" <?php selected($currency_code, 'EUR'); ?>>EUR - Euro</option>
+                                <option value="AUD" <?php selected($currency_code, 'AUD'); ?>>AUD - Australian Dollar</option>
+                                <option value="CAD" <?php selected($currency_code, 'CAD'); ?>>CAD - Canadian Dollar</option>
+                                <option value="NZD" <?php selected($currency_code, 'NZD'); ?>>NZD - New Zealand Dollar</option>
+                                <option value="JPY" <?php selected($currency_code, 'JPY'); ?>>JPY - Japanese Yen</option>
+                                <option value="CHF" <?php selected($currency_code, 'CHF'); ?>>CHF - Swiss Franc</option>
+                                <option value="SEK" <?php selected($currency_code, 'SEK'); ?>>SEK - Swedish Krona</option>
+                                <option value="NOK" <?php selected($currency_code, 'NOK'); ?>>NOK - Norwegian Krone</option>
+                                <option value="DKK" <?php selected($currency_code, 'DKK'); ?>>DKK - Danish Krone</option>
+                            </select>
+                            <p class="description">Select your business currency.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="currency_symbol">Currency Symbol</label>
+                        </th>
+                        <td>
+                            <input type="text" name="currency_symbol" id="currency_symbol" value="<?php echo esc_attr($currency_symbol); ?>" class="small-text">
+                            <p class="description">The symbol to display for your currency (e.g., £, $, €).</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="currency_position">Currency Position</label>
+                        </th>
+                        <td>
+                            <select name="currency_position" id="currency_position" class="regular-text">
+                                <option value="left" <?php selected($currency_position, 'left'); ?>>Left (£99.00)</option>
+                                <option value="right" <?php selected($currency_position, 'right'); ?>>Right (99.00£)</option>
+                                <option value="left_space" <?php selected($currency_position, 'left_space'); ?>>Left with space (£ 99.00)</option>
+                                <option value="right_space" <?php selected($currency_position, 'right_space'); ?>>Right with space (99.00 £)</option>
+                            </select>
+                            <p class="description">Where to display the currency symbol relative to the amount.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="decimal_separator">Decimal Separator</label>
+                        </th>
+                        <td>
+                            <input type="text" name="decimal_separator" id="decimal_separator" value="<?php echo esc_attr($decimal_separator); ?>" class="small-text" maxlength="1">
+                            <p class="description">Character for decimal separator (usually . or ,).</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="thousands_separator">Thousands Separator</label>
+                        </th>
+                        <td>
+                            <input type="text" name="thousands_separator" id="thousands_separator" value="<?php echo esc_attr($thousands_separator); ?>" class="small-text" maxlength="1">
+                            <p class="description">Character for thousands separator (usually , or . or leave blank).</p>
                         </td>
                     </tr>
                 </tbody>
@@ -856,6 +1000,112 @@ $github_token = get_option('wp_staff_diary_github_token', '');
                 <button type="button" id="add-fitter-btn" class="button button-secondary">Add Fitter</button>
             </div>
         </div>
+    </div>
+
+    <!-- Quotation Settings Tab -->
+    <div id="quotation-tab" class="settings-tab" style="display:none;">
+        <h2>Quotation & Discount Settings</h2>
+        <p>Configure automatic discount offers for outstanding quotes and customize the email template.</p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('wp_staff_diary_quotation_nonce'); ?>
+
+            <h3>Automatic Discount Offers</h3>
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">
+                            <label for="quote_enable_auto_discount">Enable Auto Discount</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="quote_enable_auto_discount" id="quote_enable_auto_discount" value="1" <?php checked($quote_enable_auto_discount, '1'); ?>>
+                                Automatically send discount offers for outstanding quotes
+                            </label>
+                            <p class="description">When enabled, the system will automatically send discount offers to customers after a specified number of days.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="quote_auto_discount_days">Send Discount After</label>
+                        </th>
+                        <td>
+                            <input type="number" name="quote_auto_discount_days" id="quote_auto_discount_days" value="<?php echo esc_attr($quote_auto_discount_days); ?>" min="1" max="365" class="small-text"> days
+                            <p class="description">Number of days to wait after quote date before sending discount offer.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="quote_auto_discount_type">Default Discount Type</label>
+                        </th>
+                        <td>
+                            <select name="quote_auto_discount_type" id="quote_auto_discount_type" class="regular-text">
+                                <option value="percentage" <?php selected($quote_auto_discount_type, 'percentage'); ?>>Percentage (%)</option>
+                                <option value="fixed" <?php selected($quote_auto_discount_type, 'fixed'); ?>>Fixed Amount (<?php echo WP_Staff_Diary_Currency_Helper::get_symbol(); ?>)</option>
+                            </select>
+                            <p class="description">Choose whether automatic discounts are a percentage or fixed amount.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="quote_auto_discount_value">Default Discount Value</label>
+                        </th>
+                        <td>
+                            <input type="number" name="quote_auto_discount_value" id="quote_auto_discount_value" value="<?php echo esc_attr($quote_auto_discount_value); ?>" step="0.01" min="0" class="small-text">
+                            <p class="description">The default discount amount (e.g., 5 for 5% or 50 for <?php echo WP_Staff_Diary_Currency_Helper::get_symbol(); ?>50).</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="quote_validity_days">Quote Validity Period</label>
+                        </th>
+                        <td>
+                            <input type="number" name="quote_validity_days" id="quote_validity_days" value="<?php echo esc_attr($quote_validity_days); ?>" min="1" max="365" class="small-text"> days
+                            <p class="description">How long quotes remain valid after sending (used in discount emails).</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">Discount Email Template</h3>
+            <p>Customize the email template sent to customers with discount offers. You can use the following merge tags:</p>
+            <div style="background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-left: 4px solid #2271b1;">
+                <strong>Available Merge Tags:</strong><br>
+                <code>{customer_name}</code> - Customer's name<br>
+                <code>{quote_date}</code> - Date the quote was created<br>
+                <code>{product_description}</code> - Product/service description<br>
+                <code>{order_number}</code> - Quote/order number<br>
+                <code>{original_amount}</code> - Original quote amount with currency<br>
+                <code>{discount_display}</code> - Discount amount (e.g., "5%" or "£50.00")<br>
+                <code>{discount_type_label}</code> - "percentage" or "fixed price"<br>
+                <code>{final_amount}</code> - Final amount after discount with currency<br>
+                <code>{expiry_date}</code> - Date when the discount offer expires<br>
+                <code>{quote_link}</code> - Link for customer to accept the quote<br>
+                <code>{company_name}</code> - Your company name
+            </div>
+
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">
+                            <label for="quote_email_template">Email Template</label>
+                        </th>
+                        <td>
+                            <textarea name="quote_email_template" id="quote_email_template" rows="15" class="large-text code"><?php echo esc_textarea($quote_email_template); ?></textarea>
+                            <p class="description">The email template sent to customers. HTML is not supported - use plain text.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="submit">
+                <input type="submit" name="wp_staff_diary_save_quotation" class="button button-primary" value="Save Quotation Settings">
+            </p>
+        </form>
     </div>
 
     <!-- GitHub Updates Tab -->

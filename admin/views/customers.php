@@ -493,12 +493,13 @@ jQuery(document).ready(function($) {
         $('#customer-modal').fadeOut();
     });
 
-    // Close modal when clicking outside
-    $(window).on('click', function(event) {
-        if ($(event.target).hasClass('wp-staff-diary-modal')) {
-            $('.wp-staff-diary-modal').fadeOut();
-        }
-    });
+    // Close modal when clicking outside - DISABLED to prevent accidental data loss
+    // Users must explicitly click the X button or Cancel button to close modals
+    // $(window).on('click', function(event) {
+    //     if ($(event.target).hasClass('wp-staff-diary-modal')) {
+    //         $('.wp-staff-diary-modal').fadeOut();
+    //     }
+    // });
 
     // Search Customers
     let searchTimeout;

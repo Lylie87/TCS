@@ -518,6 +518,7 @@ class WP_Staff_Diary_Admin {
             'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
             'fitter_id' => isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null,
             'job_date' => !empty($_POST['job_date']) ? sanitize_text_field($_POST['job_date']) : null,
+            'quote_date' => !empty($_POST['quote_date']) ? sanitize_text_field($_POST['quote_date']) : null,
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
             'fitting_date' => !empty($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null,
             'fitting_time_period' => !empty($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null,
@@ -1238,7 +1239,7 @@ class WP_Staff_Diary_Admin {
      * AJAX: Delete accessory
      */
     public function delete_accessory() {
-        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => 'Permission denied'));
@@ -1267,6 +1268,53 @@ class WP_Staff_Diary_Admin {
         } else {
             wp_send_json_error(array('message' => 'Failed to delete accessory'));
         }
+    }
+
+    // ==================== QUOTES & DISCOUNTS AJAX HANDLERS ====================
+
+    /**
+     * AJAX: Send discount email to customer
+     */
+    public function send_discount_email() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $entry_id = intval($_POST['entry_id']);
+        $discount_type = sanitize_text_field($_POST['discount_type']);
+        $discount_value = floatval($_POST['discount_value']);
+
+        // Validation
+        if (empty($entry_id)) {
+            wp_send_json_error(array('message' => 'Entry ID is required'));
+        }
+
+        if (!in_array($discount_type, array('percentage', 'fixed'))) {
+            wp_send_json_error(array('message' => 'Invalid discount type'));
+        }
+
+        if ($discount_value <= 0) {
+            wp_send_json_error(array('message' => 'Discount value must be greater than zero'));
+        }
+
+        if ($discount_type === 'percentage' && $discount_value > 100) {
+            wp_send_json_error(array('message' => 'Percentage discount cannot exceed 100%'));
+        }
+
+        // Send email using template processor
+        $result = WP_Staff_Diary_Email_Template_Processor::send_discount_email($entry_id, $discount_type, $discount_value);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        }
+
+        wp_send_json_success(array(
+            'message' => 'Discount email sent successfully!',
+            'discount_type' => $discount_type,
+            'discount_value' => $discount_value
+        ));
     }
 
     // ==================== PDF GENERATION AJAX HANDLER ====================

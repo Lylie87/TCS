@@ -66,6 +66,17 @@ $unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
     $current_user->ID
 ));
 
+// Get outstanding quotes (entries with quote_date that haven't been accepted yet)
+$outstanding_quotes = $wpdb->get_results($wpdb->prepare(
+    "SELECT * FROM $table_diary
+     WHERE user_id = %d
+     AND quote_date IS NOT NULL
+     AND accepted_date IS NULL
+     AND is_cancelled = 0
+     ORDER BY quote_date DESC",
+    $current_user->ID
+));
+
 // Organize scheduled entries by date (exclude jobs with unknown fitting dates)
 $entries_by_date = array();
 
@@ -318,6 +329,84 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
         <?php } ?>
         </div>
     </div>
+
+    <!-- Outstanding Quotes Section -->
+    <?php if (!empty($outstanding_quotes)): ?>
+        <div class="outstanding-quotes-section" style="background: #e3f2fd; border: 2px solid #2196f3; border-radius: 6px; padding: 20px; margin: 20px 0;">
+            <h2 style="margin: 0 0 15px 0; color: #1565c0; font-size: 18px;">
+                <span class="dashicons dashicons-portfolio" style="font-size: 20px; vertical-align: middle;"></span>
+                Outstanding Quotes (<?php echo count($outstanding_quotes); ?>)
+            </h2>
+            <p style="margin: 0 0 15px 0; color: #1565c0;">
+                These quotes are awaiting customer acceptance.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+            <?php foreach ($outstanding_quotes as $quote):
+                // Get customer details
+                $customer = $quote->customer_id ? $db->get_customer($quote->customer_id) : null;
+
+                // Calculate quote total
+                $quote_total = $db->calculate_job_total($quote->id);
+
+                // Calculate days since quote
+                $quote_date_obj = new DateTime($quote->quote_date);
+                $now = new DateTime();
+                $days_ago = $now->diff($quote_date_obj)->days;
+
+                // Determine urgency color
+                $urgency_color = '#4caf50'; // Green (recent)
+                if ($days_ago > 14) {
+                    $urgency_color = '#f44336'; // Red (old)
+                } elseif ($days_ago > 7) {
+                    $urgency_color = '#ff9800'; // Orange (medium)
+                }
+            ?>
+                <div class="quote-card" style="background: white; border-left: 4px solid <?php echo $urgency_color; ?>; padding: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer;" onclick="viewEntryDetails(<?php echo $quote->id; ?>)">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                        <div>
+                            <strong style="font-size: 14px; color: #2271b1;"><?php echo esc_html($quote->order_number); ?></strong>
+                            <?php if ($customer): ?>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                                    <?php echo esc_html($customer->customer_name); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <div style="text-align: right; font-size: 16px; font-weight: bold; color: #2271b1;">
+                            £<?php echo number_format($quote_total, 2); ?>
+                        </div>
+                    </div>
+
+                    <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
+                        <strong>Quote Date:</strong> <?php echo date('d/m/Y', strtotime($quote->quote_date)); ?>
+                        <span style="color: <?php echo $urgency_color; ?>; font-weight: bold; margin-left: 8px;">
+                            (<?php echo $days_ago; ?> day<?php echo $days_ago != 1 ? 's' : ''; ?> ago)
+                        </span>
+                    </div>
+
+                    <?php if ($quote->product_description): ?>
+                        <div style="font-size: 12px; color: #444; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <?php echo esc_html($quote->product_description); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($quote->discount_type) && !empty($quote->discount_value)): ?>
+                        <div style="background: #fff3cd; padding: 5px 8px; border-radius: 3px; font-size: 11px; color: #856404; margin-top: 8px;">
+                            <strong>Discount Sent:</strong>
+                            <?php
+                            if ($quote->discount_type === 'percentage') {
+                                echo number_format($quote->discount_value, 2) . '%';
+                            } else {
+                                echo '£' . number_format($quote->discount_value, 2);
+                            }
+                            ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
 <!-- Reuse modals from my-diary.php -->

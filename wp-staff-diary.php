@@ -3,7 +3,7 @@
  * Plugin Name: Staff Daily Job Planner
  * Plugin URI: https://www.express-websites.co.uk/wp-staff-diary
  * Description: A daily job planning and management system for staff members with image uploads and detailed job tracking.
- * Version: 2.6.0
+ * Version: 2.3.0
  * Author: Alex Lyle
  * Author URI: https://www.express-websites.co.uk
  * License: GPL-2.0+
@@ -18,7 +18,7 @@ if (!defined('WPINC')) {
 }
 
 // Plugin version
-define('WP_STAFF_DIARY_VERSION', '2.6.0');
+define('WP_STAFF_DIARY_VERSION', '2.3.0');
 
 // Plugin paths
 define('WP_STAFF_DIARY_PATH', plugin_dir_path(__FILE__));
@@ -46,6 +46,28 @@ register_deactivation_hook(__FILE__, 'deactivate_wp_staff_diary');
  * The core plugin class
  */
 require WP_STAFF_DIARY_PATH . 'includes/class-wp-staff-diary.php';
+
+/**
+ * Currency helper class
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-currency-helper.php';
+
+/**
+ * Email template processor
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-email-template-processor.php';
+
+/**
+ * Quote acceptance handler
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-quote-acceptance.php';
+new WP_Staff_Diary_Quote_Acceptance();
+
+/**
+ * Auto discount scheduler
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-auto-discount-scheduler.php';
+new WP_Staff_Diary_Auto_Discount_Scheduler();
 
 /**
  * Check for upgrades
