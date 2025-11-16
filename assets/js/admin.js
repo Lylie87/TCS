@@ -1678,6 +1678,177 @@
         }
 
         // ===========================================
+        // BULK ACTIONS
+        // ===========================================
+
+        /**
+         * Select all checkboxes for bulk actions
+         */
+        $(document).on('change', '#select-all-jobs', function() {
+            $('.bulk-select-job').prop('checked', $(this).is(':checked'));
+            updateBulkActionButtons();
+        });
+
+        /**
+         * Individual checkbox change
+         */
+        $(document).on('change', '.bulk-select-job', function() {
+            updateBulkActionButtons();
+
+            // Update select all checkbox
+            const totalCheckboxes = $('.bulk-select-job').length;
+            const checkedCheckboxes = $('.bulk-select-job:checked').length;
+            $('#select-all-jobs').prop('checked', totalCheckboxes === checkedCheckboxes);
+        });
+
+        /**
+         * Update bulk action buttons visibility and count
+         */
+        function updateBulkActionButtons() {
+            const selectedCount = $('.bulk-select-job:checked').length;
+
+            if (selectedCount > 0) {
+                $('#bulk-actions-bar').show();
+                $('#selected-count').text(selectedCount);
+            } else {
+                $('#bulk-actions-bar').hide();
+            }
+        }
+
+        /**
+         * Bulk update status
+         */
+        $(document).on('click', '#bulk-update-status-btn', function() {
+            const selectedIds = getSelectedJobIds();
+
+            if (selectedIds.length === 0) {
+                alert('Please select jobs first');
+                return;
+            }
+
+            const newStatus = prompt('Enter new status (pending, in-progress, completed, cancelled):');
+
+            if (!newStatus) {
+                return;
+            }
+
+            if (confirm(`Update status for ${selectedIds.length} job(s) to "${newStatus}"?`)) {
+                performBulkAction('bulk_update_status', {entry_ids: selectedIds, new_status: newStatus});
+            }
+        });
+
+        /**
+         * Bulk delete jobs
+         */
+        $(document).on('click', '#bulk-delete-btn', function() {
+            const selectedIds = getSelectedJobIds();
+
+            if (selectedIds.length === 0) {
+                alert('Please select jobs first');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete ${selectedIds.length} job(s)? This action cannot be undone.`)) {
+                performBulkAction('bulk_delete_jobs', {entry_ids: selectedIds});
+            }
+        });
+
+        /**
+         * Bulk export to CSV
+         */
+        $(document).on('click', '#bulk-export-btn', function() {
+            const selectedIds = getSelectedJobIds();
+
+            if (selectedIds.length === 0) {
+                alert('Please select jobs first');
+                return;
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'bulk_export_jobs',
+                    nonce: wpStaffDiary.nonce,
+                    entry_ids: selectedIds
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Convert to CSV and download
+                        const csvContent = response.data.csv_data.map(row =>
+                            row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')
+                        ).join('\n');
+
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        const url = URL.createObjectURL(blob);
+
+                        link.setAttribute('href', url);
+                        link.setAttribute('download', response.data.filename);
+                        link.style.visibility = 'hidden';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+
+                        alert('Export completed successfully!');
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Export failed'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred during export');
+                }
+            });
+        });
+
+        /**
+         * Get selected job IDs
+         */
+        function getSelectedJobIds() {
+            const ids = [];
+            $('.bulk-select-job:checked').each(function() {
+                ids.push($(this).val());
+            });
+            return ids;
+        }
+
+        /**
+         * Perform bulk action
+         */
+        function performBulkAction(action, data) {
+            const $btn = event.target;
+            const originalText = $btn.textContent;
+
+            $btn.disabled = true;
+            $btn.textContent = 'Processing...';
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: action,
+                    nonce: wpStaffDiary.nonce,
+                    ...data
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload(); // Reload to show updated jobs
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Action failed'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred');
+                },
+                complete: function() {
+                    $btn.disabled = false;
+                    $btn.textContent = originalText;
+                }
+            });
+        }
+
+        // ===========================================
         // UTILITY FUNCTIONS
         // ===========================================
 

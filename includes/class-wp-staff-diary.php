@@ -193,6 +193,11 @@ class WP_Staff_Diary {
         // AJAX handlers - Activity Log
         $this->loader->add_action('wp_ajax_get_activity_log', $plugin_admin, 'get_activity_log');
 
+        // AJAX handlers - Bulk Actions
+        $this->loader->add_action('wp_ajax_bulk_update_status', $plugin_admin, 'bulk_update_status');
+        $this->loader->add_action('wp_ajax_bulk_delete_jobs', $plugin_admin, 'bulk_delete_jobs');
+        $this->loader->add_action('wp_ajax_bulk_export_jobs', $plugin_admin, 'bulk_export_jobs');
+
         // AJAX handlers - Customer History
         $this->loader->add_action('wp_ajax_get_customer_jobs', $plugin_admin, 'get_customer_jobs');
     }

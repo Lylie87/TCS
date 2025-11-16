@@ -2542,4 +2542,198 @@ class WP_Staff_Diary_Admin {
             'activity_log' => $activity_log
         ));
     }
+
+    // ==================== BULK ACTION METHODS ====================
+
+    /**
+     * Bulk update job status
+     */
+    public function bulk_update_status() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_ids = isset($_POST['entry_ids']) ? array_map('intval', $_POST['entry_ids']) : array();
+        $new_status = sanitize_text_field($_POST['new_status']);
+
+        if (empty($entry_ids)) {
+            wp_send_json_error(array('message' => 'No jobs selected'));
+            return;
+        }
+
+        $user_id = get_current_user_id();
+        $updated = 0;
+        $failed = 0;
+
+        foreach ($entry_ids as $entry_id) {
+            $entry = $this->db->get_entry($entry_id);
+
+            if (!$entry) {
+                $failed++;
+                continue;
+            }
+
+            // Verify permissions
+            if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+                $failed++;
+                continue;
+            }
+
+            $old_status = $entry->status;
+
+            // Update status
+            $result = $this->db->update_entry($entry_id, array('status' => $new_status));
+
+            if ($result !== false) {
+                // Log activity
+                $this->db->log_activity(
+                    $entry_id,
+                    'status_change',
+                    "Status changed from '{$old_status}' to '{$new_status}'",
+                    $old_status,
+                    $new_status
+                );
+                $updated++;
+            } else {
+                $failed++;
+            }
+        }
+
+        wp_send_json_success(array(
+            'message' => "Updated {$updated} job(s)" . ($failed > 0 ? ", {$failed} failed" : ''),
+            'updated' => $updated,
+            'failed' => $failed
+        ));
+    }
+
+    /**
+     * Bulk delete jobs
+     */
+    public function bulk_delete_jobs() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_ids = isset($_POST['entry_ids']) ? array_map('intval', $_POST['entry_ids']) : array();
+
+        if (empty($entry_ids)) {
+            wp_send_json_error(array('message' => 'No jobs selected'));
+            return;
+        }
+
+        $user_id = get_current_user_id();
+        $deleted = 0;
+        $failed = 0;
+
+        foreach ($entry_ids as $entry_id) {
+            $entry = $this->db->get_entry($entry_id);
+
+            if (!$entry) {
+                $failed++;
+                continue;
+            }
+
+            // Verify permissions
+            if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+                $failed++;
+                continue;
+            }
+
+            $result = $this->db->delete_entry($entry_id);
+
+            if ($result) {
+                $deleted++;
+            } else {
+                $failed++;
+            }
+        }
+
+        wp_send_json_success(array(
+            'message' => "Deleted {$deleted} job(s)" . ($failed > 0 ? ", {$failed} failed" : ''),
+            'deleted' => $deleted,
+            'failed' => $failed
+        ));
+    }
+
+    /**
+     * Bulk export jobs to CSV
+     */
+    public function bulk_export_jobs() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_ids = isset($_POST['entry_ids']) ? array_map('intval', $_POST['entry_ids']) : array();
+
+        if (empty($entry_ids)) {
+            wp_send_json_error(array('message' => 'No jobs selected'));
+            return;
+        }
+
+        $user_id = get_current_user_id();
+        $jobs_data = array();
+
+        // CSV Headers
+        $headers = array(
+            'Order Number',
+            'Customer Name',
+            'Job Date',
+            'Fitting Date',
+            'Product Description',
+            'Quantity (sq m)',
+            'Price per sq m',
+            'Fitting Cost',
+            'Subtotal',
+            'VAT',
+            'Total',
+            'Status',
+            'Created Date'
+        );
+
+        $jobs_data[] = $headers;
+
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        foreach ($entry_ids as $entry_id) {
+            $entry = $this->db->get_entry($entry_id);
+
+            if (!$entry) {
+                continue;
+            }
+
+            // Verify permissions
+            if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+                continue;
+            }
+
+            // Get customer
+            $customer = $entry->customer_id ? $this->db->get_customer($entry->customer_id) : null;
+
+            // Calculate totals
+            $subtotal = $this->db->calculate_job_subtotal($entry_id);
+            $vat_amount = 0;
+            $total = $subtotal;
+
+            if ($vat_enabled == '1') {
+                $vat_amount = $subtotal * ($vat_rate / 100);
+                $total = $subtotal + $vat_amount;
+            }
+
+            $jobs_data[] = array(
+                $entry->order_number,
+                $customer ? $customer->customer_name : '',
+                $entry->job_date ? date('d/m/Y', strtotime($entry->job_date)) : '',
+                $entry->fitting_date ? date('d/m/Y', strtotime($entry->fitting_date)) : '',
+                $entry->product_description,
+                $entry->sq_mtr_qty,
+                $entry->price_per_sq_mtr,
+                $entry->fitting_cost,
+                number_format($subtotal, 2),
+                number_format($vat_amount, 2),
+                number_format($total, 2),
+                $entry->status,
+                date('d/m/Y H:i', strtotime($entry->created_at))
+            );
+        }
+
+        wp_send_json_success(array(
+            'csv_data' => $jobs_data,
+            'filename' => 'jobs-export-' . date('Y-m-d') . '.csv'
+        ));
+    }
 }
