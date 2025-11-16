@@ -48,6 +48,11 @@ register_deactivation_hook(__FILE__, 'deactivate_wp_staff_diary');
 require WP_STAFF_DIARY_PATH . 'includes/class-wp-staff-diary.php';
 
 /**
+ * Currency helper class
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-currency-helper.php';
+
+/**
  * Check for upgrades
  */
 require_once WP_STAFF_DIARY_PATH . 'includes/class-upgrade.php';
