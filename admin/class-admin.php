@@ -253,7 +253,7 @@ class WP_Staff_Diary_Admin {
         $recent_payments = $wpdb->get_results($wpdb->prepare(
             "SELECT p.*, e.order_number
              FROM {$wpdb->prefix}staff_diary_payments p
-             JOIN $table_diary e ON p.entry_id = e.id
+             JOIN $table_diary e ON p.diary_entry_id = e.id
              WHERE e.user_id = %d
              ORDER BY p.recorded_at DESC
              LIMIT 5",
@@ -2559,6 +2559,20 @@ class WP_Staff_Diary_Admin {
             return;
         }
 
+        // Validate status
+        $allowed_statuses = get_option('wp_staff_diary_statuses', array(
+            'quotation' => 'Quotation',
+            'pending' => 'Pending',
+            'in-progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled'
+        ));
+
+        if (!array_key_exists($new_status, $allowed_statuses)) {
+            wp_send_json_error(array('message' => 'Invalid status provided'));
+            return;
+        }
+
         $user_id = get_current_user_id();
         $updated = 0;
         $failed = 0;
@@ -2587,7 +2601,11 @@ class WP_Staff_Diary_Admin {
                 $this->db->log_activity(
                     $entry_id,
                     'status_change',
-                    "Status changed from '{$old_status}' to '{$new_status}'",
+                    sprintf(
+                        "Status changed from '%s' to '%s'",
+                        esc_sql($old_status),
+                        esc_sql($new_status)
+                    ),
                     $old_status,
                     $new_status
                 );
@@ -2634,6 +2652,16 @@ class WP_Staff_Diary_Admin {
                 $failed++;
                 continue;
             }
+
+            // Log the deletion before actually deleting
+            $this->db->log_activity(
+                $entry_id,
+                'job_deleted',
+                sprintf('Job %s deleted via bulk action', $entry->order_number),
+                null,
+                null,
+                array('method' => 'bulk_action')
+            );
 
             $result = $this->db->delete_entry($entry_id);
 

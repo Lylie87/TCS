@@ -60,13 +60,26 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "View release: https://github.com/Lylie87/TCS/releases/tag/v$version" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "NOTE: The distribution package is still in the dist folder." -ForegroundColor Yellow
-    Write-Host "      You can safely delete the dist folder if you want to clean up." -ForegroundColor Yellow
+
+    # Clean up dist folder after successful upload
+    Write-Host "Step 3: Cleaning up distribution folder..." -ForegroundColor Green
+    try {
+        if (Test-Path $distDir) {
+            Remove-Item $distDir -Recurse -Force
+            Write-Host "SUCCESS: Dist folder cleaned up" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "WARNING: Could not delete dist folder automatically" -ForegroundColor Yellow
+        Write-Host "$distDir" -ForegroundColor Yellow
+    }
     Write-Host ""
 } else {
     Write-Host ""
     Write-Host "ERROR: Failed to create GitHub release" -ForegroundColor Red
     Write-Host "Make sure you're authenticated with: gh auth login" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "NOTE: The distribution package is still in the dist folder." -ForegroundColor Yellow
+    Write-Host "      You can run build-release.ps1 again once the issue is resolved." -ForegroundColor Yellow
 }
 
 Write-Host ""

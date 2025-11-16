@@ -1733,7 +1733,7 @@
             }
 
             if (confirm(`Update status for ${selectedIds.length} job(s) to "${newStatus}"?`)) {
-                performBulkAction('bulk_update_status', {entry_ids: selectedIds, new_status: newStatus});
+                performBulkAction('bulk_update_status', {entry_ids: selectedIds, new_status: newStatus}, this);
             }
         });
 
@@ -1749,7 +1749,7 @@
             }
 
             if (confirm(`Are you sure you want to delete ${selectedIds.length} job(s)? This action cannot be undone.`)) {
-                performBulkAction('bulk_delete_jobs', {entry_ids: selectedIds});
+                performBulkAction('bulk_delete_jobs', {entry_ids: selectedIds}, this);
             }
         });
 
@@ -1815,12 +1815,11 @@
         /**
          * Perform bulk action
          */
-        function performBulkAction(action, data) {
-            const $btn = event.target;
-            const originalText = $btn.textContent;
+        function performBulkAction(action, data, btnElement) {
+            const $btn = $(btnElement);
+            const originalText = $btn.text();
 
-            $btn.disabled = true;
-            $btn.textContent = 'Processing...';
+            $btn.prop('disabled', true).text('Processing...');
 
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
@@ -1842,8 +1841,7 @@
                     alert('An error occurred');
                 },
                 complete: function() {
-                    $btn.disabled = false;
-                    $btn.textContent = originalText;
+                    $btn.prop('disabled', false).text(originalText);
                 }
             });
         }
