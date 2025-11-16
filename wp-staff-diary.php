@@ -64,6 +64,12 @@ require_once WP_STAFF_DIARY_PATH . 'includes/class-quote-acceptance.php';
 new WP_Staff_Diary_Quote_Acceptance();
 
 /**
+ * Auto discount scheduler
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-auto-discount-scheduler.php';
+new WP_Staff_Diary_Auto_Discount_Scheduler();
+
+/**
  * Check for upgrades
  */
 require_once WP_STAFF_DIARY_PATH . 'includes/class-upgrade.php';
