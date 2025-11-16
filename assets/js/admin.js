@@ -226,8 +226,19 @@
                 if (entry.images && entry.images.length > 0) {
                     let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
                     entry.images.forEach(function(image) {
+                        const categoryColors = {
+                            'before': '#3b82f6',
+                            'during': '#f59e0b',
+                            'after': '#10b981',
+                            'general': '#6b7280'
+                        };
+                        const category = image.image_category || 'general';
+                        const categoryColor = categoryColors[category] || categoryColors['general'];
+                        const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+
                         photosHtml += `<div style="position: relative;">
                             <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                            <span style="position: absolute; top: 5px; right: 5px; background: ${categoryColor}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">${categoryLabel}</span>
                         </div>`;
                     });
                     photosHtml += '</div>';
@@ -957,16 +968,91 @@
             const balanceAmount = balance > 0 ? `£${balance.toFixed(2)}` : '£0.00';
             html += `<tr class="${balanceClass}"><td><strong>${balanceLabel}</strong></td><td class="amount"><strong>${balanceAmount}</strong></td></tr>`;
             html += '</table>';
+
+            // Payment Progress Visualization
+            if (entry.total > 0) {
+                const totalPaid = parseFloat(entry.total) - balance;
+                const percentPaid = (totalPaid / entry.total) * 100;
+
+                // Group payments by type
+                const paymentsByType = {
+                    'deposit': 0,
+                    'partial': 0,
+                    'final': 0,
+                    'full': 0
+                };
+                if (entry.payments && entry.payments.length > 0) {
+                    entry.payments.forEach(function(payment) {
+                        const type = payment.payment_type || 'partial';
+                        paymentsByType[type] = (paymentsByType[type] || 0) + parseFloat(payment.amount);
+                    });
+                }
+
+                html += '<div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 4px;">';
+                html += '<h4 style="margin-top: 0; margin-bottom: 10px; color: #2c3e50;">Payment Progress</h4>';
+
+                // Progress bar
+                html += '<div style="position: relative; background: #e0e0e0; height: 30px; border-radius: 15px; overflow: hidden; margin-bottom: 15px;">';
+                if (totalPaid > 0) {
+                    html += `<div style="position: absolute; left: 0; top: 0; height: 100%; width: ${percentPaid}%; background: linear-gradient(90deg, #10b981 0%, #34d399 100%); transition: width 0.3s ease;"></div>`;
+                }
+                html += `<div style="position: absolute; width: 100%; text-align: center; line-height: 30px; font-weight: 600; color: ${totalPaid > 0 ? '#fff' : '#666'}; text-shadow: ${totalPaid > 0 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none'};">${percentPaid.toFixed(1)}% Paid</div>`;
+                html += '</div>';
+
+                // Payment breakdown
+                html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">';
+                html += `<div><strong>Total Due:</strong> £${parseFloat(entry.total).toFixed(2)}</div>`;
+                html += `<div><strong>Total Paid:</strong> <span style="color: #10b981;">£${totalPaid.toFixed(2)}</span></div>`;
+                if (paymentsByType['deposit'] > 0) {
+                    html += `<div><strong>Deposits:</strong> £${paymentsByType['deposit'].toFixed(2)}</div>`;
+                }
+                if (paymentsByType['partial'] > 0) {
+                    html += `<div><strong>Partial Payments:</strong> £${paymentsByType['partial'].toFixed(2)}</div>`;
+                }
+                if (paymentsByType['final'] > 0) {
+                    html += `<div><strong>Final Payments:</strong> £${paymentsByType['final'].toFixed(2)}</div>`;
+                }
+                if (paymentsByType['full'] > 0) {
+                    html += `<div><strong>Full Payments:</strong> £${paymentsByType['full'].toFixed(2)}</div>`;
+                }
+                html += '</div>';
+                html += '</div>';
+            }
+
             html += '</div>';
 
             // Photos Section
             html += '<div class="detail-section">';
             html += '<h3>Photos</h3>';
             if (entry.images && entry.images.length > 0) {
+                // Group images by category
+                const beforeImages = entry.images.filter(img => img.image_category === 'before');
+                const duringImages = entry.images.filter(img => img.image_category === 'during');
+                const afterImages = entry.images.filter(img => img.image_category === 'after');
+                const generalImages = entry.images.filter(img => !img.image_category || img.image_category === 'general');
+
+                // Show before/after comparison button if we have both
+                if (beforeImages.length > 0 && afterImages.length > 0) {
+                    html += `<button type="button" class="button" id="view-comparison-btn" data-entry-id="${entry.id}" style="margin-bottom: 15px;">
+                        <span class="dashicons dashicons-image-flip-horizontal"></span> View Before/After Comparison
+                    </button>`;
+                }
+
                 html += '<div class="job-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">';
                 entry.images.forEach(function(image) {
+                    const categoryColors = {
+                        'before': '#3b82f6',
+                        'during': '#f59e0b',
+                        'after': '#10b981',
+                        'general': '#6b7280'
+                    };
+                    const category = image.image_category || 'general';
+                    const categoryColor = categoryColors[category] || categoryColors['general'];
+                    const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+
                     html += `<div class="job-image-item" style="position: relative;">
                         <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                        <span style="position: absolute; top: 5px; right: 5px; background: ${categoryColor}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">${categoryLabel}</span>
                         ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
                     </div>`;
                 });
@@ -1049,6 +1135,53 @@
         // PHOTOS - Upload
         // ===========================================
 
+        // Helper function to show photo category selection modal
+        function showPhotoCategoryModal(file, entryId, callback) {
+            const categoryHtml = `
+                <div style="padding: 20px;">
+                    <h3 style="margin-top: 0;">Photo Category</h3>
+                    <p>Select the category for this photo:</p>
+                    <select id="photo-category-select" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                        <option value="before">Before</option>
+                        <option value="during">During</option>
+                        <option value="after">After</option>
+                        <option value="general">General</option>
+                    </select>
+                    <p>Add a caption (optional):</p>
+                    <input type="text" id="photo-caption-input" placeholder="Enter photo caption..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                    <div style="text-align: right;">
+                        <button type="button" class="button" id="cancel-photo-upload" style="margin-right: 10px;">Cancel</button>
+                        <button type="button" class="button button-primary" id="confirm-photo-upload">Upload Photo</button>
+                    </div>
+                </div>
+            `;
+
+            // Create temporary modal
+            $('body').append(`
+                <div id="photo-category-modal" style="display: none; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
+                    <div style="background-color: #fff; margin: 10% auto; padding: 0; border: 1px solid #888; width: 400px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        ${categoryHtml}
+                    </div>
+                </div>
+            `);
+
+            $('#photo-category-modal').fadeIn();
+
+            // Handle cancel
+            $('#cancel-photo-upload').on('click', function() {
+                $('#photo-category-modal').remove();
+                callback(null);
+            });
+
+            // Handle confirm
+            $('#confirm-photo-upload').on('click', function() {
+                const category = $('#photo-category-select').val();
+                const caption = $('#photo-caption-input').val();
+                $('#photo-category-modal').remove();
+                callback({category: category, caption: caption});
+            });
+        }
+
         // Photo upload button click
         $(document).on('click', '#upload-photo-btn', function() {
             const entryId = $(this).data('entry-id');
@@ -1059,38 +1192,55 @@
         $(document).on('change', '[id^="photo-upload-input-"]:not(#photo-upload-input-form)', function() {
             const entryId = $(this).attr('id').replace('photo-upload-input-', '');
             const file = this.files[0];
+            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
+                $input.val('');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('action', 'upload_job_image');
-            formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('diary_entry_id', entryId);
-            formData.append('image', file);
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        alert('Photo uploaded successfully!');
-                        viewEntryDetails(entryId); // Reload the view
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Upload error:', xhr.responseText);
-                    alert('An error occurred while uploading the photo.');
+            // Show category selection modal
+            showPhotoCategoryModal(file, entryId, function(result) {
+                if (!result) {
+                    // User cancelled
+                    $input.val('');
+                    return;
                 }
+
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            viewEntryDetails(entryId); // Reload the view
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Upload error:', xhr.responseText);
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
+                });
             });
         });
 
@@ -1152,43 +1302,178 @@
         $(document).on('change', '#photo-upload-input-form', function() {
             const entryId = $(this).data('entry-id');
             const file = this.files[0];
+            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
+                $input.val('');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('action', 'upload_job_image');
-            formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('diary_entry_id', entryId);
-            formData.append('image', file);
+            // Show category selection modal
+            showPhotoCategoryModal(file, entryId, function(result) {
+                if (!result) {
+                    // User cancelled
+                    $input.val('');
+                    return;
+                }
 
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            // Reload entry to show new photo
+                            loadEntryForEdit(entryId);
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function() {
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
+                });
+            });
+        });
+
+        // Before/After comparison button click
+        $(document).on('click', '#view-comparison-btn', function() {
+            const entryId = $(this).data('entry-id');
+
+            // Fetch full entry data
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                data: {
+                    action: 'get_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
                 success: function(response) {
-                    if (response.success) {
-                        alert('Photo uploaded successfully!');
-                        // Reload entry to show new photo
-                        loadEntryForEdit(entryId);
+                    if (response.success && response.data.entry) {
+                        showBeforeAfterComparison(response.data.entry);
                     } else {
-                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        alert('Error loading photos');
                     }
                 },
                 error: function() {
-                    alert('An error occurred while uploading the photo.');
+                    alert('Failed to load photos');
                 }
             });
-
-            // Clear the file input
-            $(this).val('');
         });
+
+        // Show before/after comparison modal
+        function showBeforeAfterComparison(entry) {
+            const beforeImages = entry.images.filter(img => img.image_category === 'before');
+            const afterImages = entry.images.filter(img => img.image_category === 'after');
+            const duringImages = entry.images.filter(img => img.image_category === 'during');
+
+            let comparisonHtml = `
+                <div style="padding: 20px;">
+                    <h2 style="margin-top: 0;">Before/After Comparison - ${entry.order_number}</h2>
+                    <div style="margin-bottom: 20px;">
+                        <p style="color: #666;">Job Date: ${new Date(entry.job_date).toLocaleDateString('en-GB')}</p>
+                    </div>
+            `;
+
+            // Create side-by-side comparisons
+            const maxPairs = Math.max(beforeImages.length, afterImages.length);
+            for (let i = 0; i < maxPairs; i++) {
+                comparisonHtml += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #ddd; padding-bottom: 20px;">';
+
+                // Before column
+                comparisonHtml += '<div>';
+                comparisonHtml += '<h3 style="color: #3b82f6; margin-bottom: 10px;"><span class="dashicons dashicons-arrow-left-alt"></span> Before</h3>';
+                if (beforeImages[i]) {
+                    comparisonHtml += `
+                        <img src="${beforeImages[i].image_url}" alt="Before" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #3b82f6;" onclick="window.open('${beforeImages[i].image_url}', '_blank')">
+                        ${beforeImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${beforeImages[i].image_caption}</p>` : ''}
+                    `;
+                } else {
+                    comparisonHtml += '<p style="color: #999; font-style: italic;">No before photo</p>';
+                }
+                comparisonHtml += '</div>';
+
+                // After column
+                comparisonHtml += '<div>';
+                comparisonHtml += '<h3 style="color: #10b981; margin-bottom: 10px;"><span class="dashicons dashicons-arrow-right-alt"></span> After</h3>';
+                if (afterImages[i]) {
+                    comparisonHtml += `
+                        <img src="${afterImages[i].image_url}" alt="After" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #10b981;" onclick="window.open('${afterImages[i].image_url}', '_blank')">
+                        ${afterImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${afterImages[i].image_caption}</p>` : ''}
+                    `;
+                } else {
+                    comparisonHtml += '<p style="color: #999; font-style: italic;">No after photo</p>';
+                }
+                comparisonHtml += '</div>';
+
+                comparisonHtml += '</div>';
+            }
+
+            // Show during photos if any
+            if (duringImages.length > 0) {
+                comparisonHtml += '<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">';
+                comparisonHtml += '<h3 style="color: #f59e0b; margin-bottom: 15px;"><span class="dashicons dashicons-images-alt2"></span> During Progress</h3>';
+                comparisonHtml += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">';
+                duringImages.forEach(function(image) {
+                    comparisonHtml += `
+                        <div>
+                            <img src="${image.image_url}" alt="During" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #f59e0b;" onclick="window.open('${image.image_url}', '_blank')">
+                            ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
+                        </div>
+                    `;
+                });
+                comparisonHtml += '</div></div>';
+            }
+
+            comparisonHtml += `
+                    <div style="text-align: right; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <button type="button" class="button button-primary" id="close-comparison-modal">Close</button>
+                    </div>
+                </div>
+            `;
+
+            // Create comparison modal
+            $('body').append(`
+                <div id="comparison-modal" style="display: none; position: fixed; z-index: 999998; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);">
+                    <div style="background-color: #fff; margin: 2% auto; max-width: 1200px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
+                        ${comparisonHtml}
+                    </div>
+                </div>
+            `);
+
+            $('#comparison-modal').fadeIn();
+
+            // Handle close
+            $('#close-comparison-modal').on('click', function() {
+                $('#comparison-modal').remove();
+            });
+
+            // Close on background click
+            $('#comparison-modal').on('click', function(e) {
+                if (e.target.id === 'comparison-modal') {
+                    $('#comparison-modal').remove();
+                }
+            });
+        }
 
         // Record payment button click in edit form
         $(document).on('click', '#record-payment-form-btn', function() {

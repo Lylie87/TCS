@@ -608,41 +608,108 @@
     }
 
     /**
+     * Show photo category selection modal
+     */
+    function showPhotoCategoryModal(file, quoteId, callback) {
+        const categoryHtml = `
+            <div style="padding: 20px;">
+                <h3 style="margin-top: 0;">Photo Category</h3>
+                <p>Select the category for this photo:</p>
+                <select id="photo-category-select" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                    <option value="before">Before</option>
+                    <option value="during">During</option>
+                    <option value="after">After</option>
+                    <option value="general">General</option>
+                </select>
+                <p>Add a caption (optional):</p>
+                <input type="text" id="photo-caption-input" placeholder="Enter photo caption..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                <div style="text-align: right;">
+                    <button type="button" class="button" id="cancel-photo-upload" style="margin-right: 10px;">Cancel</button>
+                    <button type="button" class="button button-primary" id="confirm-photo-upload">Upload Photo</button>
+                </div>
+            </div>
+        `;
+
+        // Create temporary modal
+        $('body').append(`
+            <div id="photo-category-modal" style="display: none; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
+                <div style="background-color: #fff; margin: 10% auto; padding: 0; border: 1px solid #888; width: 400px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    ${categoryHtml}
+                </div>
+            </div>
+        `);
+
+        $('#photo-category-modal').fadeIn();
+
+        // Handle cancel
+        $('#cancel-photo-upload').on('click', function() {
+            $('#photo-category-modal').remove();
+            callback(null);
+        });
+
+        // Handle confirm
+        $('#confirm-photo-upload').on('click', function() {
+            const category = $('#photo-category-select').val();
+            const caption = $('#photo-caption-input').val();
+            $('#photo-category-modal').remove();
+            callback({category: category, caption: caption});
+        });
+    }
+
+    /**
      * Handle photo upload for quote
      */
     function handleQuotePhotoUpload(e) {
         const file = e.target.files[0];
+        const $input = $(e.target);
+
         if (!file) return;
 
         if (!currentQuoteId) {
             alert('Please save the quote first before uploading photos.');
+            $input.val('');
             return;
         }
 
-        const formData = new FormData();
-        formData.append('action', 'upload_job_image');
-        formData.append('nonce', wpStaffDiary.nonce);
-        formData.append('diary_entry_id', currentQuoteId);
-        formData.append('image', file);
-
-        $.ajax({
-            url: wpStaffDiary.ajaxUrl,
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                if (response.success) {
-                    alert('Photo uploaded successfully!');
-                    // Reload photos
-                    loadQuotePhotos(currentQuoteId);
-                } else {
-                    alert('Error uploading photo: ' + (response.data.message || 'Unknown error'));
-                }
-            },
-            error: function() {
-                alert('Failed to upload photo.');
+        // Show category selection modal
+        showPhotoCategoryModal(file, currentQuoteId, function(result) {
+            if (!result) {
+                // User cancelled
+                $input.val('');
+                return;
             }
+
+            const formData = new FormData();
+            formData.append('action', 'upload_job_image');
+            formData.append('nonce', wpStaffDiary.nonce);
+            formData.append('diary_entry_id', currentQuoteId);
+            formData.append('image', file);
+            formData.append('category', result.category);
+            if (result.caption) {
+                formData.append('caption', result.caption);
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        alert('Photo uploaded successfully!');
+                        // Reload photos
+                        loadQuotePhotos(currentQuoteId);
+                    } else {
+                        alert('Error uploading photo: ' + (response.data.message || 'Unknown error'));
+                    }
+                    $input.val('');
+                },
+                error: function() {
+                    alert('Failed to upload photo.');
+                    $input.val('');
+                }
+            });
         });
     }
 
