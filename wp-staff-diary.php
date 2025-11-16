@@ -58,6 +58,12 @@ require_once WP_STAFF_DIARY_PATH . 'includes/class-currency-helper.php';
 require_once WP_STAFF_DIARY_PATH . 'includes/class-email-template-processor.php';
 
 /**
+ * Quote acceptance handler
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-quote-acceptance.php';
+new WP_Staff_Diary_Quote_Acceptance();
+
+/**
  * Check for upgrades
  */
 require_once WP_STAFF_DIARY_PATH . 'includes/class-upgrade.php';

@@ -496,6 +496,9 @@ class WP_Staff_Diary_Upgrade {
         if (get_option('wp_staff_diary_quote_email_template') === false) {
             add_option('wp_staff_diary_quote_email_template', self::get_default_quote_email_template());
         }
+
+        // Flag to flush rewrite rules for quote acceptance URLs
+        update_option('wp_staff_diary_flush_rewrite_rules', '1');
     }
 
     /**

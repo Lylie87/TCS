@@ -274,5 +274,8 @@ class WP_Staff_Diary_Activator {
                 );
             }
         }
+
+        // Flag to flush rewrite rules for quote acceptance URLs
+        update_option('wp_staff_diary_flush_rewrite_rules', '1');
     }
 }
