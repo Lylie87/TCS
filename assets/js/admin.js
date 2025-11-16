@@ -16,6 +16,20 @@
         let customerSearchTimeout = null;
 
         // ===========================================
+        // UTILITY FUNCTIONS
+        // ===========================================
+
+        /**
+         * Escape HTML to prevent XSS attacks
+         */
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===========================================
         // NAVIGATION & UI CONTROLS
         // ===========================================
 
@@ -237,7 +251,7 @@
                         const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
 
                         photosHtml += `<div style="position: relative;">
-                            <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                            <img src="${escapeHtml(image.image_url)}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${escapeHtml(image.image_url)}', '_blank')">
                             <span style="position: absolute; top: 5px; right: 5px; background: ${categoryColor}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">${categoryLabel}</span>
                         </div>`;
                     });
@@ -971,8 +985,16 @@
 
             // Payment Progress Visualization
             if (entry.total > 0) {
-                const totalPaid = parseFloat(entry.total) - balance;
-                const percentPaid = (totalPaid / entry.total) * 100;
+                const totalPaid = Math.max(0, parseFloat(entry.total) - balance);
+                let percentPaid = (totalPaid / entry.total) * 100;
+
+                // Clamp percentage between 0 and 100 to handle edge cases
+                percentPaid = Math.min(100, Math.max(0, percentPaid));
+
+                // Check for invalid numbers
+                if (isNaN(percentPaid)) {
+                    percentPaid = 0;
+                }
 
                 // Group payments by type
                 const paymentsByType = {
@@ -984,7 +1006,10 @@
                 if (entry.payments && entry.payments.length > 0) {
                     entry.payments.forEach(function(payment) {
                         const type = payment.payment_type || 'partial';
-                        paymentsByType[type] = (paymentsByType[type] || 0) + parseFloat(payment.amount);
+                        const amount = parseFloat(payment.amount);
+                        if (!isNaN(amount) && amount > 0) {
+                            paymentsByType[type] = (paymentsByType[type] || 0) + amount;
+                        }
                     });
                 }
 
@@ -1051,9 +1076,9 @@
                     const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
 
                     html += `<div class="job-image-item" style="position: relative;">
-                        <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                        <img src="${escapeHtml(image.image_url)}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${escapeHtml(image.image_url)}', '_blank')">
                         <span style="position: absolute; top: 5px; right: 5px; background: ${categoryColor}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">${categoryLabel}</span>
-                        ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
+                        ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${escapeHtml(image.image_caption)}</p>` : ''}
                     </div>`;
                 });
                 html += '</div>';
@@ -1137,6 +1162,11 @@
 
         // Helper function to show photo category selection modal
         function showPhotoCategoryModal(file, entryId, callback) {
+            // Prevent duplicate modals
+            if ($('#photo-category-modal').length > 0) {
+                return;
+            }
+
             const categoryHtml = `
                 <div style="padding: 20px;">
                     <h3 style="margin-top: 0;">Photo Category</h3>
@@ -1170,6 +1200,7 @@
             // Handle cancel
             $('#cancel-photo-upload').on('click', function() {
                 $('#photo-category-modal').remove();
+                $(document).off('keydown.photoCategoryModal');
                 callback(null);
             });
 
@@ -1178,7 +1209,17 @@
                 const category = $('#photo-category-select').val();
                 const caption = $('#photo-caption-input').val();
                 $('#photo-category-modal').remove();
+                $(document).off('keydown.photoCategoryModal');
                 callback({category: category, caption: caption});
+            });
+
+            // Handle escape key
+            $(document).on('keydown.photoCategoryModal', function(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    $('#photo-category-modal').remove();
+                    $(document).off('keydown.photoCategoryModal');
+                    callback(null);
+                }
             });
         }
 
@@ -1382,13 +1423,24 @@
 
         // Show before/after comparison modal
         function showBeforeAfterComparison(entry) {
+            // Prevent duplicate modals
+            if ($('#comparison-modal').length > 0) {
+                return;
+            }
+
+            // Validate entry has images
+            if (!entry.images || entry.images.length === 0) {
+                alert('No images found for this job');
+                return;
+            }
+
             const beforeImages = entry.images.filter(img => img.image_category === 'before');
             const afterImages = entry.images.filter(img => img.image_category === 'after');
             const duringImages = entry.images.filter(img => img.image_category === 'during');
 
             let comparisonHtml = `
                 <div style="padding: 20px;">
-                    <h2 style="margin-top: 0;">Before/After Comparison - ${entry.order_number}</h2>
+                    <h2 style="margin-top: 0;">Before/After Comparison - ${escapeHtml(entry.order_number)}</h2>
                     <div style="margin-bottom: 20px;">
                         <p style="color: #666;">Job Date: ${new Date(entry.job_date).toLocaleDateString('en-GB')}</p>
                     </div>
@@ -1404,8 +1456,8 @@
                 comparisonHtml += '<h3 style="color: #3b82f6; margin-bottom: 10px;"><span class="dashicons dashicons-arrow-left-alt"></span> Before</h3>';
                 if (beforeImages[i]) {
                     comparisonHtml += `
-                        <img src="${beforeImages[i].image_url}" alt="Before" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #3b82f6;" onclick="window.open('${beforeImages[i].image_url}', '_blank')">
-                        ${beforeImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${beforeImages[i].image_caption}</p>` : ''}
+                        <img src="${escapeHtml(beforeImages[i].image_url)}" alt="Before" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #3b82f6;" onclick="window.open('${escapeHtml(beforeImages[i].image_url)}', '_blank')">
+                        ${beforeImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${escapeHtml(beforeImages[i].image_caption)}</p>` : ''}
                     `;
                 } else {
                     comparisonHtml += '<p style="color: #999; font-style: italic;">No before photo</p>';
@@ -1417,8 +1469,8 @@
                 comparisonHtml += '<h3 style="color: #10b981; margin-bottom: 10px;"><span class="dashicons dashicons-arrow-right-alt"></span> After</h3>';
                 if (afterImages[i]) {
                     comparisonHtml += `
-                        <img src="${afterImages[i].image_url}" alt="After" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #10b981;" onclick="window.open('${afterImages[i].image_url}', '_blank')">
-                        ${afterImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${afterImages[i].image_caption}</p>` : ''}
+                        <img src="${escapeHtml(afterImages[i].image_url)}" alt="After" style="width: 100%; height: 300px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #10b981;" onclick="window.open('${escapeHtml(afterImages[i].image_url)}', '_blank')">
+                        ${afterImages[i].image_caption ? `<p style="font-size: 13px; color: #666; margin-top: 8px;">${escapeHtml(afterImages[i].image_caption)}</p>` : ''}
                     `;
                 } else {
                     comparisonHtml += '<p style="color: #999; font-style: italic;">No after photo</p>';
@@ -1436,8 +1488,8 @@
                 duringImages.forEach(function(image) {
                     comparisonHtml += `
                         <div>
-                            <img src="${image.image_url}" alt="During" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #f59e0b;" onclick="window.open('${image.image_url}', '_blank')">
-                            ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
+                            <img src="${escapeHtml(image.image_url)}" alt="During" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 2px solid #f59e0b;" onclick="window.open('${escapeHtml(image.image_url)}', '_blank')">
+                            ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${escapeHtml(image.image_caption)}</p>` : ''}
                         </div>
                     `;
                 });
@@ -1462,15 +1514,26 @@
 
             $('#comparison-modal').fadeIn();
 
-            // Handle close
-            $('#close-comparison-modal').on('click', function() {
+            // Cleanup function
+            function closeComparisonModal() {
                 $('#comparison-modal').remove();
-            });
+                $(document).off('keydown.comparisonModal');
+            }
+
+            // Handle close button
+            $('#close-comparison-modal').on('click', closeComparisonModal);
 
             // Close on background click
             $('#comparison-modal').on('click', function(e) {
                 if (e.target.id === 'comparison-modal') {
-                    $('#comparison-modal').remove();
+                    closeComparisonModal();
+                }
+            });
+
+            // Handle escape key
+            $(document).on('keydown.comparisonModal', function(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    closeComparisonModal();
                 }
             });
         }

@@ -611,6 +611,11 @@
      * Show photo category selection modal
      */
     function showPhotoCategoryModal(file, quoteId, callback) {
+        // Prevent duplicate modals
+        if ($('#photo-category-modal').length > 0) {
+            return;
+        }
+
         const categoryHtml = `
             <div style="padding: 20px;">
                 <h3 style="margin-top: 0;">Photo Category</h3>
@@ -644,6 +649,7 @@
         // Handle cancel
         $('#cancel-photo-upload').on('click', function() {
             $('#photo-category-modal').remove();
+            $(document).off('keydown.photoCategoryModal');
             callback(null);
         });
 
@@ -652,7 +658,17 @@
             const category = $('#photo-category-select').val();
             const caption = $('#photo-caption-input').val();
             $('#photo-category-modal').remove();
+            $(document).off('keydown.photoCategoryModal');
             callback({category: category, caption: caption});
+        });
+
+        // Handle escape key
+        $(document).on('keydown.photoCategoryModal', function(e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                $('#photo-category-modal').remove();
+                $(document).off('keydown.photoCategoryModal');
+                callback(null);
+            }
         });
     }
 
