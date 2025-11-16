@@ -53,6 +53,11 @@ require WP_STAFF_DIARY_PATH . 'includes/class-wp-staff-diary.php';
 require_once WP_STAFF_DIARY_PATH . 'includes/class-currency-helper.php';
 
 /**
+ * Email template processor
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-email-template-processor.php';
+
+/**
  * Check for upgrades
  */
 require_once WP_STAFF_DIARY_PATH . 'includes/class-upgrade.php';
