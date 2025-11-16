@@ -107,6 +107,12 @@ class WP_Staff_Diary_Admin {
             'Payment Overview',
             array($this, 'render_payments_widget')
         );
+
+        wp_add_dashboard_widget(
+            'wp_staff_diary_overdue_widget',
+            'Overdue Payments',
+            array($this, 'render_overdue_widget')
+        );
     }
 
     /**
@@ -270,6 +276,101 @@ class WP_Staff_Diary_Admin {
 
         // Include the payments widget view
         include WP_STAFF_DIARY_PATH . 'admin/views/payments-widget.php';
+    }
+
+    /**
+     * Render overdue payments widget
+     */
+    public function render_overdue_widget() {
+        $current_user = wp_get_current_user();
+        $db = new WP_Staff_Diary_Database();
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get payment terms settings
+        $payment_terms_number = get_option('wp_staff_diary_payment_terms_number', '30');
+        $payment_terms_unit = get_option('wp_staff_diary_payment_terms_unit', 'days');
+
+        // Calculate the overdue date
+        $today = new DateTime();
+        $overdue_date = clone $today;
+
+        switch ($payment_terms_unit) {
+            case 'weeks':
+                $overdue_date->modify('-' . $payment_terms_number . ' weeks');
+                break;
+            case 'months':
+                $overdue_date->modify('-' . $payment_terms_number . ' months');
+                break;
+            case 'years':
+                $overdue_date->modify('-' . $payment_terms_number . ' years');
+                break;
+            case 'days':
+            default:
+                $overdue_date->modify('-' . $payment_terms_number . ' days');
+                break;
+        }
+
+        $overdue_date_str = $overdue_date->format('Y-m-d');
+
+        // Get VAT settings
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        // Get jobs that are past payment terms
+        $jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE user_id = %d
+             AND is_cancelled = 0
+             AND status != 'quotation'
+             AND job_date <= %s
+             ORDER BY job_date ASC",
+            $current_user->ID,
+            $overdue_date_str
+        ));
+
+        // Filter jobs with outstanding balances
+        $overdue_jobs = array();
+        foreach ($jobs as $job) {
+            $subtotal = $db->calculate_job_subtotal($job->id);
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+
+            $payments = $db->get_entry_total_payments($job->id);
+            $balance = $total - $payments;
+
+            if ($balance > 0.01) { // Has outstanding balance
+                // Calculate days overdue
+                $job_date = new DateTime($job->job_date);
+                $days_overdue = $today->diff($job_date)->days;
+
+                // Get customer data
+                $customer = null;
+                if ($job->customer_id) {
+                    $customer = $db->get_customer($job->customer_id);
+                }
+
+                $overdue_jobs[] = array(
+                    'job' => $job,
+                    'customer' => $customer,
+                    'total' => $total,
+                    'payments' => $payments,
+                    'balance' => $balance,
+                    'days_overdue' => $days_overdue
+                );
+            }
+        }
+
+        // Sort by balance (highest first)
+        usort($overdue_jobs, function($a, $b) {
+            return $b['balance'] <=> $a['balance'];
+        });
+
+        // Include the overdue widget view
+        include WP_STAFF_DIARY_PATH . 'admin/views/overdue-widget.php';
     }
 
     /**
@@ -2200,6 +2301,29 @@ class WP_Staff_Diary_Admin {
 
         if (!empty($company_email)) {
             $body .= "Email: " . $company_email . "\n";
+        }
+
+        // Add bank details for payment
+        $bank_name = get_option('wp_staff_diary_bank_name', '');
+        $bank_account_name = get_option('wp_staff_diary_bank_account_name', '');
+        $bank_sort_code = get_option('wp_staff_diary_bank_sort_code', '');
+        $bank_account_number = get_option('wp_staff_diary_bank_account_number', '');
+
+        if (!empty($bank_name) || !empty($bank_account_name) || !empty($bank_sort_code) || !empty($bank_account_number)) {
+            $body .= "\n";
+            $body .= "PAYMENT DETAILS\n";
+            if (!empty($bank_name)) {
+                $body .= "Bank: " . $bank_name . "\n";
+            }
+            if (!empty($bank_account_name)) {
+                $body .= "Account Name: " . $bank_account_name . "\n";
+            }
+            if (!empty($bank_sort_code)) {
+                $body .= "Sort Code: " . $bank_sort_code . "\n";
+            }
+            if (!empty($bank_account_number)) {
+                $body .= "Account Number: " . $bank_account_number . "\n";
+            }
         }
 
         // Email headers
