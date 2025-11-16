@@ -216,6 +216,7 @@
             // Notes and status
             $('#notes').val(entry.notes);
             $('#status').val(entry.status);
+            $('#job-type').val(entry.job_type || 'residential');
 
             // Photos section - show when editing existing entry
             if (entry.id && entry.id > 0) {
@@ -342,6 +343,7 @@
                 fitting_cost: $('#fitting-cost').val(),
                 notes: $('#notes').val(),
                 status: $('#status').val(),
+                job_type: $('#job-type').val(),
                 accessories: accessories
             };
 

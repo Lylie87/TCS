@@ -33,6 +33,14 @@ $accessories = $db->get_all_accessories();
                 <label>Quote Number</label>
                 <div><strong id="quote-number-value" style="font-size: 18px; color: #2271b1;"></strong></div>
             </div>
+            <div class="form-field">
+                <label for="quote-job-type">Job Type <span class="required">*</span></label>
+                <select id="quote-job-type" name="job_type" required>
+                    <option value="residential">Residential</option>
+                    <option value="commercial">Commercial</option>
+                </select>
+                <p class="description">Select whether this is a residential or commercial job.</p>
+            </div>
             <p class="description">This quote will be saved as <strong>Quotation</strong> status. Convert to a job when the customer accepts.</p>
         </div>
 

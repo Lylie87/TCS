@@ -66,6 +66,7 @@ class WP_Staff_Diary_Activator {
             fitting_cost decimal(10,2) DEFAULT 0.00,
             notes text DEFAULT NULL,
             status varchar(50) DEFAULT 'pending',
+            job_type varchar(20) DEFAULT 'residential',
             is_cancelled tinyint(1) DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -78,6 +79,7 @@ class WP_Staff_Diary_Activator {
             KEY fitting_date (fitting_date),
             KEY fitting_date_unknown (fitting_date_unknown),
             KEY status (status),
+            KEY job_type (job_type),
             KEY woocommerce_product_id (woocommerce_product_id)
         ) $charset_collate;";
 
@@ -238,6 +240,14 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_job_templates);
         dbDelta($sql_activity_log);
 
+        // Add job_type column to existing installations
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_type'");
+        if (empty($column_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN job_type varchar(20) DEFAULT 'residential' AFTER status");
+            $wpdb->query("ALTER TABLE $table_diary ADD INDEX job_type (job_type)");
+        }
+
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);
         add_option('wp_staff_diary_date_format', 'd/m/Y');
@@ -274,6 +284,18 @@ class WP_Staff_Diary_Activator {
         add_option('wp_staff_diary_payment_reminder_3_days', '21'); // Final reminder after 21 days
         add_option('wp_staff_diary_payment_reminder_subject', 'Payment Reminder - Invoice {order_number}');
         add_option('wp_staff_diary_payment_reminder_message', "Dear {customer_name},\n\nThis is a friendly reminder that payment is still outstanding for the following job:\n\nInvoice Number: {order_number}\nJob Date: {job_date}\nTotal Amount: {total_amount}\nAmount Outstanding: {balance}\n\nIf you have already made this payment, please disregard this reminder.\n\nThank you for your business.");
+
+        // Payment terms settings
+        add_option('wp_staff_diary_payment_terms_number', '30');  // Default 30 days
+        add_option('wp_staff_diary_payment_terms_unit', 'days');   // days, weeks, months, years
+        add_option('wp_staff_diary_payment_policy', 'both');       // both, commercial, residential, none
+        add_option('wp_staff_diary_overdue_notification_email', get_option('admin_email')); // Default to WordPress admin email
+
+        // Bank details
+        add_option('wp_staff_diary_bank_name', '');
+        add_option('wp_staff_diary_bank_account_name', '');
+        add_option('wp_staff_diary_bank_account_number', '');
+        add_option('wp_staff_diary_bank_sort_code', '');
 
         // Job statuses
         add_option('wp_staff_diary_statuses', array(

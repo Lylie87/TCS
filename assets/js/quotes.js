@@ -221,6 +221,9 @@
         // Notes
         formData.append('notes', $('#quote-notes').val());
 
+        // Job type
+        formData.append('job_type', $('#quote-job-type').val());
+
         $('#save-quote-btn').prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Saving...');
 
         $.ajax({
@@ -825,6 +828,9 @@
         $('#quote-entry-id').val(quote.id);
         $('#quote-number-value').text(quote.order_number);
         $('#quote-number-display').show();
+
+        // Job type
+        $('#quote-job-type').val(quote.job_type || 'residential');
 
         // Customer
         if (quote.customer_id && quote.customer) {
