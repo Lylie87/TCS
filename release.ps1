@@ -74,6 +74,6 @@ Write-Host ""
 Write-Host "Your plugin is now live on GitHub!" -ForegroundColor Cyan
 Write-Host "You can update it in WordPress by:" -ForegroundColor Cyan
 Write-Host "  1. Go to Plugins page" -ForegroundColor White
-Write-Host "  2. Click 'Clear Cache & Refresh'" -ForegroundColor White
-Write-Host "  3. Click 'Update Now'" -ForegroundColor White
+Write-Host "  2. Click Clear Cache & Refresh" -ForegroundColor White
+Write-Host "  3. Click Update Now" -ForegroundColor White
 Write-Host ""
