@@ -92,7 +92,7 @@ foreach ($item in $items) {
 }
 
 Write-Host ""
-Write-Host "Creating zip file..." -ForegroundColor Yellow
+Write-Host "Creating zip file with 7-Zip..." -ForegroundColor Yellow
 Write-Host "  Output: wp-staff-diary-v$Version.zip" -ForegroundColor Gray
 
 # Remove old zip if exists
@@ -100,14 +100,42 @@ if (Test-Path $zipFile) {
     Remove-Item $zipFile -Force
 }
 
-# Create zip file
-if (Get-Command Compress-Archive -ErrorAction SilentlyContinue) {
-    # Use PowerShell's built-in Compress-Archive
-    Compress-Archive -Path $pluginDir -DestinationPath $zipFile -Force
-} else {
-    # Fallback to .NET method
-    Add-Type -Assembly System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($pluginDir, $zipFile)
+# Find 7-Zip executable
+$7zipPaths = @(
+    "C:\Program Files\7-Zip\7z.exe",
+    "C:\Program Files (x86)\7-Zip\7z.exe",
+    "$env:ProgramFiles\7-Zip\7z.exe",
+    "${env:ProgramFiles(x86)}\7-Zip\7z.exe"
+)
+
+$7zipExe = $null
+foreach ($path in $7zipPaths) {
+    if (Test-Path $path) {
+        $7zipExe = $path
+        break
+    }
+}
+
+if (-not $7zipExe) {
+    Write-Host ""
+    Write-Host "ERROR: 7-Zip not found!" -ForegroundColor Red
+    Write-Host "Please install 7-Zip from https://www.7-zip.org/" -ForegroundColor Yellow
+    Write-Host "Or make sure it's installed in the default location" -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "  Using 7-Zip: $7zipExe" -ForegroundColor Gray
+
+# Create zip file using 7-Zip (creates Linux-compatible archives)
+# Change to plugin directory and zip its contents (not the parent folder)
+Push-Location $pluginDir
+& $7zipExe a -tzip "$zipFile" * -mx=9 | Out-Null
+Pop-Location
+
+if (-not (Test-Path $zipFile)) {
+    Write-Host ""
+    Write-Host "ERROR: Failed to create zip file" -ForegroundColor Red
+    exit 1
 }
 
 # Get file size
