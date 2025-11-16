@@ -68,9 +68,9 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_2_0();
         }
 
-        // Upgrade to v2.3.0 - Add quote and discount tracking
-        if (version_compare($from_version, '2.3.0', '<')) {
-            self::upgrade_to_2_3_0();
+        // Upgrade to v2.6.1 - Add quote and discount tracking
+        if (version_compare($from_version, '2.6.1', '<')) {
+            self::upgrade_to_2_6_1();
         }
 
         // Legacy upgrades for older versions
@@ -422,10 +422,10 @@ class WP_Staff_Diary_Upgrade {
     }
 
     /**
-     * Upgrade to version 2.3.0
+     * Upgrade to version 2.6.1
      * Add quote and discount tracking system
      */
-    private static function upgrade_to_2_3_0() {
+    private static function upgrade_to_2_6_1() {
         global $wpdb;
         $table_diary = $wpdb->prefix . 'staff_diary_entries';
         $charset_collate = $wpdb->get_charset_collate();
