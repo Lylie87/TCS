@@ -127,9 +127,9 @@ if (-not $7zipExe) {
 Write-Host "  Using 7-Zip: $7zipExe" -ForegroundColor Gray
 
 # Create zip file using 7-Zip (creates Linux-compatible archives)
-# Change to plugin directory and zip its contents (not the parent folder)
-Push-Location $pluginDir
-& $7zipExe a -tzip "$zipFile" * -mx=9 | Out-Null
+# Zip the wp-staff-diary folder (not just its contents) so WordPress extracts it correctly
+Push-Location $distDir
+& $7zipExe a -tzip "$zipFile" "wp-staff-diary" -mx=9 | Out-Null
 Pop-Location
 
 if (-not (Test-Path $zipFile)) {
