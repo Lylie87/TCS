@@ -235,7 +235,11 @@ class WP_Staff_Diary_GitHub_Updater {
 
         // Look for plugin ZIP in release assets (try multiple naming conventions)
         if (isset($release->assets) && is_array($release->assets)) {
-            $possible_names = array('wp-staff-diary.zip', 'WP Staff Diary.zip', 'wp_staff_diary.zip');
+            $possible_names = array(
+                'wp-staff-diary.zip',
+                'WP Staff Diary.zip',
+                'wp_staff_diary.zip',
+            );
             foreach ($release->assets as $asset) {
                 if (in_array($asset->name, $possible_names)) {
                     return $asset->browser_download_url;

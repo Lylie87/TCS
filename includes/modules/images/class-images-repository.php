@@ -24,14 +24,16 @@ class WP_Staff_Diary_Images_Repository extends WP_Staff_Diary_Base_Repository {
      * @param string $image_url Image URL
      * @param int $attachment_id WordPress attachment ID
      * @param string $caption Optional caption
+     * @param string $category Optional category (before, during, after, general)
      * @return int|false Image ID or false on failure
      */
-    public function add_image($diary_entry_id, $image_url, $attachment_id = null, $caption = '') {
+    public function add_image($diary_entry_id, $image_url, $attachment_id = null, $caption = '', $category = 'general') {
         $data = array(
             'diary_entry_id' => $diary_entry_id,
             'image_url' => $image_url,
             'attachment_id' => $attachment_id,
-            'caption' => $caption,
+            'image_caption' => $caption,  // Database column is image_caption, not caption
+            'image_category' => $category,
             'uploaded_at' => current_time('mysql')
         );
 
@@ -50,6 +52,49 @@ class WP_Staff_Diary_Images_Repository extends WP_Staff_Diary_Base_Repository {
             $diary_entry_id
         );
         return $this->wpdb->get_results($sql);
+    }
+
+    /**
+     * Get images for a diary entry by category
+     *
+     * @param int $diary_entry_id The diary entry ID
+     * @param string $category The image category
+     * @return array Array of image records
+     */
+    public function get_entry_images_by_category($diary_entry_id, $category) {
+        $sql = $this->wpdb->prepare(
+            "SELECT * FROM {$this->table} WHERE diary_entry_id = %d AND image_category = %s ORDER BY id ASC",
+            $diary_entry_id,
+            $category
+        );
+        return $this->wpdb->get_results($sql);
+    }
+
+    /**
+     * Get images grouped by category for a diary entry
+     *
+     * @param int $diary_entry_id The diary entry ID
+     * @return array Array with categories as keys and arrays of images as values
+     */
+    public function get_entry_images_grouped($diary_entry_id) {
+        $images = $this->get_entry_images($diary_entry_id);
+        $grouped = array(
+            'before' => array(),
+            'during' => array(),
+            'after' => array(),
+            'general' => array()
+        );
+
+        foreach ($images as $image) {
+            $category = $image->image_category ?: 'general';
+            if (isset($grouped[$category])) {
+                $grouped[$category][] = $image;
+            } else {
+                $grouped['general'][] = $image;
+            }
+        }
+
+        return $grouped;
     }
 
     /**

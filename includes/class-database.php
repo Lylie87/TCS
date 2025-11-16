@@ -18,11 +18,12 @@ class WP_Staff_Diary_Database {
 
     /**
      * Get diary entries for a specific user
+     * Excludes quotes (status = 'quotation') - quotes have their own page
      */
     public function get_user_entries($user_id, $start_date = null, $end_date = null) {
         global $wpdb;
 
-        $sql = "SELECT * FROM {$this->table_diary} WHERE user_id = %d";
+        $sql = "SELECT * FROM {$this->table_diary} WHERE user_id = %d AND status != 'quotation'";
         $params = array($user_id);
 
         if ($start_date && $end_date) {
@@ -513,5 +514,300 @@ class WP_Staff_Diary_Database {
             ),
             array('id' => $entry_id)
         );
+    }
+
+    // ==================== NOTIFICATION & REMINDER METHODS ====================
+
+    /**
+     * Log a notification
+     */
+    public function log_notification($diary_entry_id, $notification_type, $recipient, $method, $status, $error_message = null) {
+        global $wpdb;
+        $table_logs = $wpdb->prefix . 'staff_diary_notification_logs';
+
+        $wpdb->insert($table_logs, array(
+            'diary_entry_id' => $diary_entry_id,
+            'notification_type' => $notification_type,
+            'recipient' => $recipient,
+            'method' => $method,
+            'status' => $status,
+            'error_message' => $error_message
+        ));
+
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Get notification logs for a job
+     */
+    public function get_notification_logs($diary_entry_id) {
+        global $wpdb;
+        $table_logs = $wpdb->prefix . 'staff_diary_notification_logs';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_logs WHERE diary_entry_id = %d ORDER BY sent_at DESC",
+            $diary_entry_id
+        ));
+    }
+
+    /**
+     * Schedule a payment reminder
+     */
+    public function schedule_payment_reminder($diary_entry_id, $reminder_type, $scheduled_for) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        // Check if reminder already scheduled
+        $exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table_schedule
+             WHERE diary_entry_id = %d
+             AND reminder_type = %s
+             AND status = 'pending'",
+            $diary_entry_id,
+            $reminder_type
+        ));
+
+        if ($exists) {
+            // Update scheduled time
+            return $wpdb->update(
+                $table_schedule,
+                array('scheduled_for' => $scheduled_for),
+                array('id' => $exists)
+            );
+        }
+
+        $wpdb->insert($table_schedule, array(
+            'diary_entry_id' => $diary_entry_id,
+            'reminder_type' => $reminder_type,
+            'scheduled_for' => $scheduled_for,
+            'status' => 'pending'
+        ));
+
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Get pending reminders
+     */
+    public function get_pending_reminders($before_time = null) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        if ($before_time === null) {
+            $before_time = current_time('mysql');
+        }
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_schedule
+             WHERE status = 'pending'
+             AND scheduled_for <= %s
+             ORDER BY scheduled_for ASC",
+            $before_time
+        ));
+    }
+
+    /**
+     * Mark reminder as sent
+     */
+    public function mark_reminder_sent($reminder_id) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        return $wpdb->update(
+            $table_schedule,
+            array(
+                'sent_at' => current_time('mysql'),
+                'status' => 'sent'
+            ),
+            array('id' => $reminder_id)
+        );
+    }
+
+    /**
+     * Cancel scheduled reminders for a job
+     */
+    public function cancel_scheduled_reminders($diary_entry_id) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'staff_diary_reminder_schedule';
+
+        return $wpdb->update(
+            $table_schedule,
+            array('status' => 'cancelled'),
+            array(
+                'diary_entry_id' => $diary_entry_id,
+                'status' => 'pending'
+            )
+        );
+    }
+
+    /**
+     * Get jobs with outstanding balance for reminders
+     */
+    public function get_jobs_needing_reminders() {
+        global $wpdb;
+
+        // Get all non-cancelled, non-quotation jobs
+        $jobs = $wpdb->get_results(
+            "SELECT * FROM {$this->table_diary}
+             WHERE is_cancelled = 0
+             AND status != 'quotation'
+             AND status != 'cancelled'
+             ORDER BY job_date DESC"
+        );
+
+        $jobs_needing_reminders = array();
+
+        foreach ($jobs as $job) {
+            $balance = $this->calculate_job_balance($job->id);
+
+            if ($balance > 0.01) {
+                $job->balance = $balance;
+                $jobs_needing_reminders[] = $job;
+            }
+        }
+
+        return $jobs_needing_reminders;
+    }
+
+    // ==================== JOB TEMPLATE METHODS ====================
+
+    /**
+     * Get all job templates
+     */
+    public function get_all_job_templates($user_id = null) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        if ($user_id) {
+            // Get templates created by user OR global templates
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_templates
+                 WHERE created_by = %d OR is_global = 1
+                 ORDER BY template_name ASC",
+                $user_id
+            ));
+        }
+
+        // Get all templates (admin view)
+        return $wpdb->get_results(
+            "SELECT * FROM $table_templates ORDER BY template_name ASC"
+        );
+    }
+
+    /**
+     * Get a single job template
+     */
+    public function get_job_template($template_id) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table_templates WHERE id = %d",
+            $template_id
+        ));
+    }
+
+    /**
+     * Create a job template
+     */
+    public function create_job_template($data) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        $wpdb->insert($table_templates, $data);
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Update a job template
+     */
+    public function update_job_template($template_id, $data) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        return $wpdb->update($table_templates, $data, array('id' => $template_id));
+    }
+
+    /**
+     * Delete a job template
+     */
+    public function delete_job_template($template_id) {
+        global $wpdb;
+        $table_templates = $wpdb->prefix . 'staff_diary_job_templates';
+
+        return $wpdb->delete($table_templates, array('id' => $template_id));
+    }
+
+    // ==================== ACTIVITY LOG METHODS ====================
+
+    /**
+     * Log an activity for a job
+     */
+    public function log_activity($diary_entry_id, $activity_type, $activity_description, $old_value = null, $new_value = null, $metadata = null) {
+        global $wpdb;
+        $table_activity = $wpdb->prefix . 'staff_diary_activity_log';
+
+        $user_id = get_current_user_id();
+
+        $wpdb->insert($table_activity, array(
+            'diary_entry_id' => $diary_entry_id,
+            'activity_type' => $activity_type,
+            'activity_description' => $activity_description,
+            'old_value' => $old_value,
+            'new_value' => $new_value,
+            'metadata' => $metadata ? json_encode($metadata) : null,
+            'user_id' => $user_id
+        ));
+
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Get activity log for a job
+     */
+    public function get_activity_log($diary_entry_id) {
+        global $wpdb;
+        $table_activity = $wpdb->prefix . 'staff_diary_activity_log';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT a.*, u.display_name as user_name
+             FROM $table_activity a
+             LEFT JOIN {$wpdb->users} u ON a.user_id = u.ID
+             WHERE a.diary_entry_id = %d
+             ORDER BY a.created_at DESC",
+            $diary_entry_id
+        ));
+    }
+
+    /**
+     * Get recent activity across all jobs
+     */
+    public function get_recent_activity($user_id = null, $limit = 20) {
+        global $wpdb;
+        $table_activity = $wpdb->prefix . 'staff_diary_activity_log';
+
+        if ($user_id) {
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT a.*, d.order_number, u.display_name as user_name
+                 FROM $table_activity a
+                 LEFT JOIN {$this->table_diary} d ON a.diary_entry_id = d.id
+                 LEFT JOIN {$wpdb->users} u ON a.user_id = u.ID
+                 WHERE d.user_id = %d
+                 ORDER BY a.created_at DESC
+                 LIMIT %d",
+                $user_id,
+                $limit
+            ));
+        }
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT a.*, d.order_number, u.display_name as user_name
+             FROM $table_activity a
+             LEFT JOIN {$this->table_diary} d ON a.diary_entry_id = d.id
+             LEFT JOIN {$wpdb->users} u ON a.user_id = u.ID
+             ORDER BY a.created_at DESC
+             LIMIT %d",
+            $limit
+        ));
     }
 }

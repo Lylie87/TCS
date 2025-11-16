@@ -52,6 +52,14 @@ $accessories = $db->get_all_accessories();
                         <strong>Note:</strong> Setting status to "Cancelled" will remove this job from your diary.
                     </p>
                 </div>
+                <div class="form-field">
+                    <label for="job-type">Job Type <span class="required">*</span></label>
+                    <select id="job-type" name="job_type" required>
+                        <option value="residential">Residential</option>
+                        <option value="commercial">Commercial</option>
+                    </select>
+                    <p class="description">Select whether this is a residential or commercial job.</p>
+                </div>
             </div>
         </div>
 
@@ -81,9 +89,9 @@ $accessories = $db->get_all_accessories();
                     <option value="">None</option>
                     <?php
                     $fitters = get_option('wp_staff_diary_fitters', array());
-                    foreach ($fitters as $fitter):
+                    foreach ($fitters as $fitter_id => $fitter):
                     ?>
-                        <option value="<?php echo esc_attr($fitter['id']); ?>">
+                        <option value="<?php echo esc_attr($fitter_id); ?>">
                             <?php echo esc_html($fitter['name']); ?>
                         </option>
                     <?php endforeach; ?>

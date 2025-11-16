@@ -50,8 +50,18 @@ class WP_Staff_Diary_Admin {
             false
         );
 
+        // Enqueue quotes.js for quotes page
+        wp_enqueue_script(
+            $this->plugin_name . '-quotes',
+            WP_STAFF_DIARY_URL . 'assets/js/quotes.js',
+            array('jquery', $this->plugin_name),
+            $this->version,
+            false
+        );
+
         // Get statuses and payment methods from settings
         $statuses = get_option('wp_staff_diary_statuses', array(
+            'quotation' => 'Quotation',
             'pending' => 'Pending',
             'in-progress' => 'In Progress',
             'completed' => 'Completed',
@@ -84,6 +94,24 @@ class WP_Staff_Diary_Admin {
             'wp_staff_diary_dashboard_widget',
             'My Jobs This Week',
             array($this, 'render_dashboard_widget')
+        );
+
+        wp_add_dashboard_widget(
+            'wp_staff_diary_quotes_widget',
+            'Recent Quotes',
+            array($this, 'render_quotes_widget')
+        );
+
+        wp_add_dashboard_widget(
+            'wp_staff_diary_payments_widget',
+            'Payment Overview',
+            array($this, 'render_payments_widget')
+        );
+
+        wp_add_dashboard_widget(
+            'wp_staff_diary_overdue_widget',
+            'Overdue Payments',
+            array($this, 'render_overdue_widget')
         );
     }
 
@@ -132,28 +160,252 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * Render quotes dashboard widget
+     */
+    public function render_quotes_widget() {
+        $current_user = wp_get_current_user();
+        $db = new WP_Staff_Diary_Database();
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get recent quotes for current user (last 10)
+        $quotes = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE user_id = %d
+             AND status = 'quotation'
+             AND is_cancelled = 0
+             ORDER BY created_at DESC
+             LIMIT 10",
+            $current_user->ID
+        ));
+
+        // Enrich quotes with customer data and totals
+        foreach ($quotes as $quote) {
+            if ($quote->customer_id) {
+                $quote->customer = $db->get_customer($quote->customer_id);
+            }
+
+            // Calculate quote total
+            $subtotal = $db->calculate_job_subtotal($quote->id);
+            $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+            $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+            if ($vat_enabled == '1') {
+                $quote->total = $subtotal * (1 + ($vat_rate / 100));
+            } else {
+                $quote->total = $subtotal;
+            }
+        }
+
+        // Include the quotes widget view
+        include WP_STAFF_DIARY_PATH . 'admin/views/quotes-widget.php';
+    }
+
+    /**
+     * Render payments dashboard widget
+     */
+    public function render_payments_widget() {
+        $current_user = wp_get_current_user();
+        $db = new WP_Staff_Diary_Database();
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get VAT settings
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        // Get all non-cancelled, non-quotation jobs for current user
+        $all_jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE user_id = %d
+             AND is_cancelled = 0
+             AND status != 'quotation'
+             ORDER BY job_date DESC",
+            $current_user->ID
+        ));
+
+        // Calculate totals and categorize jobs
+        $total_outstanding = 0;
+        $total_received = 0;
+        $jobs_with_balance = array();
+        $recent_payments = array();
+
+        foreach ($all_jobs as $job) {
+            $subtotal = $db->calculate_job_subtotal($job->id);
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+
+            $payments = $db->get_entry_total_payments($job->id);
+            $balance = $total - $payments;
+
+            $total_received += $payments;
+
+            if ($balance > 0.01) { // Outstanding balance
+                $total_outstanding += $balance;
+                $jobs_with_balance[] = array(
+                    'job' => $job,
+                    'total' => $total,
+                    'payments' => $payments,
+                    'balance' => $balance
+                );
+            }
+        }
+
+        // Get recent payments (last 5)
+        $recent_payments = $wpdb->get_results($wpdb->prepare(
+            "SELECT p.*, e.order_number
+             FROM {$wpdb->prefix}staff_diary_payments p
+             JOIN $table_diary e ON p.diary_entry_id = e.id
+             WHERE e.user_id = %d
+             ORDER BY p.recorded_at DESC
+             LIMIT 5",
+            $current_user->ID
+        ));
+
+        // Sort jobs with balance by balance amount (highest first)
+        usort($jobs_with_balance, function($a, $b) {
+            return $b['balance'] <=> $a['balance'];
+        });
+
+        // Limit to top 5 jobs with outstanding balance
+        $jobs_with_balance = array_slice($jobs_with_balance, 0, 5);
+
+        // Include the payments widget view
+        include WP_STAFF_DIARY_PATH . 'admin/views/payments-widget.php';
+    }
+
+    /**
+     * Render overdue payments widget
+     */
+    public function render_overdue_widget() {
+        $current_user = wp_get_current_user();
+        $db = new WP_Staff_Diary_Database();
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get payment terms settings
+        $payment_terms_number = get_option('wp_staff_diary_payment_terms_number', '30');
+        $payment_terms_unit = get_option('wp_staff_diary_payment_terms_unit', 'days');
+
+        // Calculate the overdue date
+        $today = new DateTime();
+        $overdue_date = clone $today;
+
+        switch ($payment_terms_unit) {
+            case 'weeks':
+                $overdue_date->modify('-' . $payment_terms_number . ' weeks');
+                break;
+            case 'months':
+                $overdue_date->modify('-' . $payment_terms_number . ' months');
+                break;
+            case 'years':
+                $overdue_date->modify('-' . $payment_terms_number . ' years');
+                break;
+            case 'days':
+            default:
+                $overdue_date->modify('-' . $payment_terms_number . ' days');
+                break;
+        }
+
+        $overdue_date_str = $overdue_date->format('Y-m-d');
+
+        // Get VAT settings
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        // Get jobs that are past payment terms
+        $jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE user_id = %d
+             AND is_cancelled = 0
+             AND status != 'quotation'
+             AND job_date <= %s
+             ORDER BY job_date ASC",
+            $current_user->ID,
+            $overdue_date_str
+        ));
+
+        // Filter jobs with outstanding balances
+        $overdue_jobs = array();
+        foreach ($jobs as $job) {
+            $subtotal = $db->calculate_job_subtotal($job->id);
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+
+            $payments = $db->get_entry_total_payments($job->id);
+            $balance = $total - $payments;
+
+            if ($balance > 0.01) { // Has outstanding balance
+                // Calculate days overdue
+                $job_date = new DateTime($job->job_date);
+                $days_overdue = $today->diff($job_date)->days;
+
+                // Get customer data
+                $customer = null;
+                if ($job->customer_id) {
+                    $customer = $db->get_customer($job->customer_id);
+                }
+
+                $overdue_jobs[] = array(
+                    'job' => $job,
+                    'customer' => $customer,
+                    'total' => $total,
+                    'payments' => $payments,
+                    'balance' => $balance,
+                    'days_overdue' => $days_overdue
+                );
+            }
+        }
+
+        // Sort by balance (highest first)
+        usort($overdue_jobs, function($a, $b) {
+            return $b['balance'] <=> $a['balance'];
+        });
+
+        // Include the overdue widget view
+        include WP_STAFF_DIARY_PATH . 'admin/views/overdue-widget.php';
+    }
+
+    /**
      * Add admin menu pages
      */
     public function add_plugin_admin_menu() {
-        // Main menu - My Jobs
+        // Main menu - Staff Diary
         add_menu_page(
-            'My Jobs',
-            'Job Planner',
+            'Staff Diary',
+            'Staff Diary',
             'edit_posts',
             'wp-staff-diary',
             array($this, 'display_my_diary_page'),
             'dashicons-calendar-alt',
-            30
+            2
         );
 
-        // Submenu - My Jobs (duplicate for clarity)
+        // Submenu - Dashboard (previously "My Jobs")
         add_submenu_page(
             'wp-staff-diary',
-            'My Jobs',
-            'My Jobs',
+            'Dashboard',
+            'Dashboard',
             'edit_posts',
             'wp-staff-diary',
             array($this, 'display_my_diary_page')
+        );
+
+        // Submenu - Quotes
+        add_submenu_page(
+            'wp-staff-diary',
+            'Quotes',
+            'Quotes',
+            'edit_posts',
+            'wp-staff-diary-quotes',
+            array($this, 'display_quotes_page')
         );
 
         // Submenu - All Staff Jobs (only for managers/admins)
@@ -219,6 +471,13 @@ class WP_Staff_Diary_Admin {
      */
     public function display_settings_page() {
         require_once WP_STAFF_DIARY_PATH . 'admin/views/settings.php';
+    }
+
+    /**
+     * Display Quotes page
+     */
+    public function display_quotes_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/quotes.php';
     }
 
     /**
@@ -457,6 +716,16 @@ class WP_Staff_Diary_Admin {
             // Get customer information if linked
             if ($entry->customer_id) {
                 $customer = $this->db->get_customer($entry->customer_id);
+                if ($customer) {
+                    // Add formatted customer address
+                    $address_parts = array_filter([
+                        $customer->address_line_1,
+                        $customer->address_line_2,
+                        $customer->address_line_3,
+                        $customer->postcode
+                    ]);
+                    $customer->customer_address = implode("\n", $address_parts);
+                }
                 $entry->customer = $customer;
             }
 
@@ -665,6 +934,7 @@ class WP_Staff_Diary_Admin {
 
         // Get current statuses
         $statuses = get_option('wp_staff_diary_statuses', array(
+            'quotation' => 'Quotation',
             'pending' => 'Pending',
             'in-progress' => 'In Progress',
             'completed' => 'Completed',
@@ -703,7 +973,7 @@ class WP_Staff_Diary_Admin {
         $status_key = sanitize_text_field($_POST['status_key']);
 
         // Prevent deletion of default statuses
-        $default_statuses = array('pending', 'in-progress', 'completed', 'cancelled');
+        $default_statuses = array('quotation', 'pending', 'in-progress', 'completed', 'cancelled');
         if (in_array($status_key, $default_statuses)) {
             wp_send_json_error(array('message' => 'Cannot delete default statuses'));
         }
@@ -1068,6 +1338,215 @@ class WP_Staff_Diary_Admin {
 
         // Generate and output PDF (D = download)
         $pdf_generator->generate_job_sheet($entry_id, 'D');
+    }
+
+    /**
+     * AJAX: Generate Quote PDF
+     */
+    public function generate_quote_pdf() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $quote_id = intval($_POST['quote_id']);
+
+        // Verify permissions
+        $quote = $this->db->get_entry($quote_id);
+        $user_id = get_current_user_id();
+
+        if (!$quote || ($quote->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        // Verify it's a quotation
+        if ($quote->status !== 'quotation') {
+            wp_send_json_error(array('message' => 'This entry is not a quotation'));
+        }
+
+        // Create PDF generator
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_send_json_error(array(
+                'message' => 'PDF generation not available. TCPDF library not installed. Please see libs/README.md for installation instructions.'
+            ));
+        }
+
+        // Generate and save PDF
+        $result = $pdf_generator->generate_quote_pdf($quote_id, 'F');
+
+        if ($result['success']) {
+            wp_send_json_success(array(
+                'message' => 'Quote PDF generated successfully',
+                'url' => $result['url']
+            ));
+        } else {
+            wp_send_json_error(array('message' => $result['message']));
+        }
+    }
+
+    /**
+     * Download Quote PDF (direct output)
+     */
+    public function download_quote_pdf() {
+        if (!isset($_GET['quote_id']) || !isset($_GET['nonce'])) {
+            wp_die('Invalid request');
+        }
+
+        if (!wp_verify_nonce($_GET['nonce'], 'wp_staff_diary_nonce')) {
+            wp_die('Invalid nonce');
+        }
+
+        $quote_id = intval($_GET['quote_id']);
+        $quote = $this->db->get_entry($quote_id);
+        $user_id = get_current_user_id();
+
+        if (!$quote || ($quote->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_die('Permission denied');
+        }
+
+        if ($quote->status !== 'quotation') {
+            wp_die('This entry is not a quotation');
+        }
+
+        // Create PDF generator
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_die('PDF generation not available. Please install TCPDF library.');
+        }
+
+        // Generate and output PDF (D = download)
+        $pdf_generator->generate_quote_pdf($quote_id, 'D');
+    }
+
+    /**
+     * AJAX: Email Quote to Customer
+     */
+    public function email_quote() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $quote_id = intval($_POST['quote_id']);
+        $recipient_email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $custom_message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
+
+        // Verify permissions
+        $quote = $this->db->get_entry($quote_id);
+        $user_id = get_current_user_id();
+
+        if (!$quote || ($quote->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        // Verify it's a quotation
+        if ($quote->status !== 'quotation') {
+            wp_send_json_error(array('message' => 'This entry is not a quotation'));
+        }
+
+        // Get customer
+        $customer = $quote->customer_id ? $this->db->get_customer($quote->customer_id) : null;
+
+        // If no email provided, try to use customer email
+        if (empty($recipient_email) && $customer && !empty($customer->customer_email)) {
+            $recipient_email = $customer->customer_email;
+        }
+
+        if (empty($recipient_email)) {
+            wp_send_json_error(array('message' => 'No email address provided and customer has no email on file'));
+        }
+
+        // Validate email
+        if (!is_email($recipient_email)) {
+            wp_send_json_error(array('message' => 'Invalid email address'));
+        }
+
+        // Generate PDF
+        $pdf_generator = new WP_Staff_Diary_PDF_Generator();
+
+        if (!$pdf_generator->is_available()) {
+            wp_send_json_error(array('message' => 'PDF generation not available. TCPDF library not installed.'));
+        }
+
+        $pdf_result = $pdf_generator->generate_quote_pdf($quote_id, 'F');
+
+        if (!$pdf_result['success']) {
+            wp_send_json_error(array('message' => 'Failed to generate PDF: ' . $pdf_result['message']));
+        }
+
+        // Get company details
+        $company_name = get_option('wp_staff_diary_company_name', get_bloginfo('name'));
+        $company_email = get_option('wp_staff_diary_company_email', get_option('admin_email'));
+        $company_phone = get_option('wp_staff_diary_company_phone', '');
+
+        // Calculate total
+        $subtotal = $this->db->calculate_job_subtotal($quote_id);
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+        $total = $subtotal;
+        if ($vat_enabled == '1') {
+            $total = $subtotal * (1 + ($vat_rate / 100));
+        }
+
+        // Email subject
+        $subject = 'Quotation ' . $quote->order_number . ' from ' . $company_name;
+
+        // Email body
+        $customer_name = $customer ? $customer->customer_name : 'Valued Customer';
+
+        $body = "Dear " . $customer_name . ",\n\n";
+        $body .= "Thank you for your enquiry. Please find attached our quotation.\n\n";
+
+        if (!empty($custom_message)) {
+            $body .= $custom_message . "\n\n";
+        }
+
+        $body .= "Quotation Details:\n";
+        $body .= "Quote Number: " . $quote->order_number . "\n";
+        $body .= "Total Amount: £" . number_format($total, 2) . "\n";
+        if ($vat_enabled == '1') {
+            $body .= "(Including VAT at " . $vat_rate . "%)\n";
+        }
+        $body .= "\n";
+
+        $body .= "This quotation is valid for 30 days from the date of issue.\n\n";
+
+        $body .= "If you would like to proceed with this quotation or have any questions, please don't hesitate to contact us";
+        if ($company_phone) {
+            $body .= " on " . $company_phone;
+        }
+        $body .= ".\n\n";
+
+        $body .= "We look forward to working with you.\n\n";
+        $body .= "Kind regards,\n";
+        $body .= $company_name . "\n";
+
+        if ($company_phone) {
+            $body .= "Tel: " . $company_phone . "\n";
+        }
+        if ($company_email) {
+            $body .= "Email: " . $company_email . "\n";
+        }
+
+        // Email headers
+        $headers = array(
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ' . $company_name . ' <' . $company_email . '>',
+            'Reply-To: ' . $company_email
+        );
+
+        // Attachments
+        $attachments = array($pdf_result['filepath']);
+
+        // Send email
+        $sent = wp_mail($recipient_email, $subject, $body, $headers, $attachments);
+
+        if ($sent) {
+            wp_send_json_success(array(
+                'message' => 'Quote sent successfully to ' . $recipient_email
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => 'Failed to send email. Please check your email configuration.'
+            ));
+        }
     }
 
     // ==================== CUSTOMER AJAX HANDLERS ====================
@@ -1518,6 +1997,895 @@ class WP_Staff_Diary_Admin {
         wp_send_json_success(array(
             'message' => 'Database repaired successfully!',
             'repaired' => $repaired
+        ));
+    }
+
+    /**
+     * AJAX: Get customer jobs
+     * Returns all jobs for a specific customer with financial details
+     */
+    public function get_customer_jobs() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : 0;
+
+        if (empty($customer_id)) {
+            wp_send_json_error(array('message' => 'Customer ID is required'));
+            return;
+        }
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get all jobs for this customer (including cancelled for history)
+        $jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE customer_id = %d
+             ORDER BY job_date DESC, created_at DESC",
+            $customer_id
+        ));
+
+        // Calculate totals for each job
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        foreach ($jobs as $job) {
+            $subtotal = $this->db->calculate_job_subtotal($job->id);
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+            $job->total = $total;
+            $job->subtotal = $subtotal;
+        }
+
+        wp_send_json_success(array(
+            'jobs' => $jobs,
+            'customer_id' => $customer_id
+        ));
+    }
+
+    /**
+     * AJAX: Get fitter availability
+     * Returns availability for a specific fitter over a date range
+     */
+    public function get_fitter_availability() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
+        $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : date('Y-m-d');
+        $days = isset($_POST['days']) ? intval($_POST['days']) : 14; // Default 2 weeks
+
+        if ($fitter_id === null) {
+            wp_send_json_error(array('message' => 'Fitter ID is required'));
+            return;
+        }
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Calculate date range
+        $end_date = date('Y-m-d', strtotime($start_date . ' + ' . $days . ' days'));
+
+        // Get all jobs for this fitter in the date range (excluding cancelled and quotations)
+        $jobs = $wpdb->get_results($wpdb->prepare(
+            "SELECT fitting_date, fitting_time_period, order_number, status
+             FROM $table_diary
+             WHERE fitter_id = %d
+             AND is_cancelled = 0
+             AND status != 'quotation'
+             AND fitting_date_unknown = 0
+             AND fitting_date BETWEEN %s AND %s
+             ORDER BY fitting_date ASC",
+            $fitter_id,
+            $start_date,
+            $end_date
+        ));
+
+        // Organize jobs by date
+        $availability = array();
+        $current = new DateTime($start_date);
+        $end = new DateTime($end_date);
+
+        while ($current <= $end) {
+            $date_str = $current->format('Y-m-d');
+            $day_of_week = $current->format('N'); // 1=Monday, 7=Sunday
+
+            // Skip Sundays by default (can be configured later)
+            if ($day_of_week == 7) {
+                $current->modify('+1 day');
+                continue;
+            }
+
+            $availability[$date_str] = array(
+                'date' => $date_str,
+                'day_name' => $current->format('l'),
+                'jobs' => array(),
+                'am_available' => true,
+                'pm_available' => true,
+                'all_day_booked' => false
+            );
+
+            $current->modify('+1 day');
+        }
+
+        // Mark booked slots
+        foreach ($jobs as $job) {
+            if (isset($availability[$job->fitting_date])) {
+                $availability[$job->fitting_date]['jobs'][] = array(
+                    'order_number' => $job->order_number,
+                    'time_period' => $job->fitting_time_period,
+                    'status' => $job->status
+                );
+
+                // Update availability based on time period
+                $time_period = strtolower($job->fitting_time_period);
+                if ($time_period === 'am') {
+                    $availability[$job->fitting_date]['am_available'] = false;
+                } elseif ($time_period === 'pm') {
+                    $availability[$job->fitting_date]['pm_available'] = false;
+                } elseif ($time_period === 'all-day') {
+                    $availability[$job->fitting_date]['am_available'] = false;
+                    $availability[$job->fitting_date]['pm_available'] = false;
+                    $availability[$job->fitting_date]['all_day_booked'] = true;
+                }
+            }
+        }
+
+        wp_send_json_success(array(
+            'availability' => array_values($availability),
+            'fitter_id' => $fitter_id,
+            'start_date' => $start_date,
+            'end_date' => $end_date
+        ));
+    }
+
+    /**
+     * AJAX: Convert quote to job
+     * Updates the quote entry with fitting details and changes status to pending
+     */
+    public function convert_quote_to_job() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $quote_id = intval($_POST['quote_id']);
+        $fitting_date = isset($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null;
+        $fitting_time_period = isset($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null;
+        $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
+        $fitting_date_unknown = isset($_POST['fitting_date_unknown']) ? intval($_POST['fitting_date_unknown']) : 0;
+
+        if (empty($quote_id)) {
+            wp_send_json_error(array('message' => 'Quote ID is required'));
+            return;
+        }
+
+        // Verify the entry exists and is a quotation
+        $entry = $this->db->get_entry($quote_id);
+        if (!$entry) {
+            wp_send_json_error(array('message' => 'Quote not found'));
+            return;
+        }
+
+        if ($entry->status !== 'quotation') {
+            wp_send_json_error(array('message' => 'This entry is not a quotation'));
+            return;
+        }
+
+        // Verify ownership or admin
+        $user_id = get_current_user_id();
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Update the entry with fitting details and change status to pending
+        $update_data = array(
+            'status' => 'pending',
+            'fitter_id' => $fitter_id,
+            'fitting_date' => $fitting_date,
+            'fitting_time_period' => $fitting_time_period,
+            'fitting_date_unknown' => $fitting_date_unknown
+        );
+
+        $result = $this->db->update_entry($quote_id, $update_data);
+
+        if ($result !== false) {
+            wp_send_json_success(array(
+                'message' => 'Quote successfully converted to job',
+                'entry_id' => $quote_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to convert quote to job'));
+        }
+    }
+
+    // ==================== PAYMENT REMINDER METHODS ====================
+
+    /**
+     * Send payment reminder (manual or automated)
+     */
+    public function send_payment_reminder() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+        $custom_message = isset($_POST['custom_message']) ? sanitize_textarea_field($_POST['custom_message']) : '';
+
+        // Get job details
+        $job = $this->db->get_entry($entry_id);
+        if (!$job) {
+            wp_send_json_error(array('message' => 'Job not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($job->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Get customer
+        $customer = $job->customer_id ? $this->db->get_customer($job->customer_id) : null;
+        if (!$customer || empty($customer->customer_email)) {
+            wp_send_json_error(array('message' => 'Customer has no email address on file'));
+            return;
+        }
+
+        // Calculate balance
+        $subtotal = $this->db->calculate_job_subtotal($entry_id);
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        $vat_amount = 0;
+        $total = $subtotal;
+        if ($vat_enabled == '1') {
+            $vat_amount = $subtotal * ($vat_rate / 100);
+            $total = $subtotal + $vat_amount;
+        }
+
+        $payments = $this->db->get_entry_total_payments($entry_id);
+        $balance = $total - $payments;
+
+        // Check if there's actually a balance
+        if ($balance <= 0.01) {
+            wp_send_json_error(array('message' => 'No outstanding balance for this job'));
+            return;
+        }
+
+        // Send reminder email
+        $result = $this->send_payment_reminder_email($job, $customer, $total, $balance, $custom_message);
+
+        if ($result['success']) {
+            wp_send_json_success(array(
+                'message' => 'Payment reminder sent successfully to ' . $customer->customer_email
+            ));
+        } else {
+            wp_send_json_error(array('message' => $result['message']));
+        }
+    }
+
+    /**
+     * Send payment reminder email
+     */
+    private function send_payment_reminder_email($job, $customer, $total, $balance, $custom_message = '') {
+        // Get company details
+        $company_name = get_option('wp_staff_diary_company_name', get_bloginfo('name'));
+        $company_email = get_option('wp_staff_diary_company_email', get_option('admin_email'));
+
+        // Build email
+        $subject = get_option('wp_staff_diary_payment_reminder_subject', 'Payment Reminder - Invoice {order_number}');
+        $message_template = get_option('wp_staff_diary_payment_reminder_message');
+
+        // Replace placeholders in subject
+        $subject = str_replace('{order_number}', $job->order_number, $subject);
+        $subject = str_replace('{customer_name}', $customer->customer_name, $subject);
+
+        // Build message body
+        if (!empty($custom_message)) {
+            $body = $custom_message . "\n\n";
+        } else {
+            $body = str_replace('{customer_name}', $customer->customer_name, $message_template);
+            $body = str_replace('{order_number}', $job->order_number, $body);
+            $body = str_replace('{job_date}', date('d/m/Y', strtotime($job->job_date)), $body);
+            $body = str_replace('{total_amount}', '£' . number_format($total, 2), $body);
+            $body = str_replace('{balance}', '£' . number_format($balance, 2), $body);
+        }
+
+        // Add company signature
+        $body .= "\n\n---\n";
+        $body .= $company_name . "\n";
+
+        $company_phone = get_option('wp_staff_diary_company_phone', '');
+        if (!empty($company_phone)) {
+            $body .= "Phone: " . $company_phone . "\n";
+        }
+
+        if (!empty($company_email)) {
+            $body .= "Email: " . $company_email . "\n";
+        }
+
+        // Add bank details for payment
+        $bank_name = get_option('wp_staff_diary_bank_name', '');
+        $bank_account_name = get_option('wp_staff_diary_bank_account_name', '');
+        $bank_sort_code = get_option('wp_staff_diary_bank_sort_code', '');
+        $bank_account_number = get_option('wp_staff_diary_bank_account_number', '');
+
+        if (!empty($bank_name) || !empty($bank_account_name) || !empty($bank_sort_code) || !empty($bank_account_number)) {
+            $body .= "\n";
+            $body .= "PAYMENT DETAILS\n";
+            if (!empty($bank_name)) {
+                $body .= "Bank: " . $bank_name . "\n";
+            }
+            if (!empty($bank_account_name)) {
+                $body .= "Account Name: " . $bank_account_name . "\n";
+            }
+            if (!empty($bank_sort_code)) {
+                $body .= "Sort Code: " . $bank_sort_code . "\n";
+            }
+            if (!empty($bank_account_number)) {
+                $body .= "Account Number: " . $bank_account_number . "\n";
+            }
+        }
+
+        // Email headers
+        $headers = array(
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ' . $company_name . ' <' . $company_email . '>',
+            'Reply-To: ' . $company_email
+        );
+
+        // Send email
+        $sent = wp_mail($customer->customer_email, $subject, $body, $headers);
+
+        // Log the notification
+        $this->db->log_notification(
+            $job->id,
+            'payment_reminder',
+            $customer->customer_email,
+            'email',
+            $sent ? 'sent' : 'failed',
+            $sent ? null : 'wp_mail() returned false'
+        );
+
+        if ($sent) {
+            return array('success' => true);
+        } else {
+            return array(
+                'success' => false,
+                'message' => 'Failed to send email. Please check your email configuration.'
+            );
+        }
+    }
+
+    /**
+     * Process scheduled payment reminders (called by WP-Cron)
+     */
+    public function process_scheduled_reminders() {
+        // Check if reminders are enabled
+        $reminders_enabled = get_option('wp_staff_diary_payment_reminders_enabled', '1');
+        if ($reminders_enabled != '1') {
+            return;
+        }
+
+        // Get pending reminders
+        $pending_reminders = $this->db->get_pending_reminders();
+
+        foreach ($pending_reminders as $reminder) {
+            // Get job details
+            $job = $this->db->get_entry($reminder->diary_entry_id);
+            if (!$job || $job->is_cancelled) {
+                // Cancel reminder if job not found or cancelled
+                $this->db->cancel_scheduled_reminders($reminder->diary_entry_id);
+                continue;
+            }
+
+            // Calculate current balance
+            $subtotal = $this->db->calculate_job_subtotal($reminder->diary_entry_id);
+            $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+            $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+            $total = $subtotal;
+            if ($vat_enabled == '1') {
+                $total = $subtotal * (1 + ($vat_rate / 100));
+            }
+
+            $payments = $this->db->get_entry_total_payments($reminder->diary_entry_id);
+            $balance = $total - $payments;
+
+            // If balance is paid, cancel remaining reminders
+            if ($balance <= 0.01) {
+                $this->db->cancel_scheduled_reminders($reminder->diary_entry_id);
+                continue;
+            }
+
+            // Get customer
+            $customer = $job->customer_id ? $this->db->get_customer($job->customer_id) : null;
+            if (!$customer || empty($customer->customer_email)) {
+                // Mark as failed and continue
+                $this->db->mark_reminder_sent($reminder->id);
+                $this->db->log_notification(
+                    $job->id,
+                    'payment_reminder_' . $reminder->reminder_type,
+                    'N/A',
+                    'email',
+                    'failed',
+                    'No customer email on file'
+                );
+                continue;
+            }
+
+            // Send reminder
+            $result = $this->send_payment_reminder_email($job, $customer, $total, $balance);
+
+            // Mark as sent
+            $this->db->mark_reminder_sent($reminder->id);
+        }
+    }
+
+    /**
+     * Schedule automatic payment reminders for a job
+     */
+    public function schedule_automatic_reminders($entry_id) {
+        // Check if reminders are enabled
+        $reminders_enabled = get_option('wp_staff_diary_payment_reminders_enabled', '1');
+        if ($reminders_enabled != '1') {
+            return;
+        }
+
+        $job = $this->db->get_entry($entry_id);
+        if (!$job || $job->status === 'quotation') {
+            return;
+        }
+
+        // Get reminder settings
+        $reminder_1_days = intval(get_option('wp_staff_diary_payment_reminder_1_days', '7'));
+        $reminder_2_days = intval(get_option('wp_staff_diary_payment_reminder_2_days', '14'));
+        $reminder_3_days = intval(get_option('wp_staff_diary_payment_reminder_3_days', '21'));
+
+        // Use job_date as the starting point
+        $job_date = new DateTime($job->job_date);
+
+        // Schedule reminders
+        if ($reminder_1_days > 0) {
+            $reminder_1_date = clone $job_date;
+            $reminder_1_date->modify("+{$reminder_1_days} days");
+            $this->db->schedule_payment_reminder($entry_id, 'reminder_1', $reminder_1_date->format('Y-m-d H:i:s'));
+        }
+
+        if ($reminder_2_days > 0) {
+            $reminder_2_date = clone $job_date;
+            $reminder_2_date->modify("+{$reminder_2_days} days");
+            $this->db->schedule_payment_reminder($entry_id, 'reminder_2', $reminder_2_date->format('Y-m-d H:i:s'));
+        }
+
+        if ($reminder_3_days > 0) {
+            $reminder_3_date = clone $job_date;
+            $reminder_3_date->modify("+{$reminder_3_days} days");
+            $this->db->schedule_payment_reminder($entry_id, 'reminder_3', $reminder_3_date->format('Y-m-d H:i:s'));
+        }
+    }
+
+    /**
+     * Setup WP-Cron for payment reminders
+     */
+    public function setup_payment_reminder_cron() {
+        if (!wp_next_scheduled('wp_staff_diary_process_reminders')) {
+            wp_schedule_event(time(), 'twicedaily', 'wp_staff_diary_process_reminders');
+        }
+    }
+
+    /**
+     * Clear payment reminder cron on deactivation
+     */
+    public static function clear_payment_reminder_cron() {
+        $timestamp = wp_next_scheduled('wp_staff_diary_process_reminders');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'wp_staff_diary_process_reminders');
+        }
+    }
+
+    // ==================== JOB TEMPLATE METHODS ====================
+
+    /**
+     * Get all job templates
+     */
+    public function get_job_templates() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $user_id = get_current_user_id();
+        $templates = $this->db->get_all_job_templates($user_id);
+
+        wp_send_json_success(array(
+            'templates' => $templates
+        ));
+    }
+
+    /**
+     * Get a single job template
+     */
+    public function get_job_template() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $template_id = intval($_POST['template_id']);
+        $template = $this->db->get_job_template($template_id);
+
+        if (!$template) {
+            wp_send_json_error(array('message' => 'Template not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($template->created_by != $user_id && !current_user_can('edit_users') && $template->is_global != 1) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Decode accessories JSON
+        if (!empty($template->accessories_json)) {
+            $template->accessories = json_decode($template->accessories_json, true);
+        } else {
+            $template->accessories = array();
+        }
+
+        wp_send_json_success(array(
+            'template' => $template
+        ));
+    }
+
+    /**
+     * Save job template
+     */
+    public function save_job_template() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $template_id = isset($_POST['template_id']) && !empty($_POST['template_id']) ? intval($_POST['template_id']) : null;
+        $template_name = sanitize_text_field($_POST['template_name']);
+        $template_description = isset($_POST['template_description']) ? sanitize_textarea_field($_POST['template_description']) : '';
+        $product_description = isset($_POST['product_description']) ? sanitize_textarea_field($_POST['product_description']) : '';
+        $sq_mtr_qty = isset($_POST['sq_mtr_qty']) && $_POST['sq_mtr_qty'] !== '' ? floatval($_POST['sq_mtr_qty']) : null;
+        $price_per_sq_mtr = isset($_POST['price_per_sq_mtr']) && $_POST['price_per_sq_mtr'] !== '' ? floatval($_POST['price_per_sq_mtr']) : null;
+        $fitting_cost = isset($_POST['fitting_cost']) && $_POST['fitting_cost'] !== '' ? floatval($_POST['fitting_cost']) : 0.00;
+        $accessories = isset($_POST['accessories']) ? $_POST['accessories'] : array();
+        $is_global = isset($_POST['is_global']) && current_user_can('edit_users') ? 1 : 0;
+
+        if (empty($template_name)) {
+            wp_send_json_error(array('message' => 'Template name is required'));
+            return;
+        }
+
+        // Prepare data
+        $data = array(
+            'template_name' => $template_name,
+            'template_description' => $template_description,
+            'product_description' => $product_description,
+            'sq_mtr_qty' => $sq_mtr_qty,
+            'price_per_sq_mtr' => $price_per_sq_mtr,
+            'fitting_cost' => $fitting_cost,
+            'accessories_json' => json_encode($accessories),
+            'is_global' => $is_global
+        );
+
+        if ($template_id) {
+            // Update existing template
+            $existing = $this->db->get_job_template($template_id);
+            if (!$existing) {
+                wp_send_json_error(array('message' => 'Template not found'));
+                return;
+            }
+
+            // Verify permissions
+            $user_id = get_current_user_id();
+            if ($existing->created_by != $user_id && !current_user_can('edit_users')) {
+                wp_send_json_error(array('message' => 'Permission denied'));
+                return;
+            }
+
+            $result = $this->db->update_job_template($template_id, $data);
+
+            if ($result !== false) {
+                wp_send_json_success(array(
+                    'message' => 'Template updated successfully',
+                    'template_id' => $template_id
+                ));
+            } else {
+                wp_send_json_error(array('message' => 'Failed to update template'));
+            }
+        } else {
+            // Create new template
+            $data['created_by'] = get_current_user_id();
+
+            $template_id = $this->db->create_job_template($data);
+
+            if ($template_id) {
+                wp_send_json_success(array(
+                    'message' => 'Template created successfully',
+                    'template_id' => $template_id
+                ));
+            } else {
+                wp_send_json_error(array('message' => 'Failed to create template'));
+            }
+        }
+    }
+
+    /**
+     * Delete job template
+     */
+    public function delete_job_template() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $template_id = intval($_POST['template_id']);
+        $template = $this->db->get_job_template($template_id);
+
+        if (!$template) {
+            wp_send_json_error(array('message' => 'Template not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($template->created_by != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        $result = $this->db->delete_job_template($template_id);
+
+        if ($result) {
+            wp_send_json_success(array('message' => 'Template deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to delete template'));
+        }
+    }
+
+    // ==================== ACTIVITY LOG METHODS ====================
+
+    /**
+     * Get activity log for a job
+     */
+    public function get_activity_log() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+        $entry = $this->db->get_entry($entry_id);
+
+        if (!$entry) {
+            wp_send_json_error(array('message' => 'Job not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        $activity_log = $this->db->get_activity_log($entry_id);
+
+        wp_send_json_success(array(
+            'activity_log' => $activity_log
+        ));
+    }
+
+    // ==================== BULK ACTION METHODS ====================
+
+    /**
+     * Bulk update job status
+     */
+    public function bulk_update_status() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_ids = isset($_POST['entry_ids']) ? array_map('intval', $_POST['entry_ids']) : array();
+        $new_status = sanitize_text_field($_POST['new_status']);
+
+        if (empty($entry_ids)) {
+            wp_send_json_error(array('message' => 'No jobs selected'));
+            return;
+        }
+
+        // Validate status
+        $allowed_statuses = get_option('wp_staff_diary_statuses', array(
+            'quotation' => 'Quotation',
+            'pending' => 'Pending',
+            'in-progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled'
+        ));
+
+        if (!array_key_exists($new_status, $allowed_statuses)) {
+            wp_send_json_error(array('message' => 'Invalid status provided'));
+            return;
+        }
+
+        $user_id = get_current_user_id();
+        $updated = 0;
+        $failed = 0;
+
+        foreach ($entry_ids as $entry_id) {
+            $entry = $this->db->get_entry($entry_id);
+
+            if (!$entry) {
+                $failed++;
+                continue;
+            }
+
+            // Verify permissions
+            if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+                $failed++;
+                continue;
+            }
+
+            $old_status = $entry->status;
+
+            // Update status
+            $result = $this->db->update_entry($entry_id, array('status' => $new_status));
+
+            if ($result !== false) {
+                // Log activity
+                $this->db->log_activity(
+                    $entry_id,
+                    'status_change',
+                    sprintf(
+                        "Status changed from '%s' to '%s'",
+                        esc_sql($old_status),
+                        esc_sql($new_status)
+                    ),
+                    $old_status,
+                    $new_status
+                );
+                $updated++;
+            } else {
+                $failed++;
+            }
+        }
+
+        wp_send_json_success(array(
+            'message' => "Updated {$updated} job(s)" . ($failed > 0 ? ", {$failed} failed" : ''),
+            'updated' => $updated,
+            'failed' => $failed
+        ));
+    }
+
+    /**
+     * Bulk delete jobs
+     */
+    public function bulk_delete_jobs() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_ids = isset($_POST['entry_ids']) ? array_map('intval', $_POST['entry_ids']) : array();
+
+        if (empty($entry_ids)) {
+            wp_send_json_error(array('message' => 'No jobs selected'));
+            return;
+        }
+
+        $user_id = get_current_user_id();
+        $deleted = 0;
+        $failed = 0;
+
+        foreach ($entry_ids as $entry_id) {
+            $entry = $this->db->get_entry($entry_id);
+
+            if (!$entry) {
+                $failed++;
+                continue;
+            }
+
+            // Verify permissions
+            if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+                $failed++;
+                continue;
+            }
+
+            // Log the deletion before actually deleting
+            $this->db->log_activity(
+                $entry_id,
+                'job_deleted',
+                sprintf('Job %s deleted via bulk action', $entry->order_number),
+                null,
+                null,
+                array('method' => 'bulk_action')
+            );
+
+            $result = $this->db->delete_entry($entry_id);
+
+            if ($result) {
+                $deleted++;
+            } else {
+                $failed++;
+            }
+        }
+
+        wp_send_json_success(array(
+            'message' => "Deleted {$deleted} job(s)" . ($failed > 0 ? ", {$failed} failed" : ''),
+            'deleted' => $deleted,
+            'failed' => $failed
+        ));
+    }
+
+    /**
+     * Bulk export jobs to CSV
+     */
+    public function bulk_export_jobs() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_ids = isset($_POST['entry_ids']) ? array_map('intval', $_POST['entry_ids']) : array();
+
+        if (empty($entry_ids)) {
+            wp_send_json_error(array('message' => 'No jobs selected'));
+            return;
+        }
+
+        $user_id = get_current_user_id();
+        $jobs_data = array();
+
+        // CSV Headers
+        $headers = array(
+            'Order Number',
+            'Customer Name',
+            'Job Date',
+            'Fitting Date',
+            'Product Description',
+            'Quantity (sq m)',
+            'Price per sq m',
+            'Fitting Cost',
+            'Subtotal',
+            'VAT',
+            'Total',
+            'Status',
+            'Created Date'
+        );
+
+        $jobs_data[] = $headers;
+
+        $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+        $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+        foreach ($entry_ids as $entry_id) {
+            $entry = $this->db->get_entry($entry_id);
+
+            if (!$entry) {
+                continue;
+            }
+
+            // Verify permissions
+            if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+                continue;
+            }
+
+            // Get customer
+            $customer = $entry->customer_id ? $this->db->get_customer($entry->customer_id) : null;
+
+            // Calculate totals
+            $subtotal = $this->db->calculate_job_subtotal($entry_id);
+            $vat_amount = 0;
+            $total = $subtotal;
+
+            if ($vat_enabled == '1') {
+                $vat_amount = $subtotal * ($vat_rate / 100);
+                $total = $subtotal + $vat_amount;
+            }
+
+            $jobs_data[] = array(
+                $entry->order_number,
+                $customer ? $customer->customer_name : '',
+                $entry->job_date ? date('d/m/Y', strtotime($entry->job_date)) : '',
+                $entry->fitting_date ? date('d/m/Y', strtotime($entry->fitting_date)) : '',
+                $entry->product_description,
+                $entry->sq_mtr_qty,
+                $entry->price_per_sq_mtr,
+                $entry->fitting_cost,
+                number_format($subtotal, 2),
+                number_format($vat_amount, 2),
+                number_format($total, 2),
+                $entry->status,
+                date('d/m/Y H:i', strtotime($entry->created_at))
+            );
+        }
+
+        wp_send_json_success(array(
+            'csv_data' => $jobs_data,
+            'filename' => 'jobs-export-' . date('Y-m-d') . '.csv'
         ));
     }
 }

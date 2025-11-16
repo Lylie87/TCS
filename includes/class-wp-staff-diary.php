@@ -166,9 +166,40 @@ class WP_Staff_Diary {
 
         // AJAX handlers - PDF Generation
         $this->loader->add_action('wp_ajax_generate_pdf', $plugin_admin, 'generate_pdf');
+        $this->loader->add_action('wp_ajax_generate_quote_pdf', $plugin_admin, 'generate_quote_pdf');
 
         // Action for direct PDF download
         $this->loader->add_action('admin_post_wp_staff_diary_download_pdf', $plugin_admin, 'download_pdf');
+        $this->loader->add_action('admin_post_wp_staff_diary_download_quote_pdf', $plugin_admin, 'download_quote_pdf');
+
+        // AJAX handlers - Quotes
+        $this->loader->add_action('wp_ajax_convert_quote_to_job', $plugin_admin, 'convert_quote_to_job');
+        $this->loader->add_action('wp_ajax_get_fitter_availability', $plugin_admin, 'get_fitter_availability');
+        $this->loader->add_action('wp_ajax_email_quote', $plugin_admin, 'email_quote');
+
+        // AJAX handlers - Payment Reminders
+        $this->loader->add_action('wp_ajax_send_payment_reminder', $plugin_admin, 'send_payment_reminder');
+
+        // WP-Cron for payment reminders
+        $this->loader->add_action('init', $plugin_admin, 'setup_payment_reminder_cron');
+        $this->loader->add_action('wp_staff_diary_process_reminders', $plugin_admin, 'process_scheduled_reminders');
+
+        // AJAX handlers - Job Templates
+        $this->loader->add_action('wp_ajax_get_job_templates', $plugin_admin, 'get_job_templates');
+        $this->loader->add_action('wp_ajax_get_job_template', $plugin_admin, 'get_job_template');
+        $this->loader->add_action('wp_ajax_save_job_template', $plugin_admin, 'save_job_template');
+        $this->loader->add_action('wp_ajax_delete_job_template', $plugin_admin, 'delete_job_template');
+
+        // AJAX handlers - Activity Log
+        $this->loader->add_action('wp_ajax_get_activity_log', $plugin_admin, 'get_activity_log');
+
+        // AJAX handlers - Bulk Actions
+        $this->loader->add_action('wp_ajax_bulk_update_status', $plugin_admin, 'bulk_update_status');
+        $this->loader->add_action('wp_ajax_bulk_delete_jobs', $plugin_admin, 'bulk_delete_jobs');
+        $this->loader->add_action('wp_ajax_bulk_export_jobs', $plugin_admin, 'bulk_export_jobs');
+
+        // AJAX handlers - Customer History
+        $this->loader->add_action('wp_ajax_get_customer_jobs', $plugin_admin, 'get_customer_jobs');
     }
 
     private function define_public_hooks() {

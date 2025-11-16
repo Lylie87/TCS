@@ -60,8 +60,15 @@ class WP_Staff_Diary_Images_Controller extends WP_Staff_Diary_Base_Controller {
 
         $image_url = wp_get_attachment_url($attachment_id);
         $caption = isset($_POST['caption']) ? sanitize_text_field($_POST['caption']) : '';
+        $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : 'general';
 
-        $image_id = $this->repository->add_image($diary_entry_id, $image_url, $attachment_id, $caption);
+        // Validate category
+        $valid_categories = array('before', 'during', 'after', 'general');
+        if (!in_array($category, $valid_categories)) {
+            $category = 'general';
+        }
+
+        $image_id = $this->repository->add_image($diary_entry_id, $image_url, $attachment_id, $caption, $category);
 
         ob_end_clean();
 
