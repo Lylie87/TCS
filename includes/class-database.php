@@ -737,4 +737,77 @@ class WP_Staff_Diary_Database {
 
         return $wpdb->delete($table_templates, array('id' => $template_id));
     }
+
+    // ==================== ACTIVITY LOG METHODS ====================
+
+    /**
+     * Log an activity for a job
+     */
+    public function log_activity($diary_entry_id, $activity_type, $activity_description, $old_value = null, $new_value = null, $metadata = null) {
+        global $wpdb;
+        $table_activity = $wpdb->prefix . 'staff_diary_activity_log';
+
+        $user_id = get_current_user_id();
+
+        $wpdb->insert($table_activity, array(
+            'diary_entry_id' => $diary_entry_id,
+            'activity_type' => $activity_type,
+            'activity_description' => $activity_description,
+            'old_value' => $old_value,
+            'new_value' => $new_value,
+            'metadata' => $metadata ? json_encode($metadata) : null,
+            'user_id' => $user_id
+        ));
+
+        return $wpdb->insert_id;
+    }
+
+    /**
+     * Get activity log for a job
+     */
+    public function get_activity_log($diary_entry_id) {
+        global $wpdb;
+        $table_activity = $wpdb->prefix . 'staff_diary_activity_log';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT a.*, u.display_name as user_name
+             FROM $table_activity a
+             LEFT JOIN {$wpdb->users} u ON a.user_id = u.ID
+             WHERE a.diary_entry_id = %d
+             ORDER BY a.created_at DESC",
+            $diary_entry_id
+        ));
+    }
+
+    /**
+     * Get recent activity across all jobs
+     */
+    public function get_recent_activity($user_id = null, $limit = 20) {
+        global $wpdb;
+        $table_activity = $wpdb->prefix . 'staff_diary_activity_log';
+
+        if ($user_id) {
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT a.*, d.order_number, u.display_name as user_name
+                 FROM $table_activity a
+                 LEFT JOIN {$this->table_diary} d ON a.diary_entry_id = d.id
+                 LEFT JOIN {$wpdb->users} u ON a.user_id = u.ID
+                 WHERE d.user_id = %d
+                 ORDER BY a.created_at DESC
+                 LIMIT %d",
+                $user_id,
+                $limit
+            ));
+        }
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT a.*, d.order_number, u.display_name as user_name
+             FROM $table_activity a
+             LEFT JOIN {$this->table_diary} d ON a.diary_entry_id = d.id
+             LEFT JOIN {$wpdb->users} u ON a.user_id = u.ID
+             ORDER BY a.created_at DESC
+             LIMIT %d",
+            $limit
+        ));
+    }
 }

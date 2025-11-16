@@ -97,6 +97,12 @@ class WP_Staff_Diary_Admin {
         );
 
         wp_add_dashboard_widget(
+            'wp_staff_diary_quotes_widget',
+            'Recent Quotes',
+            array($this, 'render_quotes_widget')
+        );
+
+        wp_add_dashboard_widget(
             'wp_staff_diary_payments_widget',
             'Payment Overview',
             array($this, 'render_payments_widget')
@@ -145,6 +151,49 @@ class WP_Staff_Diary_Admin {
 
         // Include the dashboard widget view
         include WP_STAFF_DIARY_PATH . 'admin/views/dashboard-widget.php';
+    }
+
+    /**
+     * Render quotes dashboard widget
+     */
+    public function render_quotes_widget() {
+        $current_user = wp_get_current_user();
+        $db = new WP_Staff_Diary_Database();
+
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Get recent quotes for current user (last 10)
+        $quotes = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_diary
+             WHERE user_id = %d
+             AND status = 'quotation'
+             AND is_cancelled = 0
+             ORDER BY created_at DESC
+             LIMIT 10",
+            $current_user->ID
+        ));
+
+        // Enrich quotes with customer data and totals
+        foreach ($quotes as $quote) {
+            if ($quote->customer_id) {
+                $quote->customer = $db->get_customer($quote->customer_id);
+            }
+
+            // Calculate quote total
+            $subtotal = $db->calculate_job_subtotal($quote->id);
+            $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
+            $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+            if ($vat_enabled == '1') {
+                $quote->total = $subtotal * (1 + ($vat_rate / 100));
+            } else {
+                $quote->total = $subtotal;
+            }
+        }
+
+        // Include the quotes widget view
+        include WP_STAFF_DIARY_PATH . 'admin/views/quotes-widget.php';
     }
 
     /**
@@ -2462,5 +2511,35 @@ class WP_Staff_Diary_Admin {
         } else {
             wp_send_json_error(array('message' => 'Failed to delete template'));
         }
+    }
+
+    // ==================== ACTIVITY LOG METHODS ====================
+
+    /**
+     * Get activity log for a job
+     */
+    public function get_activity_log() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+        $entry = $this->db->get_entry($entry_id);
+
+        if (!$entry) {
+            wp_send_json_error(array('message' => 'Job not found'));
+            return;
+        }
+
+        // Verify permissions
+        $user_id = get_current_user_id();
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        $activity_log = $this->db->get_activity_log($entry_id);
+
+        wp_send_json_success(array(
+            'activity_log' => $activity_log
+        ));
     }
 }

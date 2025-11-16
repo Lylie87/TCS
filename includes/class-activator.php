@@ -206,6 +206,26 @@ class WP_Staff_Diary_Activator {
             KEY is_global (is_global)
         ) $charset_collate;";
 
+        // Table for job activity log (status timeline/history)
+        $table_activity_log = $wpdb->prefix . 'staff_diary_activity_log';
+
+        $sql_activity_log = "CREATE TABLE $table_activity_log (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) NOT NULL,
+            activity_type varchar(50) NOT NULL,
+            activity_description text NOT NULL,
+            old_value varchar(255) DEFAULT NULL,
+            new_value varchar(255) DEFAULT NULL,
+            metadata text DEFAULT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY activity_type (activity_type),
+            KEY user_id (user_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_customers);
         dbDelta($sql_diary);
@@ -216,6 +236,7 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_notification_logs);
         dbDelta($sql_reminder_schedule);
         dbDelta($sql_job_templates);
+        dbDelta($sql_activity_log);
 
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);
