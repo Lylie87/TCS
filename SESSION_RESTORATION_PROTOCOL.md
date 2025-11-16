@@ -133,6 +133,17 @@ gh --version
 - **Cause**: ZIP contains loose files instead of wp-staff-diary/ folder
 - **Fix**: Ensure 7-Zip command zips the folder, not just its contents
 
+**Error**: "Virus detected: Sanesecurity.Foxhole.JS_Zip_23.UNOFFICIAL"
+- **Cause**: False positive from overly aggressive Sanesecurity heuristic scanner
+- **Issue**: Heuristic flags any ZIP containing JavaScript files (normal for WordPress plugins)
+- **Verification**: Plugin contains only clean, unobfuscated JS in `assets/js/admin.js`
+- **Fix Options**:
+  1. Upload via FTP/SFTP instead of web uploader (bypasses scanner)
+  2. Extract locally and upload the `wp-staff-diary/` folder directly
+  3. Use WordPress Dashboard → Plugins → Add New → Upload Plugin
+  4. Contact host support to whitelist (provide GitHub URL as proof: https://github.com/Lylie87/TCS)
+  5. Temporarily disable malware scanner in cPanel if available
+
 ## Last Updated
 
 Version: 2.6.2
