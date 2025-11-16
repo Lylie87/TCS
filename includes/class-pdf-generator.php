@@ -71,6 +71,19 @@ class WP_Staff_Diary_PDF_Generator {
             $total = $subtotal + $vat_amount;
         }
 
+        // Calculate discount if exists
+        $discount_amount = 0;
+        $has_discount = false;
+        if (!empty($entry->discount_type) && !empty($entry->discount_value) && $entry->discount_value > 0) {
+            $has_discount = true;
+            if ($entry->discount_type === 'percentage') {
+                $discount_amount = ($total * $entry->discount_value) / 100;
+            } else {
+                $discount_amount = min($entry->discount_value, $total);
+            }
+            $total = $total - $discount_amount;
+        }
+
         $total_payments = $this->db->get_entry_total_payments($entry_id);
         $balance = $total - $total_payments;
 
@@ -113,7 +126,7 @@ class WP_Staff_Diary_PDF_Generator {
                                       $subtotal, $vat_amount, $total, $total_payments, $balance,
                                       $company_name, $company_address, $company_phone, $company_email,
                                       $company_vat, $company_reg, $company_bank, $company_logo, $terms,
-                                      $vat_enabled, $vat_rate);
+                                      $vat_enabled, $vat_rate, $has_discount, $discount_amount);
 
         // Output HTML content
         $pdf->writeHTML($html, true, false, true, false, '');
@@ -155,7 +168,7 @@ class WP_Staff_Diary_PDF_Generator {
                                    $subtotal, $vat_amount, $total, $total_payments, $balance,
                                    $company_name, $company_address, $company_phone, $company_email,
                                    $company_vat, $company_reg, $company_bank, $company_logo, $terms,
-                                   $vat_enabled, $vat_rate) {
+                                   $vat_enabled, $vat_rate, $has_discount, $discount_amount) {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
@@ -294,7 +307,20 @@ class WP_Staff_Diary_PDF_Generator {
         if ($vat_enabled == '1') {
             $html .= '<tr><td><strong>VAT (' . $vat_rate . '%):</strong></td><td class="amount">£' . number_format($vat_amount, 2) . '</td></tr>';
         }
-        $html .= '<tr class="total-row"><td><strong>Total:</strong></td><td class="amount"><strong>£' . number_format($total, 2) . '</strong></td></tr>';
+
+        // Show discount if applied
+        if ($has_discount) {
+            $original_total = $total + $discount_amount;
+            $discount_label = $entry->discount_type === 'percentage'
+                ? number_format($entry->discount_value, 2) . '%'
+                : '£' . number_format($entry->discount_value, 2);
+
+            $html .= '<tr><td><strong>Original Total:</strong></td><td class="amount">£' . number_format($original_total, 2) . '</td></tr>';
+            $html .= '<tr style="background-color: #e3f2fd;"><td><strong>Discount (' . htmlspecialchars($discount_label) . '):</strong></td><td class="amount" style="color: #2271b1;">-£' . number_format($discount_amount, 2) . '</td></tr>';
+            $html .= '<tr class="total-row"><td><strong>Final Total:</strong></td><td class="amount"><strong>£' . number_format($total, 2) . '</strong></td></tr>';
+        } else {
+            $html .= '<tr class="total-row"><td><strong>Total:</strong></td><td class="amount"><strong>£' . number_format($total, 2) . '</strong></td></tr>';
+        }
 
         // Payments
         if (!empty($payments)) {
