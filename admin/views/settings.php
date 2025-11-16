@@ -39,6 +39,13 @@ if (isset($_POST['wp_staff_diary_save_settings'])) {
     update_option('wp_staff_diary_job_time_type', sanitize_text_field($_POST['job_time_type']));
     update_option('wp_staff_diary_fitting_time_length', isset($_POST['fitting_time_length']) ? '1' : '0');
 
+    // Currency settings
+    update_option('wp_staff_diary_currency_symbol', sanitize_text_field($_POST['currency_symbol']));
+    update_option('wp_staff_diary_currency_code', sanitize_text_field($_POST['currency_code']));
+    update_option('wp_staff_diary_currency_position', sanitize_text_field($_POST['currency_position']));
+    update_option('wp_staff_diary_decimal_separator', sanitize_text_field($_POST['decimal_separator']));
+    update_option('wp_staff_diary_thousands_separator', sanitize_text_field($_POST['thousands_separator']));
+
     echo '<div class="notice notice-success is-dismissible"><p>General settings saved successfully!</p></div>';
 }
 
@@ -120,6 +127,20 @@ $default_status = get_option('wp_staff_diary_default_status', 'pending');
 // Job time options
 $job_time_type = get_option('wp_staff_diary_job_time_type', 'ampm'); // 'ampm' or 'time' or 'none'
 $fitting_time_length = get_option('wp_staff_diary_fitting_time_length', '0');
+
+// Currency settings with WooCommerce fallback
+$wc_active = class_exists('WooCommerce');
+$wc_currency = $wc_active ? get_woocommerce_currency() : 'GBP';
+$wc_symbol = $wc_active ? get_woocommerce_currency_symbol() : '£';
+$wc_position = $wc_active ? get_option('woocommerce_currency_pos', 'left') : 'left';
+$wc_decimal_sep = $wc_active ? wc_get_price_decimal_separator() : '.';
+$wc_thousand_sep = $wc_active ? wc_get_price_thousand_separator() : ',';
+
+$currency_symbol = get_option('wp_staff_diary_currency_symbol', $wc_symbol);
+$currency_code = get_option('wp_staff_diary_currency_code', $wc_currency);
+$currency_position = get_option('wp_staff_diary_currency_position', $wc_position);
+$decimal_separator = get_option('wp_staff_diary_decimal_separator', $wc_decimal_sep);
+$thousands_separator = get_option('wp_staff_diary_thousands_separator', $wc_thousand_sep);
 
 // Company details
 $company_name = get_option('wp_staff_diary_company_name', '');
@@ -280,6 +301,84 @@ $github_token = get_option('wp_staff_diary_github_token', '');
                                 Allow users to specify job duration (e.g., 3 hours)
                             </label>
                             <p class="description">When enabled, users can allocate a specific time length to each job.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">Currency Settings</h3>
+            <?php if ($wc_active): ?>
+                <div class="notice notice-info inline" style="margin: 10px 0; padding: 10px;">
+                    <p><strong>WooCommerce Detected:</strong> Default values are pulled from your WooCommerce settings. You can override them below.</p>
+                </div>
+            <?php endif; ?>
+
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">
+                            <label for="currency_code">Currency Code</label>
+                        </th>
+                        <td>
+                            <select name="currency_code" id="currency_code" class="regular-text">
+                                <option value="GBP" <?php selected($currency_code, 'GBP'); ?>>GBP - British Pound</option>
+                                <option value="USD" <?php selected($currency_code, 'USD'); ?>>USD - US Dollar</option>
+                                <option value="EUR" <?php selected($currency_code, 'EUR'); ?>>EUR - Euro</option>
+                                <option value="AUD" <?php selected($currency_code, 'AUD'); ?>>AUD - Australian Dollar</option>
+                                <option value="CAD" <?php selected($currency_code, 'CAD'); ?>>CAD - Canadian Dollar</option>
+                                <option value="NZD" <?php selected($currency_code, 'NZD'); ?>>NZD - New Zealand Dollar</option>
+                                <option value="JPY" <?php selected($currency_code, 'JPY'); ?>>JPY - Japanese Yen</option>
+                                <option value="CHF" <?php selected($currency_code, 'CHF'); ?>>CHF - Swiss Franc</option>
+                                <option value="SEK" <?php selected($currency_code, 'SEK'); ?>>SEK - Swedish Krona</option>
+                                <option value="NOK" <?php selected($currency_code, 'NOK'); ?>>NOK - Norwegian Krone</option>
+                                <option value="DKK" <?php selected($currency_code, 'DKK'); ?>>DKK - Danish Krone</option>
+                            </select>
+                            <p class="description">Select your business currency.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="currency_symbol">Currency Symbol</label>
+                        </th>
+                        <td>
+                            <input type="text" name="currency_symbol" id="currency_symbol" value="<?php echo esc_attr($currency_symbol); ?>" class="small-text">
+                            <p class="description">The symbol to display for your currency (e.g., £, $, €).</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="currency_position">Currency Position</label>
+                        </th>
+                        <td>
+                            <select name="currency_position" id="currency_position" class="regular-text">
+                                <option value="left" <?php selected($currency_position, 'left'); ?>>Left (£99.00)</option>
+                                <option value="right" <?php selected($currency_position, 'right'); ?>>Right (99.00£)</option>
+                                <option value="left_space" <?php selected($currency_position, 'left_space'); ?>>Left with space (£ 99.00)</option>
+                                <option value="right_space" <?php selected($currency_position, 'right_space'); ?>>Right with space (99.00 £)</option>
+                            </select>
+                            <p class="description">Where to display the currency symbol relative to the amount.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="decimal_separator">Decimal Separator</label>
+                        </th>
+                        <td>
+                            <input type="text" name="decimal_separator" id="decimal_separator" value="<?php echo esc_attr($decimal_separator); ?>" class="small-text" maxlength="1">
+                            <p class="description">Character for decimal separator (usually . or ,).</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="thousands_separator">Thousands Separator</label>
+                        </th>
+                        <td>
+                            <input type="text" name="thousands_separator" id="thousands_separator" value="<?php echo esc_attr($thousands_separator); ?>" class="small-text" maxlength="1">
+                            <p class="description">Character for thousands separator (usually , or . or leave blank).</p>
                         </td>
                     </tr>
                 </tbody>

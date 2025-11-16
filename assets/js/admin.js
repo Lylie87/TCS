@@ -1244,6 +1244,266 @@
         }
 
         // ===========================================
+        // ACCESSORIES MANAGEMENT (Settings Page)
+        // ===========================================
+
+        /**
+         * Edit accessory - Toggle inline edit mode
+         */
+        $(document).on('click', '.edit-accessory', function() {
+            const $row = $(this).closest('tr');
+            const accessoryId = $(this).data('id');
+
+            // Show edit inputs, hide display spans
+            $row.find('.accessory-name-display, .accessory-price-display, .accessory-active-display').hide();
+            $row.find('.accessory-name-edit, .accessory-price-edit, .accessory-active-edit').show();
+
+            // Show save/cancel buttons, hide edit/delete buttons
+            $row.find('.edit-accessory, .delete-accessory').hide();
+            $row.find('.save-accessory, .cancel-accessory-edit').show();
+        });
+
+        /**
+         * Cancel accessory edit - Revert to display mode
+         */
+        $(document).on('click', '.cancel-accessory-edit', function() {
+            const $row = $(this).closest('tr');
+
+            // Hide edit inputs, show display spans
+            $row.find('.accessory-name-edit, .accessory-price-edit, .accessory-active-edit').hide();
+            $row.find('.accessory-name-display, .accessory-price-display, .accessory-active-display').show();
+
+            // Hide save/cancel buttons, show edit/delete buttons
+            $row.find('.save-accessory, .cancel-accessory-edit').hide();
+            $row.find('.edit-accessory, .delete-accessory').show();
+
+            // Reset inputs to original values
+            $row.find('.accessory-name-edit').val($row.find('.accessory-name-display').text());
+            $row.find('.accessory-price-edit').val($row.find('.accessory-price-display').text().replace('£', '').replace(',', ''));
+        });
+
+        /**
+         * Save accessory - Update via AJAX
+         */
+        $(document).on('click', '.save-accessory', function() {
+            const $button = $(this);
+            const $row = $button.closest('tr');
+            const accessoryId = $button.data('id');
+
+            const accessoryName = $row.find('.accessory-name-edit').val().trim();
+            const price = parseFloat($row.find('.accessory-price-edit').val());
+            const isActive = $row.find('.accessory-active-edit').is(':checked') ? 1 : 0;
+
+            // Validation
+            if (!accessoryName) {
+                alert('Accessory name is required');
+                return;
+            }
+
+            if (isNaN(price) || price < 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+
+            // Disable button during save
+            $button.prop('disabled', true).text('Saving...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'update_accessory',
+                    nonce: wpStaffDiary.nonce,
+                    accessory_id: accessoryId,
+                    accessory_name: accessoryName,
+                    price: price,
+                    is_active: isActive
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Update display values
+                        $row.find('.accessory-name-display').text(accessoryName);
+                        $row.find('.accessory-price-display').text('£' + price.toFixed(2));
+                        $row.find('.accessory-active-display').text(isActive ? 'Yes' : 'No');
+
+                        // Switch back to display mode
+                        $row.find('.accessory-name-edit, .accessory-price-edit, .accessory-active-edit').hide();
+                        $row.find('.accessory-name-display, .accessory-price-display, .accessory-active-display').show();
+                        $row.find('.save-accessory, .cancel-accessory-edit').hide();
+                        $row.find('.edit-accessory, .delete-accessory').show();
+
+                        // Show success message
+                        alert('Accessory updated successfully');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while updating the accessory');
+                },
+                complete: function() {
+                    $button.prop('disabled', false).text('Save');
+                }
+            });
+        });
+
+        /**
+         * Delete accessory - Remove via AJAX
+         */
+        $(document).on('click', '.delete-accessory', function() {
+            if (!confirm('Are you sure you want to delete this accessory? This action cannot be undone.')) {
+                return;
+            }
+
+            const $button = $(this);
+            const $row = $button.closest('tr');
+            const accessoryId = $button.data('id');
+
+            $button.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'delete_accessory',
+                    nonce: wpStaffDiary.nonce,
+                    accessory_id: accessoryId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $row.fadeOut(300, function() {
+                            $(this).remove();
+
+                            // Check if table is empty
+                            if ($('#accessories-table tbody tr').length === 0) {
+                                $('#accessories-table tbody').html(
+                                    '<tr><td colspan="4" style="text-align: center; color: #666;">No accessories added yet. Add your first accessory below.</td></tr>'
+                                );
+                            }
+                        });
+                        alert('Accessory deleted successfully');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                        $button.prop('disabled', false).text('Delete');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the accessory');
+                    $button.prop('disabled', false).text('Delete');
+                }
+            });
+        });
+
+        /**
+         * Add new accessory - Create via AJAX
+         */
+        $(document).on('click', '#add-accessory-btn', function() {
+            const $button = $(this);
+            const accessoryName = $('#new-accessory-name').val().trim();
+            const price = parseFloat($('#new-accessory-price').val());
+
+            // Validation
+            if (!accessoryName) {
+                alert('Please enter an accessory name');
+                return;
+            }
+
+            if (isNaN(price) || price < 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+
+            $button.prop('disabled', true).text('Adding...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'add_accessory',
+                    nonce: wpStaffDiary.nonce,
+                    accessory_name: accessoryName,
+                    price: price
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const accessoryId = response.data.accessory.id;
+
+                        // Remove "no accessories" message if it exists
+                        $('#accessories-table tbody tr td[colspan]').closest('tr').remove();
+
+                        // Add new row to table
+                        const newRow = `
+                            <tr data-accessory-id="${accessoryId}">
+                                <td>
+                                    <span class="accessory-name-display">${accessoryName}</span>
+                                    <input type="text" class="accessory-name-edit regular-text" value="${accessoryName}" style="display:none;">
+                                </td>
+                                <td>
+                                    <span class="accessory-price-display">£${price.toFixed(2)}</span>
+                                    <input type="number" class="accessory-price-edit small-text" value="${price}" step="0.01" min="0" style="display:none;">
+                                </td>
+                                <td>
+                                    <span class="accessory-active-display">Yes</span>
+                                    <input type="checkbox" class="accessory-active-edit" checked style="display:none;">
+                                </td>
+                                <td>
+                                    <button type="button" class="button button-small edit-accessory" data-id="${accessoryId}">Edit</button>
+                                    <button type="button" class="button button-small save-accessory" data-id="${accessoryId}" style="display:none;">Save</button>
+                                    <button type="button" class="button button-small cancel-accessory-edit" style="display:none;">Cancel</button>
+                                    <button type="button" class="button button-small button-link-delete delete-accessory" data-id="${accessoryId}">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+
+                        $('#accessories-table tbody').append(newRow);
+
+                        // Clear form
+                        $('#new-accessory-name').val('');
+                        $('#new-accessory-price').val('0.00');
+
+                        alert('Accessory added successfully');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while adding the accessory');
+                },
+                complete: function() {
+                    $button.prop('disabled', false).text('Add Accessory');
+                }
+            });
+        });
+
+        // ===========================================
+        // CURRENCY SETTINGS (Settings Page)
+        // ===========================================
+
+        /**
+         * Auto-update currency symbol when currency code changes
+         */
+        $('#currency_code').on('change', function() {
+            const currencySymbols = {
+                'GBP': '£',
+                'USD': '$',
+                'EUR': '€',
+                'AUD': 'A$',
+                'CAD': 'C$',
+                'NZD': 'NZ$',
+                'JPY': '¥',
+                'CHF': 'CHF',
+                'SEK': 'kr',
+                'NOK': 'kr',
+                'DKK': 'kr'
+            };
+
+            const selectedCode = $(this).val();
+            if (currencySymbols[selectedCode]) {
+                $('#currency_symbol').val(currencySymbols[selectedCode]);
+            }
+        });
+
+        // ===========================================
         // UTILITY FUNCTIONS
         // ===========================================
 
