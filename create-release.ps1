@@ -1,8 +1,8 @@
 # WordPress Plugin GitHub Release Creator (PowerShell)
 # Usage: .\create-release.ps1
 #
-# This script uploads a manually-created wp-staff-diary.zip to GitHub releases
-# The ZIP should be created manually to ensure correct structure
+# This script uploads wp-staff-diary.zip from the dist folder to GitHub releases
+# The ZIP should be created by build-release.ps1 using 7-Zip for Linux compatibility
 
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host "GitHub Release Uploader" -ForegroundColor Cyan
@@ -17,10 +17,12 @@ Write-Host "Preparing Release: v$version" -ForegroundColor Yellow
 Write-Host ""
 
 $zipName = "wp-staff-diary.zip"
-$zipPath = "C:\Users\alexl\TCS Git\TCS\$zipName"
+$rootDir = Get-Location
+$distDir = Join-Path $rootDir "dist"
+$zipPath = Join-Path $distDir $zipName
 
-# Check if manually-created ZIP exists
-Write-Host "Step 1: Checking for manually-created ZIP..." -ForegroundColor Green
+# Check if ZIP exists in dist folder
+Write-Host "Step 1: Checking for ZIP in dist folder..." -ForegroundColor Green
 
 if (-Not (Test-Path $zipPath)) {
     Write-Host ""
@@ -30,12 +32,9 @@ if (-Not (Test-Path $zipPath)) {
     Write-Host ""
     Write-Host "Expected location: $zipPath" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Please create wp-staff-diary.zip manually:" -ForegroundColor Yellow
-    Write-Host "1. Select all plugin files and folders (NOT the parent folder)" -ForegroundColor White
-    Write-Host "2. Right-click -> Send to -> Compressed (zipped) folder" -ForegroundColor White
-    Write-Host "3. Name it: wp-staff-diary.zip" -ForegroundColor White
-    Write-Host "4. Place it in: C:\Users\alexl\TCS Git\TCS\" -ForegroundColor White
-    Write-Host "5. Run this script again" -ForegroundColor White
+    Write-Host "The ZIP file should be created by build-release.ps1" -ForegroundColor Yellow
+    Write-Host "Please run: .\build-release.ps1" -ForegroundColor White
+    Write-Host "Then run this script again" -ForegroundColor White
     Write-Host ""
     exit 1
 }
@@ -60,15 +59,8 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "View release: https://github.com/Lylie87/TCS/releases/tag/v$version" -ForegroundColor Cyan
     Write-Host ""
 
-    # Clean up the ZIP file after successful upload
-    Write-Host "Step 3: Cleaning up local ZIP file..." -ForegroundColor Green
-    try {
-        Remove-Item $zipPath -Force
-        Write-Host "SUCCESS: Deleted $zipName" -ForegroundColor Green
-    } catch {
-        Write-Host "WARNING: Could not delete ZIP file automatically" -ForegroundColor Yellow
-        Write-Host "$zipPath" -ForegroundColor Yellow
-    }
+    # Note: We keep the ZIP file in dist folder for verification
+    # The dist folder will be cleaned on next build
 } else {
     Write-Host ""
     Write-Host "ERROR: Failed to create GitHub release" -ForegroundColor Red
