@@ -14,6 +14,8 @@
         let currentEntryId = 0;
         let selectedCustomerId = 0;
         let customerSearchTimeout = null;
+        let currentDiscountType = null;
+        let currentDiscountValue = 0;
 
         // ===========================================
         // NAVIGATION & UI CONTROLS
@@ -92,6 +94,8 @@
         function openEntryModal() {
             currentEntryId = 0;
             selectedCustomerId = 0;
+            currentDiscountType = null;
+            currentDiscountValue = 0;
             $('#modal-title').text('Add New Job');
             $('#diary-entry-form')[0].reset();
             $('#entry-id').val('');
@@ -158,6 +162,7 @@
 
             // Job details
             $('#job-date').val(entry.job_date);
+            $('#quote-date').val(entry.quote_date);
             $('#job-time').val(entry.job_time);
             $('#fitting-date').val(entry.fitting_date);
             $('#fitting-time-period').val(entry.fitting_time_period);
@@ -196,6 +201,15 @@
             $('#sq-mtr-qty').val(entry.sq_mtr_qty);
             $('#price-per-sq-mtr').val(entry.price_per_sq_mtr);
             $('#fitting-cost').val(entry.fitting_cost || 0);
+
+            // Discount information
+            if (entry.discount_type && entry.discount_value > 0) {
+                currentDiscountType = entry.discount_type;
+                currentDiscountValue = parseFloat(entry.discount_value);
+            } else {
+                currentDiscountType = null;
+                currentDiscountValue = 0;
+            }
 
             // Accessories
             $('.accessory-checkbox').prop('checked', false);
@@ -315,6 +329,7 @@
                 customer_id: $('#customer-id').val(),
                 fitter_id: $('#fitter').val(),
                 job_date: $('#job-date').val(),
+                quote_date: $('#quote-date').val(),
                 job_time: $('#job-time').val(),
                 fitting_date: $('#fitting-date').val(),
                 fitting_time_period: $('#fitting-time-period').val(),
@@ -781,16 +796,45 @@
             $('#subtotal-display').text(subtotal.toFixed(2));
 
             // VAT
+            let total = subtotal;
             if (typeof vatEnabled !== 'undefined' && vatEnabled == 1) {
                 const vatAmount = subtotal * (vatRate / 100);
                 $('#vat-display').text(vatAmount.toFixed(2));
-
-                // Total
-                const total = subtotal + vatAmount;
-                $('#total-display').text(total.toFixed(2));
-            } else {
-                $('#total-display').text(subtotal.toFixed(2));
+                total = subtotal + vatAmount;
             }
+
+            // Apply discount if exists
+            if (currentDiscountType && currentDiscountValue > 0) {
+                let discountAmount = 0;
+                if (currentDiscountType === 'percentage') {
+                    discountAmount = (total * currentDiscountValue) / 100;
+                } else {
+                    discountAmount = Math.min(currentDiscountValue, total);
+                }
+
+                // Show discount rows
+                $('#original-total-row').show();
+                $('#discount-row').show();
+                $('#original-total-display').text(total.toFixed(2));
+
+                // Update discount label and amount
+                const discountLabel = currentDiscountType === 'percentage'
+                    ? currentDiscountValue.toFixed(2) + '%'
+                    : '£' + currentDiscountValue.toFixed(2);
+                $('#discount-label-display').text(discountLabel);
+                $('#discount-amount-display').text(discountAmount.toFixed(2));
+
+                // Calculate final total
+                total = total - discountAmount;
+                $('#total-label').text('Final Total:');
+            } else {
+                // Hide discount rows
+                $('#original-total-row').hide();
+                $('#discount-row').hide();
+                $('#total-label').text('Total:');
+            }
+
+            $('#total-display').text(total.toFixed(2));
         }
 
         // ===========================================

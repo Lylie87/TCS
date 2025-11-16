@@ -259,6 +259,7 @@ class WP_Staff_Diary_Admin {
             'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
             'fitter_id' => isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null,
             'job_date' => !empty($_POST['job_date']) ? sanitize_text_field($_POST['job_date']) : null,
+            'quote_date' => !empty($_POST['quote_date']) ? sanitize_text_field($_POST['quote_date']) : null,
             'job_time' => !empty($_POST['job_time']) ? sanitize_text_field($_POST['job_time']) : null,
             'fitting_date' => !empty($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null,
             'fitting_time_period' => !empty($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null,
