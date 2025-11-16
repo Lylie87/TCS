@@ -44,6 +44,7 @@ class WP_Staff_Diary_Activator {
             fitter_id int(11) DEFAULT NULL,
             job_date date DEFAULT NULL,
             job_time time DEFAULT NULL,
+            quote_date date DEFAULT NULL,
             fitting_date date DEFAULT NULL,
             fitting_date_unknown tinyint(1) DEFAULT 0,
             fitting_time_period varchar(10) DEFAULT NULL,
@@ -64,6 +65,11 @@ class WP_Staff_Diary_Activator {
             sq_mtr_qty decimal(10,2) DEFAULT NULL,
             price_per_sq_mtr decimal(10,2) DEFAULT NULL,
             fitting_cost decimal(10,2) DEFAULT 0.00,
+            discount_type varchar(20) DEFAULT NULL,
+            discount_value decimal(10,2) DEFAULT NULL,
+            discount_applied_date datetime DEFAULT NULL,
+            acceptance_token varchar(64) DEFAULT NULL,
+            accepted_date datetime DEFAULT NULL,
             notes text DEFAULT NULL,
             status varchar(50) DEFAULT 'pending',
             is_cancelled tinyint(1) DEFAULT 0,
@@ -75,10 +81,12 @@ class WP_Staff_Diary_Activator {
             KEY customer_id (customer_id),
             KEY fitter_id (fitter_id),
             KEY job_date (job_date),
+            KEY quote_date (quote_date),
             KEY fitting_date (fitting_date),
             KEY fitting_date_unknown (fitting_date_unknown),
             KEY status (status),
-            KEY woocommerce_product_id (woocommerce_product_id)
+            KEY woocommerce_product_id (woocommerce_product_id),
+            KEY acceptance_token (acceptance_token)
         ) $charset_collate;";
 
         // Table for job images
@@ -166,6 +174,27 @@ class WP_Staff_Diary_Activator {
             KEY sent_at (sent_at)
         ) $charset_collate;";
 
+        // Table for discount offers history
+        $table_discount_offers = $wpdb->prefix . 'staff_diary_discount_offers';
+
+        $sql_discount_offers = "CREATE TABLE $table_discount_offers (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) NOT NULL,
+            discount_type varchar(20) NOT NULL,
+            discount_value decimal(10,2) NOT NULL,
+            email_sent_date datetime DEFAULT NULL,
+            sent_by bigint(20) DEFAULT NULL,
+            accepted_date datetime DEFAULT NULL,
+            status varchar(20) DEFAULT 'sent',
+            email_content text DEFAULT NULL,
+            metadata text DEFAULT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY status (status),
+            KEY email_sent_date (email_sent_date)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_customers);
         dbDelta($sql_diary);
@@ -174,6 +203,7 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_accessories);
         dbDelta($sql_job_accessories);
         dbDelta($sql_notification_logs);
+        dbDelta($sql_discount_offers);
 
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);
