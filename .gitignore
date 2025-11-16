@@ -28,3 +28,6 @@ vendor/
 WP Staff Diary.zip
 wp-staff-diary.zip
 *.zip
+
+# Distribution folder (created by build-release.ps1)
+dist/
