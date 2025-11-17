@@ -603,7 +603,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 </div>
 
 <!-- Quick Add Customer Modal -->
-<div id="quick-add-customer-modal" class="wp-staff-diary-modal" style="display: none;">
+<div id="quick-add-customer-modal" class="wp-staff-diary-modal" style="display: none; z-index: 100002;">
     <div class="wp-staff-diary-modal-content" style="max-width: 500px;">
         <span class="wp-staff-diary-modal-close">&times;</span>
         <h2>Add New Customer</h2>

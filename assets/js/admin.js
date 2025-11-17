@@ -502,8 +502,10 @@
 
         /**
          * Save measure entry
+         * @param {Function} callback - Optional callback function to run after successful save
+         * @param {Boolean} keepOpen - If true, don't reload page/close modal after save
          */
-        function saveMeasure() {
+        function saveMeasure(callback, keepOpen) {
             // Validate customer selection
             const customerId = $('#measure-customer-id').val();
             if (!customerId) {
@@ -537,8 +539,19 @@
                 data: formData,
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
+                        if (keepOpen) {
+                            // Show success message without alert
+                            console.log('Measure saved successfully:', response.data.entry_id);
+                            $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
+
+                            // Call callback if provided
+                            if (callback && typeof callback === 'function') {
+                                callback(response.data.entry_id);
+                            }
+                        } else {
+                            alert(response.data.message);
+                            location.reload();
+                        }
                     } else {
                         alert('Error: ' + response.data.message);
                         $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
@@ -1677,8 +1690,12 @@
 
             if (!entryId) {
                 if (confirm('You need to save the measure first before uploading photos. Would you like to save now?')) {
-                    // Trigger the form submission
-                    $('#measure-entry-form').submit();
+                    // Save the measure, then trigger photo upload
+                    saveMeasure(function(savedEntryId) {
+                        // After successful save, set the entry ID and trigger photo upload
+                        $('#measure-entry-id').val(savedEntryId);
+                        $('#measure-photo-upload-input').click();
+                    }, true); // true = don't close modal after save
                 }
                 return;
             }
