@@ -315,7 +315,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             ?>
                             <div class="calendar-entry status-<?php echo esc_attr($status_class); ?>"
                                  data-entry-id="<?php echo esc_attr($entry->id); ?>"
-                                 style="border-left: 4px solid <?php echo esc_attr($fitter_color); ?>;<?php echo $is_cancelled ? ' opacity: 0.6;' : ''; ?>">
+                                 style="border-left: 4px solid <?php echo esc_attr($fitter_color); ?>;<?php echo $is_cancelled ? ' opacity: 0.6;' : ''; ?><?php echo $entry->status === 'measure' ? ' background: #f3e5f5;' : ''; ?>">
                                 <div class="entry-order">
                                     <strong><?php echo esc_html($order_number); ?></strong>
                                 </div>
