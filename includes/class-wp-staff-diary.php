@@ -47,6 +47,9 @@ class WP_Staff_Diary {
         require_once WP_STAFF_DIARY_PATH . 'includes/class-database.php';
         require_once WP_STAFF_DIARY_PATH . 'includes/class-pdf-generator.php';
 
+        // Services
+        require_once WP_STAFF_DIARY_PATH . 'includes/services/class-template-service.php';
+
         // Legacy admin class (for backwards compatibility)
         require_once WP_STAFF_DIARY_PATH . 'admin/class-admin.php';
         require_once WP_STAFF_DIARY_PATH . 'public/class-public.php';
