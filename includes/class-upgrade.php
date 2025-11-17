@@ -227,6 +227,16 @@ class WP_Staff_Diary_Upgrade {
             $wpdb->query("ALTER TABLE $table_images ADD KEY image_category (image_category)");
         }
 
+        // Add SMS opt-in fields to customers table (v2.7.0)
+        $table_customers = $wpdb->prefix . 'staff_diary_customers';
+        $sms_optin_check = $wpdb->get_results("SHOW COLUMNS FROM $table_customers LIKE 'sms_opt_in'");
+        if (empty($sms_optin_check)) {
+            $wpdb->query("ALTER TABLE $table_customers ADD COLUMN sms_opt_in tinyint(1) DEFAULT 1 AFTER customer_phone");
+            $wpdb->query("ALTER TABLE $table_customers ADD COLUMN sms_opt_in_date datetime DEFAULT NULL AFTER sms_opt_in");
+            $wpdb->query("ALTER TABLE $table_customers ADD COLUMN sms_opt_out_date datetime DEFAULT NULL AFTER sms_opt_in_date");
+            $wpdb->query("ALTER TABLE $table_customers ADD KEY sms_opt_in (sms_opt_in)");
+        }
+
         // Insert default accessories if table is empty
         $accessories_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_accessories");
         if ($accessories_count == 0) {

@@ -24,13 +24,17 @@ class WP_Staff_Diary_Activator {
             address_line_3 varchar(255) DEFAULT NULL,
             postcode varchar(20) DEFAULT NULL,
             customer_phone varchar(50) DEFAULT NULL,
+            sms_opt_in tinyint(1) DEFAULT 1,
+            sms_opt_in_date datetime DEFAULT NULL,
+            sms_opt_out_date datetime DEFAULT NULL,
             customer_email varchar(255) DEFAULT NULL,
             notes text DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY customer_name (customer_name),
-            KEY postcode (postcode)
+            KEY postcode (postcode),
+            KEY sms_opt_in (sms_opt_in)
         ) $charset_collate;";
 
         // Table for diary entries (jobs/orders)
@@ -195,6 +199,46 @@ class WP_Staff_Diary_Activator {
             KEY email_sent_date (email_sent_date)
         ) $charset_collate;";
 
+        // Table for email templates
+        $table_email_templates = $wpdb->prefix . 'staff_diary_email_templates';
+
+        $sql_email_templates = "CREATE TABLE $table_email_templates (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            template_name varchar(255) NOT NULL,
+            template_slug varchar(100) NOT NULL,
+            subject varchar(500) NOT NULL,
+            body longtext NOT NULL,
+            is_active tinyint(1) DEFAULT 1,
+            is_default tinyint(1) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY template_slug (template_slug),
+            KEY is_active (is_active),
+            KEY is_default (is_default)
+        ) $charset_collate;";
+
+        // Table for SMS log
+        $table_sms_log = $wpdb->prefix . 'staff_diary_sms_log';
+
+        $sql_sms_log = "CREATE TABLE $table_sms_log (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) DEFAULT NULL,
+            customer_id bigint(20) DEFAULT NULL,
+            phone_number varchar(20) NOT NULL,
+            message text NOT NULL,
+            status varchar(20) DEFAULT 'pending',
+            twilio_sid varchar(100) DEFAULT NULL,
+            cost decimal(10,4) DEFAULT 0.0000,
+            error_message text DEFAULT NULL,
+            sent_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY customer_id (customer_id),
+            KEY status (status),
+            KEY sent_at (sent_at)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_customers);
         dbDelta($sql_diary);
@@ -204,6 +248,8 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_job_accessories);
         dbDelta($sql_notification_logs);
         dbDelta($sql_discount_offers);
+        dbDelta($sql_email_templates);
+        dbDelta($sql_sms_log);
 
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);
@@ -274,6 +320,57 @@ class WP_Staff_Diary_Activator {
                 );
             }
         }
+
+        // Insert default email templates
+        $template_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_email_templates");
+
+        if ($template_count == 0) {
+            $default_templates = array(
+                array(
+                    'template_name' => 'Payment Reminder',
+                    'template_slug' => 'payment_reminder',
+                    'subject' => 'Payment Reminder - Invoice {{job_number}}',
+                    'body' => "Dear {{customer_name}},\n\nThis is a friendly reminder that you have an outstanding balance of £{{balance_due}} for job {{job_number}}.\n\nJob Details:\n- Date: {{job_date}}\n- Description: {{job_description}}\n- Total: £{{total_amount}}\n- Paid: £{{paid_amount}}\n- Balance: £{{balance_due}}\n\nPlease arrange payment at your earliest convenience.\n\nBank Details:\n{{bank_name}}\nAccount Name: {{bank_account_name}}\nSort Code: {{bank_sort_code}}\nAccount Number: {{bank_account_number}}\n\nThank you,\n{{company_name}}",
+                    'is_default' => 1
+                ),
+                array(
+                    'template_name' => 'Quote Approved',
+                    'template_slug' => 'quote_approved',
+                    'subject' => 'Your Quote {{quote_number}} Has Been Approved',
+                    'body' => "Dear {{customer_name}},\n\nGreat news! Your quote {{quote_number}} has been approved and we're ready to start work.\n\nQuote Details:\n- Quote Number: {{quote_number}}\n- Total Amount: £{{total_amount}}\n- Scheduled Date: {{job_date}}\n- Description: {{job_description}}\n\nWe'll be in touch shortly to confirm the details.\n\nBest regards,\n{{company_name}}",
+                    'is_default' => 1
+                ),
+                array(
+                    'template_name' => 'Job Complete',
+                    'template_slug' => 'job_complete',
+                    'subject' => 'Job {{job_number}} Completed',
+                    'body' => "Dear {{customer_name}},\n\nWe're pleased to confirm that job {{job_number}} has been completed successfully.\n\nJob Details:\n- Job Number: {{job_number}}\n- Date Completed: {{current_date}}\n- Description: {{job_description}}\n\nThank you for choosing {{company_name}}. We appreciate your business!\n\nIf you have any questions or concerns, please don't hesitate to contact us.\n\nBest regards,\n{{company_name}}\n{{company_phone}}\n{{company_email}}",
+                    'is_default' => 1
+                )
+            );
+
+            foreach ($default_templates as $template) {
+                $wpdb->insert(
+                    $table_email_templates,
+                    array(
+                        'template_name' => $template['template_name'],
+                        'template_slug' => $template['template_slug'],
+                        'subject' => $template['subject'],
+                        'body' => $template['body'],
+                        'is_active' => 1,
+                        'is_default' => $template['is_default']
+                    )
+                );
+            }
+        }
+
+        // SMS Settings (default disabled until configured)
+        add_option('wp_staff_diary_sms_enabled', '0');
+        add_option('wp_staff_diary_twilio_account_sid', '');
+        add_option('wp_staff_diary_twilio_auth_token', '');
+        add_option('wp_staff_diary_twilio_phone_number', '');
+        add_option('wp_staff_diary_sms_cost_per_message', '0.04'); // Default £0.04
+        add_option('wp_staff_diary_sms_test_mode', '1'); // Test mode enabled by default
 
         // Flag to flush rewrite rules for quote acceptance URLs
         update_option('wp_staff_diary_flush_rewrite_rules', '1');
