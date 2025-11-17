@@ -1516,6 +1516,35 @@
         // Only initialize if we're on the quotes page
         if ($('#add-new-quote').length) {
             initQuotes();
+
+            // Check for URL parameters to pre-fill from measure conversion
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('action') === 'new' && urlParams.get('from_measure')) {
+                // Open the add quote modal
+                openAddQuoteModal();
+
+                // Pre-fill the form with measure data
+                if (urlParams.get('customer_id')) {
+                    $('#quote-customer-id').val(urlParams.get('customer_id'));
+                }
+                if (urlParams.get('fitting_date')) {
+                    $('#quote-fitting-date').val(urlParams.get('fitting_date'));
+                }
+                if (urlParams.get('fitting_address_line_1')) {
+                    $('#quote-use-different-address').prop('checked', true).trigger('change');
+                    $('#quote-fitting-address-line-1').val(urlParams.get('fitting_address_line_1'));
+                    $('#quote-fitting-address-line-2').val(urlParams.get('fitting_address_line_2') || '');
+                    $('#quote-fitting-address-line-3').val(urlParams.get('fitting_address_line_3') || '');
+                    $('#quote-fitting-postcode').val(urlParams.get('fitting_postcode') || '');
+                }
+                if (urlParams.get('notes')) {
+                    $('#quote-notes').val(urlParams.get('notes'));
+                }
+
+                // Clean up URL
+                const cleanUrl = window.location.pathname + '?page=wp-staff-diary-quotes';
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
         }
     });
 

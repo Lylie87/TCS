@@ -544,6 +544,14 @@ class WP_Staff_Diary_Admin {
             );
 
             $customer_id = $this->db->create_customer($customer_data);
+
+            // Log for debugging
+            error_log('Measure customer created: ID=' . $customer_id . ', Name=' . $customer_name);
+
+            if (!$customer_id) {
+                wp_send_json_error(array('message' => 'Failed to create customer for measure'));
+                return;
+            }
         }
 
         // Prepare data for main entry

@@ -505,6 +505,8 @@
                 measure_customer_phone: $('#measure-customer-phone').val()
             };
 
+            console.log('Saving measure with data:', formData);
+
             $('#save-measure-btn').prop('disabled', true).html('<span class="dashicons dashicons-update"></span> Saving...');
 
             $.ajax({
