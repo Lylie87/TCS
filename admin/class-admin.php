@@ -688,13 +688,19 @@ class WP_Staff_Diary_Admin {
         $entry_id = intval($_POST['entry_id']);
         $user_id = get_current_user_id();
 
+        error_log('Cancel entry called for ID: ' . $entry_id);
+
         // Verify ownership or admin
         $entry = $this->db->get_entry($entry_id);
         if (!$entry || ($entry->user_id != $user_id && !current_user_can('edit_users'))) {
+            error_log('Permission denied for entry ID: ' . $entry_id);
             wp_send_json_error(array('message' => 'Permission denied'));
+            return;
         }
 
         $result = $this->db->cancel_entry($entry_id);
+        error_log('Cancel result for entry ID ' . $entry_id . ': ' . ($result !== false ? 'success' : 'failed'));
+
         if ($result !== false) {
             wp_send_json_success(array('message' => 'Entry cancelled successfully'));
         } else {

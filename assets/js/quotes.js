@@ -1524,8 +1524,23 @@
                 openAddQuoteModal();
 
                 // Pre-fill the form with measure data
-                if (urlParams.get('customer_id')) {
-                    $('#quote-customer-id').val(urlParams.get('customer_id'));
+                const customerId = urlParams.get('customer_id');
+                if (customerId) {
+                    // Fetch customer details and select them
+                    $.ajax({
+                        url: wpStaffDiary.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'get_customer',
+                            nonce: wpStaffDiary.nonce,
+                            customer_id: customerId
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.customer) {
+                                selectCustomer(response.data.customer);
+                            }
+                        }
+                    });
                 }
                 if (urlParams.get('fitting_date')) {
                     $('#quote-fitting-date').val(urlParams.get('fitting_date'));
