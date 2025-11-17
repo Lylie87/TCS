@@ -437,6 +437,16 @@ class WP_Staff_Diary_Admin {
             'wp-staff-diary-settings',
             array($this, 'display_settings_page')
         );
+
+        // Hidden submenu - Email Templates (only accessible via Settings tab)
+        add_submenu_page(
+            null, // No parent = hidden from menu
+            'Email Templates',
+            'Email Templates',
+            'manage_options',
+            'wp-staff-diary-email-templates',
+            array($this, 'display_email_templates_page')
+        );
     }
 
     /**
@@ -471,6 +481,13 @@ class WP_Staff_Diary_Admin {
      */
     public function display_settings_page() {
         require_once WP_STAFF_DIARY_PATH . 'admin/views/settings.php';
+    }
+
+    /**
+     * Display Email Templates page
+     */
+    public function display_email_templates_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/email-templates.php';
     }
 
     /**
