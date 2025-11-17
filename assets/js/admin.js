@@ -488,6 +488,12 @@
          * Save measure entry
          */
         function saveMeasure() {
+            // Debug: Check if elements exist
+            console.log('Customer name element exists:', $('#measure-customer-name').length);
+            console.log('Customer name value:', $('#measure-customer-name').val());
+            console.log('Customer phone element exists:', $('#measure-customer-phone').length);
+            console.log('Customer phone value:', $('#measure-customer-phone').val());
+
             const formData = {
                 action: 'save_diary_entry',
                 nonce: wpStaffDiary.nonce,
