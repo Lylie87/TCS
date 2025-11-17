@@ -287,17 +287,22 @@
     function openConvertToJobModal(quoteId) {
         $('#convert-quote-id').val(quoteId);
         $('#convert-to-job-form')[0].reset();
-        $('#fitter-availability-display').show();
+        $('#fitter-availability-display').hide();
         $('#availability-calendar').empty();
         $('#convert-to-job-modal').fadeIn(200);
 
-        // Load availability for ALL fitters by default
-        loadFitterAvailability(null);
-
-        // Add time period selection handler to refresh availability
+        // Add time period selection handler to load availability when AM/PM is selected
         $('#convert-fitting-time-period').off('change').on('change', function() {
             const timePeriod = $(this).val();
-            loadFitterAvailability(null, timePeriod);
+
+            // Only load availability if a time period is selected
+            if (timePeriod && (timePeriod === 'am' || timePeriod === 'pm')) {
+                $('#fitter-availability-display').show();
+                loadFitterAvailability(null, timePeriod);
+            } else {
+                $('#fitter-availability-display').hide();
+                $('#availability-calendar').empty();
+            }
         });
     }
 

@@ -176,13 +176,14 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             </div>
 
             <div class="form-field">
-                <label for="convert-fitting-time-period">Time Period</label>
-                <select id="convert-fitting-time-period">
-                    <option value="">Not specified</option>
+                <label for="convert-fitting-time-period">Time Period <span class="required">*</span></label>
+                <select id="convert-fitting-time-period" required>
+                    <option value="">Select time period...</option>
                     <option value="am">Morning (AM)</option>
                     <option value="pm">Afternoon (PM)</option>
                     <option value="all-day">All Day</option>
                 </select>
+                <p class="description">Select AM or PM to view availability across all fitters</p>
             </div>
 
             <div class="form-field">
@@ -195,7 +196,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <p class="description">Select a fitter to see their availability</p>
+                <p class="description">Available fitter will be auto-assigned when you select a date</p>
             </div>
 
             <!-- Availability Display -->
@@ -267,7 +268,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <input type="text" id="quick-address-line-2">
             </div>
             <div class="form-field">
-                <label for="quick-address-line-3">Address Line 3</label>
+                <label for="quick-address-line-3">Town/City</label>
                 <input type="text" id="quick-address-line-3">
             </div>
             <div class="form-field">
