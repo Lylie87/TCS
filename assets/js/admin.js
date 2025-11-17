@@ -1057,43 +1057,6 @@
                 html += '</div>';
             }
 
-            // Send Discount Offer Section
-            if (entry.is_cancelled != 1 && entry.customer && entry.customer.customer_email) {
-                html += '<div class="detail-section">';
-                html += '<h3>Send Discount Offer</h3>';
-
-                // Show existing discount if applied
-                if (entry.discount_type && entry.discount_value) {
-                    const discountDisplay = entry.discount_type === 'percentage' ? entry.discount_value + '%' : '£' + parseFloat(entry.discount_value).toFixed(2);
-                    html += `<div class="notice notice-info inline" style="margin-bottom: 15px; padding: 10px;">
-                        <strong>Current Discount:</strong> ${discountDisplay} (${entry.discount_type})
-                        ${entry.discount_applied_date ? ' - Sent on ' + entry.discount_applied_date : ''}
-                    </div>`;
-                }
-
-                html += `<div class="discount-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
-                    <p style="margin-top: 0;">Send a special discount offer to <strong>${entry.customer.customer_email}</strong></p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                        <div>
-                            <label style="display: block; margin-bottom: 5px;"><strong>Discount Amount:</strong></label>
-                            <input type="number" id="discount-value-${entry.id}" step="0.01" min="0.01" value="5" style="width: 100%;" placeholder="Enter amount">
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 5px;"><strong>Discount Type:</strong></label>
-                            <select id="discount-type-${entry.id}" style="width: 100%;">
-                                <option value="percentage">Percentage (%)</option>
-                                <option value="fixed">Fixed Amount (£)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="button" class="button button-primary" id="send-discount-btn" data-entry-id="${entry.id}">
-                        <span class="dashicons dashicons-email"></span> Send Discount Email
-                    </button>
-                    <p class="description" style="margin: 10px 0 0 0;">This will send an email to the customer with the discount offer and a link to accept the quote.</p>
-                </div>`;
-                html += '</div>';
-            }
-
             // Actions
             html += '<div class="detail-section detail-actions">';
             if (entry.is_cancelled != 1) {
@@ -1563,62 +1526,6 @@
         // ===========================================
         // DISCOUNT OFFERS
         // ===========================================
-
-        /**
-         * Send discount email button click
-         */
-        $(document).on('click', '#send-discount-btn', function() {
-            const $button = $(this);
-            const entryId = $button.data('entry-id');
-            const discountType = $(`#discount-type-${entryId}`).val();
-            const discountValue = parseFloat($(`#discount-value-${entryId}`).val());
-
-            // Validation
-            if (!discountValue || discountValue <= 0) {
-                alert('Please enter a valid discount amount');
-                return;
-            }
-
-            if (discountType === 'percentage' && discountValue > 100) {
-                alert('Percentage discount cannot exceed 100%');
-                return;
-            }
-
-            // Confirmation
-            const discountDisplay = discountType === 'percentage' ? discountValue + '%' : '£' + discountValue.toFixed(2);
-            if (!confirm(`Are you sure you want to send a ${discountDisplay} discount offer to the customer?`)) {
-                return;
-            }
-
-            // Disable button and show loading
-            $button.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'send_discount_email',
-                    nonce: wpStaffDiary.nonce,
-                    entry_id: entryId,
-                    discount_type: discountType,
-                    discount_value: discountValue
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert('Discount email sent successfully!');
-                        // Reload the entry details to show updated discount info
-                        viewEntryDetails(entryId);
-                    } else {
-                        alert('Error: ' + response.data.message);
-                        $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while sending the discount email');
-                    $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
-                }
-            });
-        });
 
         // ===========================================
         // CURRENCY SETTINGS (Settings Page)

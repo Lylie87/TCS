@@ -1053,6 +1053,46 @@
             html += '<p>' + quote.notes.replace(/\n/g, '<br>') + '</p>';
         }
 
+        // Send Discount Offer Section (only for quotes)
+        if (quote.customer && quote.customer.customer_email) {
+            html += '<div style="background: #f9f9f9; padding: 20px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2271b1;">';
+            html += '<h3 style="margin-top: 0;">Send Discount Offer</h3>';
+
+            // Show existing discount if applied
+            if (quote.discount_type && quote.discount_value) {
+                const discountDisplay = quote.discount_type === 'percentage' ? quote.discount_value + '%' : '£' + parseFloat(quote.discount_value).toFixed(2);
+                html += '<div class="notice notice-info inline" style="margin-bottom: 15px; padding: 10px; background: #fff;">';
+                html += '<strong>Current Discount:</strong> ' + discountDisplay + ' (' + quote.discount_type + ')';
+                if (quote.discount_applied_date) {
+                    html += ' - Sent on ' + quote.discount_applied_date;
+                }
+                html += '</div>';
+            }
+
+            html += '<div class="discount-form">';
+            html += '<p style="margin-top: 0;">Send a special discount offer to help convert this quote to a job.</p>';
+            html += '<p style="color: #666; margin-bottom: 15px;"><strong>Customer Email:</strong> ' + quote.customer.customer_email + '</p>';
+            html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">';
+            html += '<div>';
+            html += '<label style="display: block; margin-bottom: 5px;"><strong>Discount Amount:</strong></label>';
+            html += '<input type="number" id="discount-value-' + quote.id + '" step="0.01" min="0.01" value="5" style="width: 100%; padding: 8px;" placeholder="Enter amount">';
+            html += '</div>';
+            html += '<div>';
+            html += '<label style="display: block; margin-bottom: 5px;"><strong>Discount Type:</strong></label>';
+            html += '<select id="discount-type-' + quote.id + '" style="width: 100%; padding: 8px;">';
+            html += '<option value="percentage">Percentage (%)</option>';
+            html += '<option value="fixed">Fixed Amount (£)</option>';
+            html += '</select>';
+            html += '</div>';
+            html += '</div>';
+            html += '<button type="button" class="button button-primary" id="send-discount-btn" data-entry-id="' + quote.id + '">';
+            html += '<span class="dashicons dashicons-email"></span> Send Discount Email';
+            html += '</button>';
+            html += '<p class="description" style="margin: 10px 0 0 0;">This will send an email to the customer with the discount offer and a link to accept the quote.</p>';
+            html += '</div>';
+            html += '</div>';
+        }
+
         // Photos
         if (quote.images && quote.images.length > 0) {
             html += '<h3>Photos</h3>';
@@ -1233,3 +1273,64 @@
     });
 
 })(jQuery);
+
+    // ===========================================
+    // DISCOUNT OFFERS (for Quotes)
+    // ===========================================
+
+    /**
+     * Send discount email button click (for quotes)
+     */
+    $(document).on('click', '#send-discount-btn', function() {
+        const $button = $(this);
+        const entryId = $button.data('entry-id');
+        const discountType = $('#discount-type-' + entryId).val();
+        const discountValue = parseFloat($('#discount-value-' + entryId).val());
+
+        // Validation
+        if (!discountValue || discountValue <= 0) {
+            alert('Please enter a valid discount amount');
+            return;
+        }
+
+        if (discountType === 'percentage' && discountValue > 100) {
+            alert('Percentage discount cannot exceed 100%');
+            return;
+        }
+
+        // Confirmation
+        const discountDisplay = discountType === 'percentage' ? discountValue + '%' : '£' + discountValue.toFixed(2);
+        if (!confirm('Are you sure you want to send a ' + discountDisplay + ' discount offer to the customer?')) {
+            return;
+        }
+
+        // Disable button and show loading
+        $button.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'send_discount_email',
+                nonce: wpStaffDiary.nonce,
+                entry_id: entryId,
+                discount_type: discountType,
+                discount_value: discountValue
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('Discount email sent successfully!');
+                    // Reload the quote details to show updated discount info
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + response.data.message);
+                    $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
+                }
+            },
+            error: function() {
+                alert('An error occurred while sending the discount email');
+                $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
+            }
+        });
+    });
+
