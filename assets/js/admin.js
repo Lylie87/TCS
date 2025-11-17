@@ -1020,6 +1020,12 @@
          * Display entry details in view modal
          */
         function displayEntryDetails(entry) {
+            // Check if this is a measure - display simpler view
+            if (entry.status === 'measure') {
+                displayMeasureDetails(entry);
+                return;
+            }
+
             let html = '<div class="job-sheet-content">';
 
             // Header
@@ -1215,6 +1221,109 @@
                     <span class="dashicons dashicons-edit"></span> Edit Job
                 </button>`;
             }
+            html += '</div>';
+
+            html += '</div>'; // Close job-sheet-content
+
+            $('#entry-details-content').html(html);
+            $('#view-entry-modal').fadeIn();
+        }
+
+        /**
+         * Display measure details in view modal
+         */
+        function displayMeasureDetails(entry) {
+            let html = '<div class="job-sheet-content">';
+
+            // Header
+            html += `<div class="job-sheet-header" style="background: #9b59b6;">
+                <h2 style="color: white;">Measure Appointment</h2>
+                <div class="order-number-large" style="color: white;">Measure #${entry.order_number}</div>
+            </div>`;
+
+            // Customer Section
+            html += '<div class="detail-section">';
+            html += '<h3>Customer Details</h3>';
+            if (entry.customer) {
+                html += `<div class="detail-grid">
+                    <div class="detail-item"><strong>Name:</strong> ${entry.customer.customer_name}</div>
+                    ${entry.customer.customer_phone ? `<div class="detail-item"><strong>Phone:</strong> ${entry.customer.customer_phone}</div>` : ''}
+                </div>`;
+            } else {
+                html += '<p style="color: #999;">No customer information</p>';
+            }
+            html += '</div>';
+
+            // Measure Address Section
+            html += '<div class="detail-section">';
+            html += '<h3>Measure Address</h3>';
+            if (entry.fitting_address_line_1 || entry.fitting_address_line_2 || entry.fitting_address_line_3 || entry.fitting_postcode) {
+                let address = [];
+                if (entry.fitting_address_line_1) address.push(entry.fitting_address_line_1);
+                if (entry.fitting_address_line_2) address.push(entry.fitting_address_line_2);
+                if (entry.fitting_address_line_3) address.push(entry.fitting_address_line_3);
+                if (entry.fitting_postcode) address.push(entry.fitting_postcode);
+                html += `<div class="detail-item">${address.join('<br>')}</div>`;
+            } else {
+                html += '<p style="color: #999;">No address specified</p>';
+            }
+            html += '</div>';
+
+            // Measure Schedule Section
+            html += '<div class="detail-section">';
+            html += '<h3>Schedule</h3>';
+            html += '<div class="detail-grid">';
+            if (entry.fitting_date) {
+                html += `<div class="detail-item"><strong>Date:</strong> ${entry.fitting_date_formatted}</div>`;
+            }
+            if (entry.job_time) {
+                html += `<div class="detail-item"><strong>Time:</strong> ${entry.job_time_formatted}</div>`;
+            }
+            html += '</div>';
+            html += '</div>';
+
+            // Photos Section
+            html += '<div class="detail-section">';
+            html += '<h3>Photos</h3>';
+            if (entry.images && entry.images.length > 0) {
+                html += '<div class="job-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">';
+                entry.images.forEach(function(image) {
+                    const categoryLabel = image.category ? `<div style="font-size: 11px; color: #999; font-weight: 600; margin-top: 4px;">(${image.category})</div>` : '';
+                    html += `<div class="job-image-item" style="position: relative;">
+                        <img src="${image.image_url}" alt="Measure photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')" title="Click to open full size">
+                        ${categoryLabel}
+                        ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
+                    </div>`;
+                });
+                html += '</div>';
+            } else {
+                html += '<p style="color: #999;">No photos uploaded yet.</p>';
+            }
+            html += `<button type="button" class="button" id="upload-photo-btn" data-entry-id="${entry.id}">
+                <span class="dashicons dashicons-camera"></span> Upload Photo
+            </button>`;
+            html += `<input type="file" id="photo-upload-input-${entry.id}" accept="image/*" style="display: none;">`;
+            html += '</div>';
+
+            // Internal Notes
+            if (entry.notes) {
+                html += '<div class="detail-section">';
+                html += '<h3>Internal Notes</h3>';
+                html += `<div class="notes-content">${entry.notes.replace(/\n/g, '<br>')}</div>`;
+                html += '</div>';
+            }
+
+            // Actions - Convert buttons
+            html += '<div class="detail-section detail-actions">';
+            html += `<button type="button" class="button button-primary" id="convert-measure-to-quote-btn" data-measure-id="${entry.id}" style="background: #2271b1; border-color: #2271b1;">
+                <span class="dashicons dashicons-clipboard"></span> Convert to Quote
+            </button>`;
+            html += `<button type="button" class="button button-primary" id="convert-measure-to-job-btn" data-measure-id="${entry.id}" style="background: #00a32a; border-color: #00a32a; margin-left: 10px;">
+                <span class="dashicons dashicons-hammer"></span> Convert to Job
+            </button>`;
+            html += `<button type="button" class="button edit-entry" data-id="${entry.id}" style="margin-left: 10px;">
+                <span class="dashicons dashicons-edit"></span> Edit Measure
+            </button>`;
             html += '</div>';
 
             html += '</div>'; // Close job-sheet-content
@@ -1699,6 +1808,126 @@
                 },
                 complete: function() {
                     $button.prop('disabled', false).text('Add Accessory');
+                }
+            });
+        });
+
+        // ===========================================
+        // MEASURE CONVERSIONS
+        // ===========================================
+
+        /**
+         * Convert measure to quote
+         */
+        $(document).on('click', '#convert-measure-to-quote-btn', function() {
+            const measureId = $(this).data('measure-id');
+
+            // Close view modal
+            $('#view-entry-modal').fadeOut();
+
+            // Fetch measure data and populate quote form
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: measureId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const measure = response.data.entry || response.data;
+
+                        // Redirect to quotes page with pre-filled data
+                        const params = new URLSearchParams({
+                            action: 'new',
+                            from_measure: measureId,
+                            customer_id: measure.customer_id || '',
+                            fitting_date: measure.fitting_date || '',
+                            fitting_address_line_1: measure.fitting_address_line_1 || '',
+                            fitting_address_line_2: measure.fitting_address_line_2 || '',
+                            fitting_address_line_3: measure.fitting_address_line_3 || '',
+                            fitting_postcode: measure.fitting_postcode || '',
+                            notes: measure.notes || ''
+                        });
+
+                        window.location.href = 'admin.php?page=wp-staff-diary-quotes&' + params.toString();
+                    } else {
+                        alert('Error loading measure data');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while loading measure data');
+                }
+            });
+        });
+
+        /**
+         * Convert measure to job
+         */
+        $(document).on('click', '#convert-measure-to-job-btn', function() {
+            const measureId = $(this).data('measure-id');
+
+            // Close view modal
+            $('#view-entry-modal').fadeOut();
+
+            // Fetch measure data and open job form
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: measureId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const measure = response.data.entry || response.data;
+
+                        // Open job entry modal
+                        $('#entry-modal-title').text('Convert Measure to Job');
+                        $('#diary-entry-form')[0].reset();
+                        $('#entry-id').val('');
+
+                        // Pre-fill form with measure data
+                        if (measure.customer_id) {
+                            $('#customer-id').val(measure.customer_id);
+                            if (measure.customer) {
+                                $('#customer-search').hide();
+                                $('#selected-customer-name').text(measure.customer.customer_name);
+                                $('#selected-customer-display').show();
+                            }
+                        }
+
+                        // Pre-fill address
+                        if (measure.fitting_address_line_1) {
+                            $('#use-different-address').prop('checked', true).trigger('change');
+                            $('#fitting-address-line-1').val(measure.fitting_address_line_1);
+                            $('#fitting-address-line-2').val(measure.fitting_address_line_2 || '');
+                            $('#fitting-address-line-3').val(measure.fitting_address_line_3 || '');
+                            $('#fitting-postcode').val(measure.fitting_postcode || '');
+                        }
+
+                        // Pre-fill date (from measure date to fitting date)
+                        if (measure.fitting_date) {
+                            $('#fitting-date').val(measure.fitting_date);
+                        }
+
+                        // Pre-fill notes
+                        if (measure.notes) {
+                            $('#notes').val(measure.notes);
+                        }
+
+                        // Set job date to today
+                        $('#job-date').val(new Date().toISOString().split('T')[0]);
+
+                        $('#entry-modal').fadeIn();
+                    } else {
+                        alert('Error loading measure data');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while loading measure data');
                 }
             });
         });
