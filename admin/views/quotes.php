@@ -99,9 +99,10 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             $total = $subtotal * (1 + ($vat_rate / 100));
                         }
 
-                        $order_number = isset($quote->order_number) ? $quote->order_number : 'Quote #' . $quote->id;
-                        // Ensure customer_name is a string to avoid PHP 8.1+ deprecation warnings
-                        $customer_name = $customer && $customer->customer_name ? $customer->customer_name : '';
+                        // Ensure all fields are strings to avoid PHP 8.1+ deprecation warnings
+                        $order_number = $quote->order_number ?? 'Quote #' . $quote->id;
+                        $customer_name = $customer ? ($customer->customer_name ?? '') : '';
+                        $customer_phone = $customer ? ($customer->customer_phone ?? '') : '';
                         ?>
                         <tr data-quote-id="<?php echo esc_attr($quote->id); ?>"
                             data-customer-name="<?php echo esc_attr(strtolower($customer_name)); ?>">
@@ -111,9 +112,9 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             </td>
                             <td>
                                 <?php if ($customer): ?>
-                                    <strong><?php echo esc_html($customer->customer_name ?? ''); ?></strong>
-                                    <?php if (!empty($customer->customer_phone)): ?>
-                                        <br><small><?php echo esc_html($customer->customer_phone); ?></small>
+                                    <strong><?php echo esc_html($customer_name); ?></strong>
+                                    <?php if (!empty($customer_phone)): ?>
+                                        <br><small><?php echo esc_html($customer_phone); ?></small>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #999;">No customer</span>
