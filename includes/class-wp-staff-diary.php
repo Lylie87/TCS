@@ -119,7 +119,7 @@ class WP_Staff_Diary {
         // Keeping these for backwards compatibility fallback
         // $this->loader->add_action('wp_ajax_save_diary_entry', $plugin_admin, 'save_diary_entry');
         // $this->loader->add_action('wp_ajax_delete_diary_entry', $plugin_admin, 'delete_diary_entry');
-        // $this->loader->add_action('wp_ajax_cancel_diary_entry', $plugin_admin, 'cancel_diary_entry');
+        $this->loader->add_action('wp_ajax_cancel_diary_entry', $plugin_admin, 'cancel_diary_entry');
         // $this->loader->add_action('wp_ajax_get_diary_entry', $plugin_admin, 'get_diary_entry');
 
         // AJAX handlers - Images

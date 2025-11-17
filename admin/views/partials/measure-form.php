@@ -53,18 +53,6 @@ if (!defined('ABSPATH')) {
                     <button type="button" class="button button-small" id="measure-clear-customer-btn">Change Customer</button>
                 </div>
             </div>
-
-            <!-- Manual Customer Entry (for new customers) -->
-            <div id="measure-manual-customer-entry" style="display: none;">
-                <div class="form-field">
-                    <label for="measure-customer-name">Customer Name <span class="required">*</span></label>
-                    <input type="text" id="measure-customer-name" name="customer_name">
-                </div>
-                <div class="form-field">
-                    <label for="measure-customer-phone">Phone Number <span class="required">*</span></label>
-                    <input type="tel" id="measure-customer-phone" name="customer_phone">
-                </div>
-            </div>
         </div>
 
         <!-- Address Section -->

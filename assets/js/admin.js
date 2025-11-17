@@ -504,10 +504,18 @@
          * Save measure entry
          */
         function saveMeasure() {
+            // Validate customer selection
+            const customerId = $('#measure-customer-id').val();
+            if (!customerId) {
+                alert('Please select or add a customer first.');
+                return;
+            }
+
             const formData = {
                 action: 'save_diary_entry',
                 nonce: wpStaffDiary.nonce,
                 entry_id: $('#measure-entry-id').val(),
+                customer_id: customerId,
                 job_date: $('#measure-job-date').val(),
                 fitting_date: $('#measure-date').val(),
                 job_time: $('#measure-time').val(),
@@ -518,16 +526,6 @@
                 notes: $('#measure-notes').val(),
                 status: $('#measure-status').val() // 'measure'
             };
-
-            // Check if existing customer is selected
-            const customerId = $('#measure-customer-id').val();
-            if (customerId) {
-                formData.customer_id = customerId;
-            } else {
-                // New customer - send name and phone for inline creation
-                formData.measure_customer_name = $('#measure-customer-name').val();
-                formData.measure_customer_phone = $('#measure-customer-phone').val();
-            }
 
             console.log('Saving measure with data:', formData);
 
@@ -722,9 +720,23 @@
                 data: customerData,
                 success: function(response) {
                     if (response.success) {
-                        selectCustomer(response.data.customer.id, response.data.customer.customer_name);
+                        const source = $('#quick-add-customer-modal').data('source');
+                        if (source === 'measure') {
+                            // Pre-fill measure form with customer details
+                            const customer = response.data.customer;
+                            const customerAddress = [
+                                customer.address_line_1,
+                                customer.address_line_2,
+                                customer.address_line_3,
+                                customer.postcode
+                            ].filter(Boolean).join('\n');
+                            selectMeasureCustomer(customer.id, customer.customer_name, customer.customer_phone || '', customerAddress);
+                        } else {
+                            selectCustomer(response.data.customer.id, response.data.customer.customer_name);
+                        }
                         $('#quick-add-customer-modal').fadeOut();
                         $('#quick-add-customer-form')[0].reset();
+                        $('#quick-add-customer-modal').removeData('source');
                         alert(response.data.message);
                     } else {
                         alert('Error: ' + response.data.message);
@@ -844,10 +856,11 @@
             $('#measure-customer-search-container').show();
         });
 
-        // Add new customer inline for measure
+        // Add new customer inline for measure - open the quick add modal
         $('#measure-add-new-customer-inline').on('click', function() {
-            $('#measure-customer-search-container').hide();
-            $('#measure-manual-customer-entry').show();
+            // Set a flag to know we're adding from measure form
+            $('#quick-add-customer-modal').data('source', 'measure');
+            $('#quick-add-customer-modal').fadeIn();
         });
 
         // ===========================================
