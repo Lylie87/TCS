@@ -1,5 +1,42 @@
 # Claude Session Instructions - Staff Daily Job Planner Project
 
+---
+
+## ⚠️ CRITICAL - READ THIS FIRST ⚠️
+
+**BEFORE DOING ANYTHING ELSE, YOU MUST:**
+
+1. 📖 **READ `DEVELOPMENT_LOG.md`** - Contains complete technical context of v2.6.0
+   - All features implemented with line numbers
+   - All bug fixes and why they were needed
+   - Architecture decisions and reasoning
+   - Code patterns to follow
+   - Debugging guide
+
+2. 🔍 **CHECK GIT STATUS** - Understand current branch and recent commits
+   ```bash
+   git status
+   git log --oneline -5
+   ```
+
+3. 👋 **GREET ALEX** - Say "Hey Alex! I've read the development log and I'm up to speed."
+
+4. 💬 **ASK CONTEXT** - "What would you like to work on?"
+
+**DO NOT** start making changes until you've read `DEVELOPMENT_LOG.md`. This file contains critical context about:
+- What we built and why
+- Security patterns that MUST be followed
+- Bug fixes and edge cases already handled
+- Technical decisions and trade-offs
+
+**WHY THIS MATTERS**: Alex experiences session disconnections. Without reading the dev log, you might:
+- ❌ Reintroduce bugs we already fixed
+- ❌ Create conflicting implementations
+- ❌ Miss critical security patterns
+- ❌ Break existing functionality
+
+---
+
 ## About This Project
 
 **Project Name**: Staff Daily Job Planner (TCS)
@@ -27,10 +64,12 @@
 - Security-conscious: Always check for XSS, SQL injection, etc.
 
 ### Session Continuity
-- **CRITICAL**: Always read `DEVELOPMENT_LOG.md` at the start of any session
+- **CRITICAL**: ALWAYS read `DEVELOPMENT_LOG.md` FIRST (see top of this file)
+- This is NON-NEGOTIABLE - the dev log contains essential context
 - Check git history to understand recent changes
 - Ask Alex what they were working on before diving in
 - Reference the development log for technical patterns and decisions
+- If you skip reading the dev log, you WILL create bugs
 
 ## Project Technical Context
 
@@ -42,13 +81,13 @@
 - **Architecture**: Modular with MVC-like patterns
 
 ### Key File Locations
+- **📖 DEVELOPMENT LOG**: `DEVELOPMENT_LOG.md` ⚠️ **READ THIS FIRST!**
 - Main plugin file: `wp-staff-diary.php`
 - Database schema: `includes/class-activator.php`
 - Upgrade scripts: `includes/class-upgrade.php`
 - Admin UI: `admin/class-admin.php`
 - JavaScript: `assets/js/admin.js`, `assets/js/quotes.js`
 - Images module: `includes/modules/images/`
-- Development log: `DEVELOPMENT_LOG.md` (READ THIS FIRST!)
 
 ### Critical Patterns to Follow
 
@@ -195,10 +234,22 @@ See `DEVELOPMENT_LOG.md` for complete details.
 ## Common Tasks & How to Handle Them
 
 ### Starting a New Session
-1. **Greet Alex**: "Hey Alex! I'm back and ready to continue."
-2. **Check Context**: Read `DEVELOPMENT_LOG.md` for latest changes
-3. **Git Status**: Check current branch and recent commits
-4. **Ask**: "What would you like to work on?"
+1. **📖 READ DEV LOG**: Use the Read tool to read `DEVELOPMENT_LOG.md` in full
+   - This is MANDATORY - not optional
+   - Contains all technical context for v2.6.0
+   - Without it, you'll create bugs
+
+2. **🔍 Git Status**: Check current branch and recent commits
+   ```bash
+   git status
+   git log --oneline -5
+   ```
+
+3. **👋 Greet Alex**: "Hey Alex! I've read the development log and I'm up to speed."
+
+4. **💬 Ask Context**: "What would you like to work on?"
+
+**REMINDER**: If you haven't read `DEVELOPMENT_LOG.md` yet, STOP and read it now using the Read tool.
 
 ### Adding New Features
 1. **Plan First**: Break down into phases if complex
@@ -249,11 +300,14 @@ See `DEVELOPMENT_LOG.md` for complete details.
 ## Emergency Procedures
 
 ### If Session Disconnects Mid-Task
-1. New session reads this file
-2. Check `DEVELOPMENT_LOG.md` for context
-3. Review git log for last commits
+1. New session automatically reads this file (.claude/instructions.md)
+2. **IMMEDIATELY READ** `DEVELOPMENT_LOG.md` using Read tool
+   - Do not skip this step
+   - Contains all context about what was built
+3. Review git log for last commits: `git log --oneline -10`
 4. Check for uncommitted changes: `git status`
-5. Ask Alex where they left off
+5. Greet Alex and ask where they left off
+6. Use the development log to understand the codebase state
 
 ### If You're Unsure
 - **Check**: DEVELOPMENT_LOG.md first
