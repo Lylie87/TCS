@@ -1658,6 +1658,113 @@
             $(this).val('');
         });
 
+        // Measure photo upload button click
+        $(document).on('click', '#upload-measure-photo-btn', function() {
+            const entryId = $('#measure-entry-id').val();
+
+            if (!entryId) {
+                if (confirm('You need to save the measure first before uploading photos. Would you like to save now?')) {
+                    // Trigger the form submission
+                    $('#measure-entry-form').submit();
+                }
+                return;
+            }
+
+            $('#measure-photo-upload-input').click();
+        });
+
+        // Measure photo file selected
+        $(document).on('change', '#measure-photo-upload-input', function() {
+            const entryId = $('#measure-entry-id').val();
+            const file = this.files[0];
+            const $input = $(this);
+
+            if (!file) return;
+
+            if (!entryId) {
+                alert('Please save the measure first before uploading photos.');
+                $input.val('');
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                $input.val('');
+                return;
+            }
+
+            // Show category selection modal
+            showPhotoCategory(file, entryId, function(result) {
+                if (!result) {
+                    $input.val('');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            // Reload photos in the form
+                            loadMeasurePhotos(entryId);
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function() {
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
+                });
+            });
+
+            // Clear the file input
+            $(this).val('');
+        });
+
+        /**
+         * Load photos for measure form
+         */
+        function loadMeasurePhotos(entryId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_entry_photos',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
+                success: function(response) {
+                    if (response.success && response.data.photos) {
+                        let html = '';
+                        response.data.photos.forEach(function(photo) {
+                            const categoryLabel = photo.category ? ` (${photo.category})` : '';
+                            html += `<div class="photo-item" style="display: inline-block; margin: 10px; position: relative;">
+                                <img src="${photo.image_url}" style="max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" onclick="window.open('${photo.image_url}', '_blank')" title="Click to open full size">
+                                <div style="font-size: 11px; color: #666;">${categoryLabel}</div>
+                            </div>`;
+                        });
+                        $('#measure-photos-container').html(html || '<p class="description">No photos uploaded yet.</p>');
+                    }
+                }
+            });
+        }
+
         // Record payment button click in edit form
         $(document).on('click', '#record-payment-form-btn', function() {
             const entryId = $(this).data('entry-id');
