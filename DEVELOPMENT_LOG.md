@@ -1292,16 +1292,535 @@ if (entry.total > 0) {
 
 ---
 
+## Phase 2 Implementation - v2.7.0
+
+### Features Implemented
+
+#### 1. Email Templates System
+
+**Objective**: Allow customizable email templates with variable replacement for customer communications.
+
+**Database Changes**:
+- New table: `wp_staff_diary_email_templates`
+  - `id` bigint(20) PRIMARY KEY AUTO_INCREMENT
+  - `template_name` varchar(255) NOT NULL - Display name
+  - `template_slug` varchar(100) NOT NULL UNIQUE - Identifier for code
+  - `subject` varchar(500) NOT NULL - Email subject line
+  - `body` longtext NOT NULL - Email body content
+  - `is_active` tinyint(1) DEFAULT 1 - Enable/disable status
+  - `is_default` tinyint(1) DEFAULT 0 - Protection flag
+  - `created_at` datetime DEFAULT CURRENT_TIMESTAMP
+  - `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+**Default Templates Created**:
+1. **Payment Reminder** (slug: `payment_reminder`)
+   - Subject: "Payment Reminder - Invoice {{job_number}}"
+   - Includes: balance due, job details, bank details
+
+2. **Quote Approved** (slug: `quote_approved`)
+   - Subject: "Your Quote {{quote_number}} Has Been Approved"
+   - Includes: quote details, scheduled date
+
+3. **Job Complete** (slug: `job_complete`)
+   - Subject: "Job {{job_number}} Completed"
+   - Includes: completion date, description, thank you message
+
+**Files Created**:
+
+##### `admin/views/email-templates.php` (413 lines)
+**Purpose**: Admin page for managing email templates
+
+**Features**:
+1. **List View**:
+   - Table displaying all templates
+   - Shows: name, slug, subject, status (active/inactive/default)
+   - Edit button for each template
+   - Variable reference guide
+
+2. **Add/Edit Form**:
+   - Template name (required)
+   - Template slug (required, readonly for defaults)
+   - Email subject (required)
+   - Email body (large textarea, required)
+   - Active status checkbox
+   - Delete button (non-default only)
+
+3. **Variable Reference**:
+   - Customer: name, email, phone, address
+   - Job: number, date, description, product
+   - Financial: total, paid, balance, discount
+   - Company: name, email, phone, address
+   - Bank: name, account details
+   - Other: current_date, quote_link
+
+**Security**:
+- Nonce verification for save/delete
+- sanitize_text_field() for all inputs
+- sanitize_textarea_field() for body
+- sanitize_title() for slug
+- manage_options capability required
+- Default template deletion prevented
+
+##### `includes/services/class-template-service.php` (374 lines)
+**Purpose**: Variable replacement engine and email sending
+
+**Key Methods**:
+1. `replace_variables($template, $data)` - Core replacement engine
+   - Supports {{variable}} and {variable} formats
+   - Cleans up unreplaced variables
+   - Merges customer, company, and bank data
+
+2. `prepare_entry_data($entry, $customer, $payments)` - Data preparation
+   - Formats dates using plugin settings
+   - Builds full customer address from parts
+   - Calculates financial totals with VAT
+   - Includes accessories in calculations
+   - Applies discounts (percentage or fixed)
+
+3. `calculate_total($entry)` - Financial calculations
+   - Product cost (sq_mtr_qty × price_per_sq_mtr)
+   - Fitting cost
+   - Accessories (from job_accessories table)
+   - Discount application
+   - VAT addition (if enabled)
+
+4. `format_currency($amount)` - Currency formatting
+   - Respects plugin currency settings
+   - Supports 4 positions: left, left_space, right, right_space
+   - Uses configured symbols and separators
+
+5. `send_templated_email($to, $template_slug, $data)` - Email sending
+   - Loads template by slug
+   - Replaces variables
+   - Sets headers with company details
+   - Uses WordPress wp_mail()
+   - Logs failures
+
+6. `preview_template($template_slug)` - Preview functionality
+   - Generates sample data
+   - Returns processed template
+   - Useful for testing
+
+**Variable Support** (30+ variables):
+- `{{customer_name}}`, `{{customer_email}}`, `{{customer_phone}}`
+- `{{customer_address}}` (full), `{{address_line_1/2/3}}`, `{{postcode}}`
+- `{{job_number}}` / `{{order_number}}`, `{{job_date}}`, `{{quote_date}}`
+- `{{job_description}}`, `{{product_description}}`, `{{area}}`, `{{size}}`
+- `{{total_amount}}`, `{{paid_amount}}`, `{{balance_due}}`
+- `{{discount_value}}`, `{{discount_display}}`, `{{discount_type_label}}`
+- `{{company_name}}`, `{{company_email}}`, `{{company_phone}}`, `{{company_address}}`
+- `{{bank_name}}`, `{{bank_account_name}}`, `{{bank_sort_code}}`, `{{bank_account_number}}`
+- `{{current_date}}`, `{{quote_link}}`
+
+#### 2. SMS Notification System
+
+**Objective**: Twilio integration for SMS notifications with test mode and opt-in management.
+
+**Database Changes**:
+- New table: `wp_staff_diary_sms_log`
+  - `id` bigint(20) PRIMARY KEY AUTO_INCREMENT
+  - `diary_entry_id` bigint(20) DEFAULT NULL - Related job
+  - `customer_id` bigint(20) DEFAULT NULL - Related customer
+  - `phone_number` varchar(20) NOT NULL - Recipient
+  - `message` text NOT NULL - SMS content
+  - `status` varchar(20) DEFAULT 'pending' - sent/failed/test/pending
+  - `twilio_sid` varchar(100) DEFAULT NULL - Twilio message ID
+  - `cost` decimal(10,4) DEFAULT 0.0000 - Cost in currency
+  - `error_message` text DEFAULT NULL - Error details if failed
+  - `sent_at` datetime DEFAULT CURRENT_TIMESTAMP
+
+- Modified table: `wp_staff_diary_customers`
+  - `sms_opt_in` tinyint(1) DEFAULT 1 - Opt-in status
+  - `sms_opt_in_date` datetime DEFAULT NULL - When opted in
+  - `sms_opt_out_date` datetime DEFAULT NULL - When opted out
+  - Index on `sms_opt_in`
+
+**Files Created**:
+
+##### `includes/services/class-sms-service.php` (402 lines)
+**Purpose**: Twilio SMS sending with test mode
+
+**Key Methods**:
+1. `send_sms($to, $message, $diary_entry_id, $customer_id)` - Core send function
+   - Validates SMS enabled setting
+   - Checks test mode
+   - Validates phone format (E.164)
+   - Routes to test or real send
+   - Logs all attempts
+
+2. `send_via_twilio($sid, $token, $from, $to, $message)` - API integration
+   - Uses WordPress HTTP API
+   - Endpoint: https://api.twilio.com/2010-04-01/Accounts/{SID}/Messages.json
+   - Basic auth with SID and token
+   - Returns SID or error message
+
+3. `send_templated_sms($to, $message_template, $data, ...)` - With variables
+   - Uses template service for replacement
+   - Trims message
+   - Calls send_sms()
+
+4. `is_customer_opted_in($customer_id)` - Check opt-in
+5. `opt_in_customer($customer_id)` - Opt customer in
+6. `opt_out_customer($customer_id)` - Opt customer out
+
+7. `get_sms_stats($start_date, $end_date)` - Statistics
+   - Returns counts by status
+   - Returns costs by status
+   - Supports date filtering
+
+8. `format_phone_number($phone, $country_code)` - E.164 formatting
+   - Removes non-digits
+   - Adds country code
+   - Returns +[country][number]
+
+9. `is_valid_phone_number($phone)` - Validation
+   - Checks E.164 format: /^\+[1-9]\d{1,14}$/
+
+**Test Mode**:
+- Enabled by default (wp_staff_diary_sms_test_mode = '1')
+- Generates test SID (TEST_xxxxx)
+- Logs message with status 'test'
+- Cost recorded as 0.00
+- Error logged for developer verification
+- No actual API call made
+
+**Real Mode**:
+- Requires Twilio credentials
+- Makes actual API call
+- Records actual SID from Twilio
+- Tracks real cost (default £0.04)
+- Comprehensive error handling
+
+#### 3. Communications Settings UI
+
+**Files Modified**:
+
+##### `admin/views/settings.php`
+**Changes Made**:
+
+1. **Save Handler** (lines 163-176):
+   - New: `wp_staff_diary_save_communications`
+   - Saves SMS settings (enabled, test mode, credentials, cost)
+   - Nonce: `wp_staff_diary_communications_nonce`
+
+2. **Settings Retrieval** (lines 299-308):
+   - SMS enabled, test mode, Twilio credentials
+   - SMS cost per message
+   - Email templates from database
+
+3. **Navigation Tab** (line 321):
+   - Added "Communications" tab after Payment Reminders
+   - data-tab="communications"
+
+4. **Communications Tab Content** (lines 861-999):
+   - **Email Templates Section**:
+     - Table listing all templates
+     - Shows: name, slug, status, actions
+     - Link to template editor page
+     - "Add New Template" button
+
+   - **SMS Settings Section**:
+     - Enable SMS checkbox
+     - Test mode checkbox (recommended enabled)
+     - Twilio Account SID field
+     - Twilio Auth Token field (password type)
+     - Twilio Phone Number field (E.164 placeholder)
+     - Cost per message field (4 decimal places)
+
+   - **Info Box**:
+     - How SMS notifications work
+     - Opt-in requirement
+     - Test mode explanation
+     - Twilio signup link
+     - Available variables list
+
+##### `admin/class-admin.php`
+**Changes Made**:
+
+1. **Hidden Submenu** (lines 441-449):
+   - Page: wp-staff-diary-email-templates
+   - Parent: null (hidden from menu)
+   - Capability: manage_options
+   - Callback: display_email_templates_page()
+
+2. **Display Method** (lines 486-491):
+   - Loads admin/views/email-templates.php
+
+##### `includes/class-database.php`
+**New Methods Added**:
+
+1. `get_all_email_templates()` - List all templates
+2. `get_email_template($id)` - Get single template by ID
+3. `get_email_template_by_slug($slug)` - Get active template by slug
+4. `create_email_template($data)` - Create new template
+5. `update_email_template($id, $data)` - Update template
+6. `delete_email_template($id)` - Delete non-default template
+7. `log_sms($data)` - Log SMS message
+8. `get_sms_logs($diary_entry_id)` - Get SMS logs for job
+9. `get_total_sms_cost($start_date, $end_date)` - Calculate costs
+
+#### 4. Customer SMS Opt-In UI
+
+**Files Modified**:
+
+##### `admin/views/customers.php`
+**Changes Made**:
+
+1. **Phone Field Helper** (lines 124-126):
+   - Added description text
+   - "For SMS notifications, use E.164 format (e.g., +441234567890)"
+
+2. **SMS Opt-In Checkbox** (lines 129-137):
+   - Checkbox with ID: customer-sms-opt-in
+   - Label: "Customer has opted in to receive SMS notifications"
+   - Helper text explaining opt-in requirement
+
+3. **Load Opt-In Status** (line 329):
+   - `$('#customer-sms-opt-in').prop('checked', customer.sms_opt_in == 1);`
+   - Sets checkbox state when editing
+
+4. **Submit Opt-In Value** (line 465):
+   - `sms_opt_in: $('#customer-sms-opt-in').is(':checked') ? '1' : '0'`
+   - Sends to server on save
+
+##### `includes/modules/customers/class-customers-controller.php`
+**Changes Made**:
+
+1. **Add Method** (line 109):
+   - Added 'sms_opt_in' => 'text' to sanitization
+
+2. **Update Method** (line 227):
+   - Added 'sms_opt_in' => 'text' to sanitization
+
+#### 5. Service Class Loading
+
+**Files Modified**:
+
+##### `includes/class-wp-staff-diary.php`
+**Changes Made** (lines 50-52):
+- Added services directory loading
+- `require_once` for class-template-service.php
+- `require_once` for class-sms-service.php
+- Loaded with core dependencies
+
+### Settings Added
+
+**SMS Settings**:
+- `wp_staff_diary_sms_enabled` - '0' (disabled by default)
+- `wp_staff_diary_sms_test_mode` - '1' (enabled by default)
+- `wp_staff_diary_twilio_account_sid` - '' (empty until configured)
+- `wp_staff_diary_twilio_auth_token` - '' (empty until configured)
+- `wp_staff_diary_twilio_phone_number` - '' (empty until configured)
+- `wp_staff_diary_sms_cost_per_message` - '0.04' (default £0.04)
+
+### Security Considerations
+
+**Email Templates**:
+- All inputs sanitized (text, textarea, email, title)
+- Nonce verification on all forms
+- Output escaped (html, attr, textarea)
+- Default templates cannot be deleted
+- Manage options capability required
+- Prepared statements for database queries
+
+**SMS Service**:
+- Phone number format validation (E.164)
+- Settings validation before sending
+- Test mode as safe default
+- Credentials stored as plain text (WordPress options)
+- Basic auth for API (base64)
+- Error messages logged securely
+- All attempts logged to database
+- Opt-in requirement enforced in UI
+
+**Template Variables**:
+- No user-supplied variables (predefined only)
+- Data sanitized before replacement
+- Unreplaced variables cleaned from output
+- Financial calculations validated
+
+### Usage Examples
+
+**Send Email with Template**:
+```php
+// Prepare data
+$data = WP_Staff_Diary_Template_Service::prepare_entry_data(
+    $entry,
+    $customer,
+    $payments
+);
+
+// Send email
+$sent = WP_Staff_Diary_Template_Service::send_templated_email(
+    $customer->customer_email,
+    'payment_reminder',
+    $data
+);
+
+if (!$sent) {
+    error_log('Failed to send payment reminder');
+}
+```
+
+**Send SMS with Template**:
+```php
+// Check opt-in
+if (!WP_Staff_Diary_SMS_Service::is_customer_opted_in($customer_id)) {
+    return;
+}
+
+// Prepare data
+$data = WP_Staff_Diary_Template_Service::prepare_entry_data(
+    $entry,
+    $customer,
+    $payments
+);
+
+// Send SMS
+$result = WP_Staff_Diary_SMS_Service::send_templated_sms(
+    $customer->customer_phone,
+    'Payment reminder: {{balance_due}} due for job {{job_number}}',
+    $data,
+    $entry->id,
+    $customer->id
+);
+
+if ($result['success']) {
+    echo "SMS sent! SID: " . $result['sid'];
+} else {
+    echo "Failed: " . $result['message'];
+}
+```
+
+**Get SMS Statistics**:
+```php
+$stats = WP_Staff_Diary_SMS_Service::get_sms_stats('2025-01-01', '2025-01-31');
+echo "Sent: " . $stats['sent']['count'] . " (£" . $stats['sent']['cost'] . ")";
+echo "Failed: " . $stats['failed']['count'];
+echo "Test: " . $stats['test']['count'];
+```
+
+### Commits Made
+
+**Phase 2 Commits** (7 total):
+1. `de1d49c` - Database: Add email templates and SMS tables for Phase 2 (v2.7.0)
+2. `f515609` - Feature: Add Communications settings tab and email template CRUD (v2.7.0)
+3. `a0f91e5` - Feature: Add email template editor admin page (v2.7.0)
+4. `0dd3d6a` - Feature: Add template variable replacement engine (v2.7.0)
+5. `880cdb7` - Feature: Add Twilio SMS service with test mode (v2.7.0)
+6. `591cc2b` - Feature: Add SMS opt-in/opt-out UI to customer forms (v2.7.0)
+7. `32f52ef` - Version: Update to 2.7.0
+
+### Testing Checklist
+
+**Email Templates**:
+- [ ] Create new email template
+- [ ] Edit existing template
+- [ ] Delete non-default template (should work)
+- [ ] Try to delete default template (should fail)
+- [ ] Test all variable replacements with real data
+- [ ] Test with missing data (variables should be removed)
+- [ ] Test subject line variables
+- [ ] Test email sending via wp_mail()
+
+**SMS Service**:
+- [ ] Enable SMS in settings
+- [ ] Enable test mode
+- [ ] Send SMS in test mode (should log but not send)
+- [ ] Check SMS log shows 'test' status
+- [ ] Disable test mode (CAUTION: will send real SMS)
+- [ ] Send real SMS with valid credentials
+- [ ] Test invalid phone number (should fail validation)
+- [ ] Test without credentials (should fail)
+- [ ] Check SMS logs for all attempts
+- [ ] Verify cost tracking
+
+**Customer Opt-In**:
+- [ ] Create new customer with SMS opt-in checked
+- [ ] Verify sms_opt_in = 1 in database
+- [ ] Edit customer and uncheck opt-in
+- [ ] Verify sms_opt_in = 0 in database
+- [ ] Check opt-in date is recorded
+- [ ] Check opt-out date is recorded
+
+**Integration**:
+- [ ] Test variable replacement with real job data
+- [ ] Test currency formatting with different settings
+- [ ] Test date formatting with different settings
+- [ ] Test financial calculations (product + fitting + accessories + VAT - discount)
+- [ ] Test with WooCommerce customers
+- [ ] Test E.164 phone formatting
+
+### Known Limitations
+
+**Not Implemented**:
+- Email template preview functionality (pending)
+- SMS cost tracking dashboard (pending)
+- Update existing payment reminders to use templates (pending)
+- HTML email support (plain text only)
+- SMS character limit warning
+- Bulk SMS sending
+- SMS scheduling
+
+**Future Enhancements**:
+- WYSIWYG editor for email templates
+- Template versioning
+- A/B testing for templates
+- SMS templates (separate from email)
+- SMS delivery reports from Twilio
+- Cost analytics dashboard
+- Integration with other SMS providers
+
+### Debugging Guide
+
+**Email Not Sending**:
+1. Check template exists: `SELECT * FROM wp_staff_diary_email_templates WHERE template_slug = 'template_name'`
+2. Check template is active: `is_active = 1`
+3. Check wp_mail() error logs
+4. Verify company email is configured
+5. Test with simple email first (no variables)
+
+**SMS Not Sending**:
+1. Check SMS enabled: `get_option('wp_staff_diary_sms_enabled')` should be '1'
+2. Check test mode: `get_option('wp_staff_diary_sms_test_mode')` ('1' = test, '0' = real)
+3. Verify Twilio credentials configured
+4. Check phone number format: Must match /^\+[1-9]\d{1,14}$/
+5. Check customer opted in: `SELECT sms_opt_in FROM wp_staff_diary_customers WHERE id = X`
+6. Check SMS log for error messages: `SELECT * FROM wp_staff_diary_sms_log ORDER BY sent_at DESC LIMIT 10`
+
+**Variables Not Replacing**:
+1. Verify variable name matches exactly (case-sensitive)
+2. Check data is being passed to template service
+3. Use both formats: {{variable}} and {variable}
+4. Check for typos in variable names
+5. Test with sample data using preview_template()
+
+**Database Issues**:
+1. Run migration: Settings > Plugin Info > "Run Database Migration"
+2. Verify tables exist: `SHOW TABLES LIKE 'wp_staff_diary_%'`
+3. Check column exists: `SHOW COLUMNS FROM wp_staff_diary_customers LIKE 'sms_opt_in'`
+
+---
+
 ## Version History
 
-### v2.6.0 (Current)
+### v2.7.0 (Current)
+- Email Templates System
+- SMS Notifications (Twilio)
+- Variable Replacement Engine
+- Customer SMS Opt-In Management
+- Communications Settings Tab
+- Test Mode for SMS
+- Cost Tracking
+
+### v2.6.0 (Previous)
 - Before/After Photo Gallery System
 - Payment Progress Visualization
 - Critical security fixes (XSS)
 - Memory leak fixes
 - Edge case handling
 
-### v2.5.0 (Previous)
+### v2.5.0
 - Job Type Selection (Residential/Commercial)
 - Payment Terms System
 - Payment Policy Settings
@@ -1316,7 +1835,7 @@ if (entry.total > 0) {
 
 ## End of Development Log
 
-**Last Updated**: Current session
+**Last Updated**: Phase 2 completion (v2.7.0)
 **Branch**: `claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM`
 **Status**: Ready for testing & deployment
 **Next Steps**: Manual testing checklist, then merge to master
