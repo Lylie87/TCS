@@ -128,7 +128,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        populateEntryForm(response.data);
+                        // Data is wrapped in response.data.entry by the modular jobs controller
+                        const entry = response.data.entry || response.data;
+                        populateEntryForm(entry);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
@@ -855,7 +857,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        displayEntryDetails(response.data);
+                        // Data is wrapped in response.data.entry by the modular jobs controller
+                        const entry = response.data.entry || response.data;
+                        displayEntryDetails(entry);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
