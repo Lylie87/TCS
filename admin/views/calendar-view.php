@@ -473,6 +473,87 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
     </div>
 </div>
 
+<!-- Convert to Job Modal -->
+<div id="convert-to-job-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 500px;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2>Convert Quote to Job</h2>
+        <p style="margin: 15px 0; color: #666;">Please provide the fitting details to convert this quote into a job.</p>
+
+        <form id="convert-to-job-form">
+            <input type="hidden" id="convert-quote-id">
+
+            <div class="form-field">
+                <label for="convert-fitting-date">Fitting Date <span class="required">*</span></label>
+                <input type="date" id="convert-fitting-date" required>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-fitting-time-period">Time Period <span class="required">*</span></label>
+                <select id="convert-fitting-time-period" required>
+                    <option value="">Select time period...</option>
+                    <option value="am">Morning (AM)</option>
+                    <option value="pm">Afternoon (PM)</option>
+                    <option value="all-day">All Day</option>
+                </select>
+                <p class="description">Select AM or PM to view availability across all fitters</p>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-fitter">Fitter <span class="required">*</span></label>
+                <select id="convert-fitter" required>
+                    <option value="">Select a fitter...</option>
+                    <?php foreach ($fitters as $fitter_id => $fitter): ?>
+                        <option value="<?php echo esc_attr($fitter_id); ?>">
+                            <?php echo esc_html($fitter['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description">Available fitter will be auto-assigned when you select a date</p>
+            </div>
+
+            <!-- Availability Display -->
+            <div id="fitter-availability-display" style="display: none; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 4px;">
+                <h4 style="margin-top: 0;">Fitter Availability (Next 2 Weeks)</h4>
+                <div id="availability-loading" style="display: none; text-align: center; padding: 20px;">
+                    <span class="dashicons dashicons-update dashicons-spin" style="font-size: 24px;"></span>
+                    <p>Loading availability...</p>
+                </div>
+                <div id="availability-calendar" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                    <!-- Availability will be populated here -->
+                </div>
+                <div id="availability-legend" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px;">
+                    <strong>Legend:</strong>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #4caf50; border-radius: 2px; margin-right: 5px;"></span>
+                        Available
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #ff9800; border-radius: 2px; margin-right: 5px;"></span>
+                        Partially Booked
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #f44336; border-radius: 2px; margin-right: 5px;"></span>
+                        Fully Booked
+                    </span>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label>
+                    <input type="checkbox" id="convert-fitting-date-unknown">
+                    Fitting date not yet confirmed
+                </label>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="button button-primary">Convert to Job</button>
+                <button type="button" class="button cancel-convert">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Quick Add Customer Modal -->
 <div id="quick-add-customer-modal" class="wp-staff-diary-modal" style="display: none;">
     <div class="wp-staff-diary-modal-content" style="max-width: 500px;">

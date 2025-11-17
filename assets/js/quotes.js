@@ -305,6 +305,9 @@
             } else {
                 $('#fitter-availability-display').hide();
                 $('#availability-calendar').empty();
+
+                // Restore all fitters when not using AM/PM filtering
+                filterAvailableFitters(null, null);
             }
         });
     }
@@ -356,6 +359,55 @@
                 $('#availability-calendar').html('<p style="color: #d63638;">Failed to load availability</p>');
             }
         });
+    }
+
+    /**
+     * Filter fitter dropdown to show only available fitters for selected date/time
+     * @param {string} date - Selected date (YYYY-MM-DD)
+     * @param {string|null} timePeriod - 'am', 'pm', or null
+     */
+    function filterAvailableFitters(date, timePeriod) {
+        const $fitterSelect = $('#convert-fitter');
+
+        // Store original options if not already stored
+        if (!$fitterSelect.data('original-options')) {
+            $fitterSelect.data('original-options', $fitterSelect.html());
+        }
+
+        // If no date or time period, restore all options
+        if (!date || !timePeriod || (timePeriod !== 'am' && timePeriod !== 'pm')) {
+            $fitterSelect.html($fitterSelect.data('original-options'));
+            return;
+        }
+
+        // Find the availability data for this date
+        const dayData = currentAvailability.find(day => day.date === date);
+        if (!dayData) {
+            // No data for this date, restore all options
+            $fitterSelect.html($fitterSelect.data('original-options'));
+            return;
+        }
+
+        // Get the list of booked fitters for the selected time period
+        const bookedFitters = timePeriod === 'am' ? dayData.am_booked_fitters : dayData.pm_booked_fitters;
+
+        // Filter the fitter dropdown to exclude booked fitters
+        const $originalOptions = $($fitterSelect.data('original-options'));
+        const $filteredOptions = $originalOptions.filter(function() {
+            const fitterId = parseInt($(this).val());
+
+            // Keep the empty option and any fitters not in the booked list
+            return !$(this).val() || !bookedFitters.includes(fitterId);
+        });
+
+        // Update the dropdown
+        $fitterSelect.empty();
+        $fitterSelect.append($filteredOptions.clone());
+
+        // If only one fitter is available (plus the empty option), auto-select it
+        if ($fitterSelect.find('option').length === 2) {
+            $fitterSelect.find('option:eq(1)').prop('selected', true);
+        }
     }
 
     /**
@@ -434,6 +486,9 @@
                 // Highlight selected
                 $('.availability-day-card').css('box-shadow', 'none');
                 $(this).css('box-shadow', '0 0 0 3px #2271b1');
+
+                // Filter fitter dropdown to show only available fitters
+                filterAvailableFitters(date, timePeriod);
 
                 // Auto-assign available fitter if one was found
                 if (availableFitterId) {

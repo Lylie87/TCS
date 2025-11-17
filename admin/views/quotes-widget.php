@@ -161,8 +161,11 @@
                 </div>
 
                 <div class="quote-widget-actions">
-                    <a href="<?php echo admin_url('admin.php?page=wp-staff-diary-quotes#quote-' . $quote->id); ?>"
-                       class="button button-small quote-widget-btn">View</a>
+                    <button type="button"
+                            class="button button-small quote-widget-btn view-quote-dashboard"
+                            data-quote-id="<?php echo $quote->id; ?>">
+                        View
+                    </button>
                     <button type="button"
                             class="button button-primary button-small quote-widget-btn convert-quote-dashboard"
                             data-quote-id="<?php echo $quote->id; ?>">
@@ -210,16 +213,26 @@
 jQuery(document).ready(function($) {
     var currentDiscountQuoteId = null;
 
-    // Convert quote to job from dashboard
+    // View quote from dashboard - trigger click on hidden view button
+    $(document).on('click', '.view-quote-dashboard', function() {
+        var quoteId = $(this).data('quote-id');
+
+        // Simulate clicking the view-entry button which will trigger admin.js handler
+        $('<button class="view-entry" data-id="' + quoteId + '" style="display:none;"></button>')
+            .appendTo('body')
+            .trigger('click')
+            .remove();
+    });
+
+    // Convert quote to job from dashboard - open the convert modal
     $(document).on('click', '.convert-quote-dashboard', function() {
         var quoteId = $(this).data('quote-id');
-        var $btn = $(this);
-        var originalText = $btn.text();
 
-        $btn.prop('disabled', true).text('Converting...');
-
-        // Redirect to quotes page with auto-open convert modal
-        window.location.href = '<?php echo admin_url('admin.php?page=wp-staff-diary-quotes'); ?>&convert=' + quoteId;
+        // Trigger the convert button which will be handled by quotes.js
+        $('<button class="convert-quote-to-job" data-id="' + quoteId + '" style="display:none;"></button>')
+            .appendTo('body')
+            .trigger('click')
+            .remove();
     });
 
     // Send discount from dashboard
