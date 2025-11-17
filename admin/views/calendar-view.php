@@ -95,11 +95,34 @@ foreach ($entries as $entry) {
 }
 
 // Sort entries by time within each day
+// Order: Measures with specific times first (by time), then AM jobs, then PM jobs
 foreach ($entries_by_date as $date => $day_entries) {
     usort($day_entries, function($a, $b) {
-        if ($a->job_time === null) return 1;
-        if ($b->job_time === null) return -1;
-        return strcmp($a->job_time, $b->job_time);
+        // Both have specific times - sort by time
+        if ($a->job_time !== null && $b->job_time !== null) {
+            return strcmp($a->job_time, $b->job_time);
+        }
+
+        // A has time, B doesn't - A comes first
+        if ($a->job_time !== null && $b->job_time === null) {
+            return -1;
+        }
+
+        // B has time, A doesn't - B comes first
+        if ($a->job_time === null && $b->job_time !== null) {
+            return 1;
+        }
+
+        // Neither has specific time - sort by fitting_time_period (AM before PM)
+        $a_period = strtolower($a->fitting_time_period ?? '');
+        $b_period = strtolower($b->fitting_time_period ?? '');
+
+        if ($a_period === 'am' && $b_period !== 'am') return -1;
+        if ($b_period === 'am' && $a_period !== 'am') return 1;
+        if ($a_period === 'pm' && $b_period !== 'pm') return -1;
+        if ($b_period === 'pm' && $a_period !== 'pm') return 1;
+
+        return 0;
     });
     $entries_by_date[$date] = $day_entries;
 }
@@ -272,11 +295,15 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
                             $customer = $customer_id ? $db->get_customer($customer_id) : null;
 
-                            // Get fitter info
+                            // Get fitter info and set color
                             $fitter_id = isset($entry->fitter_id) ? $entry->fitter_id : null;
                             $fitter = null;
                             $fitter_color = '#ddd';
-                            if ($fitter_id !== null && isset($fitters[$fitter_id])) {
+
+                            // Purple color for measures
+                            if ($entry->status === 'measure') {
+                                $fitter_color = '#9b59b6';
+                            } elseif ($fitter_id !== null && isset($fitters[$fitter_id])) {
                                 $fitter = $fitters[$fitter_id];
                                 $fitter_color = $fitter['color'];
                             }

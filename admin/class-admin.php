@@ -529,10 +529,27 @@ class WP_Staff_Diary_Admin {
             return;
         }
 
+        // Handle measure-specific customer creation
+        $customer_id = !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null;
+
+        // If this is a measure and we have inline customer data, create/update customer
+        if ($status === 'measure' && !empty($_POST['measure_customer_name'])) {
+            $customer_name = sanitize_text_field($_POST['measure_customer_name']);
+            $customer_phone = !empty($_POST['measure_customer_phone']) ? sanitize_text_field($_POST['measure_customer_phone']) : '';
+
+            // Create a simple customer record for the measure
+            $customer_data = array(
+                'customer_name' => $customer_name,
+                'customer_phone' => $customer_phone
+            );
+
+            $customer_id = $this->db->create_customer($customer_data);
+        }
+
         // Prepare data for main entry
         $data = array(
             'user_id' => $user_id,
-            'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+            'customer_id' => $customer_id,
             'fitter_id' => isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null,
             'job_date' => !empty($_POST['job_date']) ? sanitize_text_field($_POST['job_date']) : null,
             'quote_date' => !empty($_POST['quote_date']) ? sanitize_text_field($_POST['quote_date']) : null,
