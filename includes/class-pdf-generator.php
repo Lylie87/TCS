@@ -287,15 +287,15 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 5px; margin-bottom: 12px; border-bottom: 2px solid #2271b1; padding-bottom: 3px; }
+            h2 { font-size: 16px; color: #333; margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
-            .info-table { width: 100%; border-collapse: collapse; margin-top: 3px; }
-            .info-table td { padding: 5px; font-size: 10px; vertical-align: top; }
+            .info-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
-            .financial-table { width: 100%; border-collapse: collapse; margin-top: 3px; }
-            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: top; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
             .financial-table td.amount { text-align: right; }
             .total-row { background-color: #d1e7f7; font-weight: bold; font-size: 11px; }
@@ -314,10 +314,9 @@ class WP_Staff_Diary_PDF_Generator {
         if ($company_logo) {
             $logo_path = get_attached_file($company_logo);
             if ($logo_path && file_exists($logo_path)) {
-                // Normalize path for TCPDF
-                $logo_path = str_replace('\\', '/', $logo_path);
-                $html .= '<td style="width: 80px; vertical-align: top;">';
-                $html .= '<img src="' . $logo_path . '" style="width: 70px; height: auto;" />';
+                $html .= '<td style="width: 100px; vertical-align: top; padding-right: 10px;">';
+                // Use @ prefix for TCPDF to load from filesystem
+                $html .= '<img src="@' . $logo_path . '" style="height: 50px; width: auto;" />';
                 $html .= '</td>';
             }
         }
@@ -490,15 +489,15 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 5px; margin-bottom: 12px; border-bottom: 2px solid #2271b1; padding-bottom: 3px; }
+            h2 { font-size: 16px; color: #333; margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
-            .info-table { width: 100%; border-collapse: collapse; margin-top: 3px; }
-            .info-table td { padding: 5px; font-size: 10px; vertical-align: top; }
+            .info-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
-            .financial-table { width: 100%; border-collapse: collapse; margin-top: 3px; }
-            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: top; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
             .financial-table td.amount { text-align: right; }
             .total-row { background-color: #f9f9f9; font-weight: bold; }
@@ -515,10 +514,9 @@ class WP_Staff_Diary_PDF_Generator {
         if ($company_logo) {
             $logo_path = get_attached_file($company_logo);
             if ($logo_path && file_exists($logo_path)) {
-                // Normalize path for TCPDF
-                $logo_path = str_replace('\\', '/', $logo_path);
-                $html .= '<td style="width: 80px; vertical-align: top;">';
-                $html .= '<img src="' . $logo_path . '" style="width: 70px; height: auto;" />';
+                $html .= '<td style="width: 100px; vertical-align: top; padding-right: 10px;">';
+                // Use @ prefix for TCPDF to load from filesystem
+                $html .= '<img src="@' . $logo_path . '" style="height: 50px; width: auto;" />';
                 $html .= '</td>';
             }
         }
