@@ -34,25 +34,6 @@ $accessories = $db->get_all_accessories();
                     <div><strong id="order-number-value" style="font-size: 18px; color: #2271b1;"></strong></div>
                 </div>
                 <div class="form-field">
-                    <label for="status">Status <span class="required">*</span></label>
-                    <select id="status" name="status" required>
-                        <?php
-                        $statuses = get_option('wp_staff_diary_statuses', array(
-                            'pending' => 'Pending',
-                            'in-progress' => 'In Progress',
-                            'completed' => 'Completed',
-                            'cancelled' => 'Cancelled'
-                        ));
-                        foreach ($statuses as $key => $label):
-                        ?>
-                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description" style="color: #d63638; margin-top: 5px;">
-                        <strong>Note:</strong> Setting status to "Cancelled" will remove this job from your diary.
-                    </p>
-                </div>
-                <div class="form-field">
                     <label for="job-type">Job Type <span class="required">*</span></label>
                     <select id="job-type" name="job_type" required>
                         <option value="residential">Residential</option>
@@ -155,11 +136,6 @@ $accessories = $db->get_all_accessories();
                     <label for="job-date">Order Date <span class="required">*</span></label>
                     <input type="date" id="job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>" required>
                 </div>
-                <div class="form-field">
-                    <label for="quote-date">Quote Date</label>
-                    <input type="date" id="quote-date" name="quote_date">
-                    <p class="description">Date the quote was provided to the customer</p>
-                </div>
                 <?php if ($job_time_type === 'time'): ?>
                 <div class="form-field">
                     <label for="job-time">Job Time</label>
@@ -184,14 +160,6 @@ $accessories = $db->get_all_accessories();
                     </select>
                 </div>
                 <?php endif; ?>
-                <div class="form-field">
-                    <label for="area">Area</label>
-                    <input type="text" id="area" name="area">
-                </div>
-                <div class="form-field">
-                    <label for="size">Size</label>
-                    <input type="text" id="size" name="size">
-                </div>
             </div>
         </div>
 
@@ -246,9 +214,15 @@ $accessories = $db->get_all_accessories();
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
+                        <label for="size">Size</label>
+                        <input type="text" id="size" name="size">
+                    </div>
+                    <div class="form-field">
                         <label for="sq-mtr-qty">Sq.Mtr / Quantity</label>
                         <input type="number" id="sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0">
                     </div>
+                </div>
+                <div class="form-grid">
                     <div class="form-field">
                         <label for="price-per-sq-mtr">Price per Sq.Mtr (£)</label>
                         <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">

@@ -290,7 +290,15 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                     <strong><?php echo esc_html($order_number); ?></strong>
                                 </div>
                                 <div class="entry-time">
-                                    <?php echo $entry->job_time ? esc_html(date('H:i', strtotime($entry->job_time))) : '<span style="color: #999;">No time</span>'; ?>
+                                    <?php
+                                    if ($entry->job_time) {
+                                        echo esc_html(date('H:i', strtotime($entry->job_time)));
+                                    } elseif (!empty($entry->fitting_time_period)) {
+                                        echo '<span style="font-weight: 600;">' . esc_html(strtoupper($entry->fitting_time_period)) . '</span>';
+                                    } else {
+                                        echo '<span style="color: #999;">No time</span>';
+                                    }
+                                    ?>
                                 </div>
                                 <div class="entry-customer">
                                     <?php if ($customer): ?>
