@@ -1341,7 +1341,14 @@
         // Photo upload button click
         $(document).on('click', '#upload-photo-btn', function() {
             const entryId = $(this).data('entry-id');
-            $(`#photo-upload-input-${entryId}`).click();
+            console.log('Upload photo clicked, entry ID:', entryId);
+            const inputElement = $(`#photo-upload-input-${entryId}`);
+            console.log('Input element found:', inputElement.length);
+            if (inputElement.length > 0) {
+                inputElement.click();
+            } else {
+                console.error('Photo input element not found: #photo-upload-input-' + entryId);
+            }
         });
 
         // Photo file selected in view modal (not edit form)
