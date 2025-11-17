@@ -346,7 +346,9 @@
                     currentAvailability = response.data.availability;
                     displayFitterAvailability(response.data.availability, timePeriod);
                 } else {
-                    $('#availability-calendar').html('<p style="color: #d63638;">Error loading availability</p>');
+                    const errorMsg = response.data && response.data.message ? response.data.message : 'Error loading availability';
+                    $('#availability-calendar').html('<p style="color: #d63638;">' + errorMsg + '</p>');
+                    console.error('Availability error:', response);
                 }
             },
             error: function() {

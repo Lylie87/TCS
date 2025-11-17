@@ -2133,12 +2133,33 @@ class WP_Staff_Diary_Admin {
             // Get all fitters from settings
             $fitters_config = get_option('wp_staff_diary_fitters', array());
 
-            if (empty($fitters_config)) {
-                wp_send_json_error(array('message' => 'No fitters configured in settings'));
+            // Debug logging
+            error_log('Fitters config: ' . print_r($fitters_config, true));
+
+            if (empty($fitters_config) || !is_array($fitters_config)) {
+                wp_send_json_error(array(
+                    'message' => 'No fitters configured in settings. Please add fitters in Settings > Fitters.',
+                    'debug' => array(
+                        'fitters_config_type' => gettype($fitters_config),
+                        'fitters_config_value' => $fitters_config
+                    )
+                ));
                 return;
             }
 
             $fitter_ids = array_keys($fitters_config);
+
+            if (empty($fitter_ids)) {
+                wp_send_json_error(array(
+                    'message' => 'No valid fitter IDs found.',
+                    'debug' => array(
+                        'fitters_config' => $fitters_config,
+                        'fitter_ids' => $fitter_ids
+                    )
+                ));
+                return;
+            }
+
             $fitter_ids = array_map('intval', $fitter_ids);
             $placeholders = implode(',', array_fill(0, count($fitter_ids), '%d'));
 
@@ -2154,7 +2175,7 @@ class WP_Staff_Diary_Admin {
 
             $params = array_merge($fitter_ids, array($start_date, $end_date));
             $jobs = $wpdb->get_results($wpdb->prepare($query, $params));
-        } else {
+        } else{
             // Get all jobs for this specific fitter in the date range
             $jobs = $wpdb->get_results($wpdb->prepare(
                 "SELECT fitter_id, fitting_date, fitting_time_period, order_number, status

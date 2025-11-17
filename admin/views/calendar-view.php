@@ -330,6 +330,51 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
         </div>
     </div>
 
+    <!-- Recent Quotes Widget -->
+    <div class="recent-quotes-section" style="margin: 20px 0;">
+        <div style="background: white; border: 1px solid #c3c4c7; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,0.04);">
+            <div style="padding: 15px 20px; border-bottom: 1px solid #c3c4c7; background: #f6f7f7;">
+                <h2 style="margin: 0; font-size: 16px; color: #1d2327;">
+                    <span class="dashicons dashicons-portfolio" style="font-size: 18px; vertical-align: middle; margin-right: 5px;"></span>
+                    Recent Quotes
+                </h2>
+            </div>
+            <?php
+            // Get recent quotes for the widget (last 10)
+            $recent_quotes = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_diary
+                 WHERE user_id = %d
+                 AND status = 'quotation'
+                 AND is_cancelled = 0
+                 ORDER BY created_at DESC
+                 LIMIT 10",
+                $current_user->ID
+            ));
+
+            // Enrich quotes with customer data and totals
+            foreach ($recent_quotes as $quote) {
+                if ($quote->customer_id) {
+                    $quote->customer = $db->get_customer($quote->customer_id);
+                }
+
+                // Calculate quote total
+                $subtotal = $db->calculate_job_subtotal($quote->id);
+                if ($vat_enabled == '1') {
+                    $quote->total = $subtotal * (1 + ($vat_rate / 100));
+                } else {
+                    $quote->total = $subtotal;
+                }
+            }
+
+            // Set $quotes for the widget
+            $quotes = $recent_quotes;
+
+            // Include the quotes widget view
+            include WP_STAFF_DIARY_PATH . 'admin/views/quotes-widget.php';
+            ?>
+        </div>
+    </div>
+
     <!-- Outstanding Quotes Section -->
     <?php if (!empty($outstanding_quotes)): ?>
         <div class="outstanding-quotes-section" style="background: #e3f2fd; border: 2px solid #2196f3; border-radius: 6px; padding: 20px; margin: 20px 0;">
