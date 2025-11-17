@@ -1217,7 +1217,18 @@
             html += '<h3>Photos</h3>';
             html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
             quote.images.forEach(function(img) {
-                html += '<img src="' + img.image_url + '" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;" />';
+                const categoryLabel = img.category ? ` (${img.category})` : '';
+                const captionLabel = img.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${img.image_caption}</div>` : '';
+
+                html += `<div style="position: relative;">
+                    <img src="${img.image_url}"
+                         alt="Quote photo"
+                         style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                         onclick="window.open('${img.image_url}', '_blank')"
+                         title="Click to open full size">
+                    <div style="font-size: 10px; margin-top: 2px; color: #999; font-weight: 600;">${categoryLabel}</div>
+                    ${captionLabel}
+                </div>`;
             });
             html += '</div>';
         }

@@ -2130,18 +2130,16 @@ class WP_Staff_Diary_Admin {
 
         // If no fitter specified, check availability across ALL fitters
         if ($fitter_id === null) {
-            // Get all fitters (users with fitter role)
-            $fitters = get_users(array(
-                'role' => 'fitter',
-                'fields' => 'ID'
-            ));
+            // Get all fitters from settings
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
 
-            if (empty($fitters)) {
-                wp_send_json_error(array('message' => 'No fitters found'));
+            if (empty($fitters_config)) {
+                wp_send_json_error(array('message' => 'No fitters configured in settings'));
                 return;
             }
 
-            $fitter_ids = array_map('intval', $fitters);
+            $fitter_ids = array_keys($fitters_config);
+            $fitter_ids = array_map('intval', $fitter_ids);
             $placeholders = implode(',', array_fill(0, count($fitter_ids), '%d'));
 
             // Get all jobs for ALL fitters in the date range
@@ -2180,11 +2178,8 @@ class WP_Staff_Diary_Admin {
 
         // Get all fitter IDs for counting
         if ($fitter_id === null) {
-            $fitters = get_users(array(
-                'role' => 'fitter',
-                'fields' => 'ID'
-            ));
-            $total_fitters = count($fitters);
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+            $total_fitters = count($fitters_config);
         } else {
             $total_fitters = 1;
         }
@@ -2238,10 +2233,11 @@ class WP_Staff_Diary_Admin {
         // Get fitter list for auto-assignment if needed
         $fitter_list = null;
         if ($fitter_id === null && $time_period !== null) {
-            $fitter_list = get_users(array(
-                'role' => 'fitter',
-                'fields' => 'ID'
-            ));
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+            if (!empty($fitters_config)) {
+                $fitter_list = array_keys($fitters_config);
+                $fitter_list = array_map('intval', $fitter_list);
+            }
         }
 
         // Determine availability based on how many fitters are booked
