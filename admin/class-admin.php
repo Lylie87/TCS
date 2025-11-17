@@ -711,13 +711,21 @@ class WP_Staff_Diary_Admin {
         }
 
         error_log('Calling cancel_entry on database...');
+
+        // Log the last query to see exactly what SQL is being executed
+        global $wpdb;
+        $wpdb->show_errors();
+
         $result = $this->db->cancel_entry($entry_id);
-        error_log('Cancel result: ' . var_export($result, true));
+
+        error_log('Last SQL query: ' . $wpdb->last_query);
+        error_log('Last SQL error: ' . $wpdb->last_error);
+        error_log('Cancel result (rows affected): ' . var_export($result, true));
 
         // Verify the update
         $updated_entry = $this->db->get_entry($entry_id);
-        error_log('After cancel - status: ' . $updated_entry->status);
-        error_log('After cancel - is_cancelled: ' . $updated_entry->is_cancelled);
+        error_log('After cancel - status: ' . ($updated_entry ? $updated_entry->status : 'NULL'));
+        error_log('After cancel - is_cancelled: ' . ($updated_entry ? $updated_entry->is_cancelled : 'NULL'));
         error_log('===== CANCEL ENTRY END =====');
 
         if ($result !== false) {

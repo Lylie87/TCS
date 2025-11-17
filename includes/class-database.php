@@ -512,7 +512,9 @@ class WP_Staff_Diary_Database {
                 'is_cancelled' => 1,
                 'status' => 'cancelled'
             ),
-            array('id' => $entry_id)
+            array('id' => $entry_id),
+            array('%d', '%s'),  // Data format
+            array('%d')         // Where format
         );
     }
 
