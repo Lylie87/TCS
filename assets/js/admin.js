@@ -1857,9 +1857,15 @@
                 success: function(response) {
                     console.log('Cancel response:', response);
                     if (response.success) {
-                        alert(response.data.message);
-                        console.log('Forcing hard reload from server...');
-                        location.reload(true); // Force reload from server, not cache
+                        // Close all modals first
+                        $('.wp-staff-diary-modal').fadeOut();
+                        console.log('Modals closed, reloading page...');
+
+                        // Use setTimeout to ensure modal close animation completes
+                        setTimeout(function() {
+                            console.log('Executing reload now');
+                            window.location.reload();
+                        }, 300);
                     } else {
                         alert('Error: ' + response.data.message);
                     }

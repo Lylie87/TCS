@@ -54,6 +54,15 @@ $entries = $wpdb->get_results($wpdb->prepare(
     $end_date_str
 ));
 
+error_log('===== CALENDAR VIEW QUERY =====');
+error_log('User ID: ' . $current_user->ID);
+error_log('Date range: ' . $start_date . ' to ' . $end_date_str);
+error_log('Entries found: ' . count($entries));
+foreach ($entries as $entry) {
+    error_log('Entry ID: ' . $entry->id . ', Order: ' . $entry->order_number . ', Status: ' . $entry->status . ', is_cancelled: ' . $entry->is_cancelled);
+}
+error_log('===== END CALENDAR VIEW QUERY =====');
+
 // Get ALL jobs with unknown fitting dates (not limited to current week)
 // Exclude quotes from this section as well
 // Order by fitting_date if available, otherwise job_date (soonest first)

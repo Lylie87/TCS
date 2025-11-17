@@ -688,18 +688,37 @@ class WP_Staff_Diary_Admin {
         $entry_id = intval($_POST['entry_id']);
         $user_id = get_current_user_id();
 
+        error_log('===== CANCEL ENTRY START =====');
         error_log('Cancel entry called for ID: ' . $entry_id);
+        error_log('Current user ID: ' . $user_id);
 
         // Verify ownership or admin
         $entry = $this->db->get_entry($entry_id);
-        if (!$entry || ($entry->user_id != $user_id && !current_user_can('edit_users'))) {
+        if (!$entry) {
+            error_log('Entry not found for ID: ' . $entry_id);
+            wp_send_json_error(array('message' => 'Entry not found'));
+            return;
+        }
+
+        error_log('Entry owner user_id: ' . $entry->user_id);
+        error_log('Entry current status: ' . $entry->status);
+        error_log('Entry current is_cancelled: ' . $entry->is_cancelled);
+
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
             error_log('Permission denied for entry ID: ' . $entry_id);
             wp_send_json_error(array('message' => 'Permission denied'));
             return;
         }
 
+        error_log('Calling cancel_entry on database...');
         $result = $this->db->cancel_entry($entry_id);
-        error_log('Cancel result for entry ID ' . $entry_id . ': ' . ($result !== false ? 'success' : 'failed'));
+        error_log('Cancel result: ' . var_export($result, true));
+
+        // Verify the update
+        $updated_entry = $this->db->get_entry($entry_id);
+        error_log('After cancel - status: ' . $updated_entry->status);
+        error_log('After cancel - is_cancelled: ' . $updated_entry->is_cancelled);
+        error_log('===== CANCEL ENTRY END =====');
 
         if ($result !== false) {
             wp_send_json_success(array('message' => 'Entry cancelled successfully'));
