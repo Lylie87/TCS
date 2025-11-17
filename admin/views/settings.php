@@ -160,6 +160,21 @@ if (isset($_POST['wp_staff_diary_save_quotation'])) {
     echo '<div class="notice notice-success is-dismissible"><p>Quotation settings saved successfully!</p></div>';
 }
 
+// Save communications settings
+if (isset($_POST['wp_staff_diary_save_communications'])) {
+    check_admin_referer('wp_staff_diary_communications_nonce');
+
+    // SMS Settings
+    update_option('wp_staff_diary_sms_enabled', isset($_POST['sms_enabled']) ? '1' : '0');
+    update_option('wp_staff_diary_sms_test_mode', isset($_POST['sms_test_mode']) ? '1' : '0');
+    update_option('wp_staff_diary_twilio_account_sid', sanitize_text_field($_POST['twilio_account_sid']));
+    update_option('wp_staff_diary_twilio_auth_token', sanitize_text_field($_POST['twilio_auth_token']));
+    update_option('wp_staff_diary_twilio_phone_number', sanitize_text_field($_POST['twilio_phone_number']));
+    update_option('wp_staff_diary_sms_cost_per_message', floatval($_POST['sms_cost_per_message']));
+
+    echo '<div class="notice notice-success is-dismissible"><p>Communications settings saved successfully!</p></div>';
+}
+
 // Get current settings
 $date_format = get_option('wp_staff_diary_date_format', 'd/m/Y');
 $time_format = get_option('wp_staff_diary_time_format', 'H:i');
@@ -280,6 +295,17 @@ If you have any questions, please don't hesitate to contact us.
 Best regards,
 {company_name}";
 }
+
+// Communications settings (SMS & Email Templates)
+$sms_enabled = get_option('wp_staff_diary_sms_enabled', '0');
+$sms_test_mode = get_option('wp_staff_diary_sms_test_mode', '1');
+$twilio_account_sid = get_option('wp_staff_diary_twilio_account_sid', '');
+$twilio_auth_token = get_option('wp_staff_diary_twilio_auth_token', '');
+$twilio_phone_number = get_option('wp_staff_diary_twilio_phone_number', '');
+$sms_cost_per_message = get_option('wp_staff_diary_sms_cost_per_message', '0.04');
+
+// Get email templates
+$email_templates = $db->get_all_email_templates();
 ?>
 
 <div class="wrap wp-staff-diary-wrap">
@@ -292,6 +318,7 @@ Best regards,
         <a href="#orders" class="nav-tab" data-tab="orders">Order Settings</a>
         <a href="#vat" class="nav-tab" data-tab="vat">VAT</a>
         <a href="#payment-reminders" class="nav-tab" data-tab="payment-reminders">Payment Reminders</a>
+        <a href="#communications" class="nav-tab" data-tab="communications">Communications</a>
         <a href="#statuses" class="nav-tab" data-tab="statuses">Job Statuses</a>
         <a href="#payment-methods" class="nav-tab" data-tab="payment-methods">Payment Methods</a>
         <a href="#accessories" class="nav-tab" data-tab="accessories">Accessories</a>
@@ -827,6 +854,146 @@ Best regards,
                 <li><strong>Manual Reminders:</strong> You can also send manual payment reminders from the job details page at any time.</li>
                 <li><strong>Email Requirements:</strong> Customer must have a valid email address on file to receive reminders.</li>
                 <li><strong>Reminder History:</strong> All sent reminders are logged and can be viewed in the job details.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Communications Tab (Email Templates & SMS) -->
+    <div id="communications-tab" class="settings-tab" style="display:none;">
+        <h2>Communications Settings</h2>
+        <p>Manage email templates and SMS notifications for customer communication.</p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('wp_staff_diary_communications_nonce'); ?>
+
+            <h3>Email Templates</h3>
+            <p>Customize email templates used for customer notifications. Use the Email Template Editor below to create and edit templates.</p>
+
+            <div class="email-templates-list" style="margin-bottom: 30px;">
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>Template Name</th>
+                            <th>Slug</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($email_templates)) : ?>
+                            <?php foreach ($email_templates as $template) : ?>
+                                <tr>
+                                    <td><strong><?php echo esc_html($template->template_name); ?></strong></td>
+                                    <td><code><?php echo esc_html($template->template_slug); ?></code></td>
+                                    <td>
+                                        <?php if ($template->is_active) : ?>
+                                            <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span> Active
+                                        <?php else : ?>
+                                            <span class="dashicons dashicons-dismiss" style="color: #dc3232;"></span> Inactive
+                                        <?php endif; ?>
+                                        <?php if ($template->is_default) : ?>
+                                            <span class="description" style="margin-left: 10px;">(Default)</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <a href="<?php echo admin_url('admin.php?page=wp-staff-diary-email-templates&action=edit&id=' . $template->id); ?>" class="button button-small">Edit</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else : ?>
+                            <tr>
+                                <td colspan="4"><em>No email templates found. Default templates will be created on next activation.</em></td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+                <p style="margin-top: 10px;">
+                    <a href="<?php echo admin_url('admin.php?page=wp-staff-diary-email-templates&action=add'); ?>" class="button button-secondary">Add New Template</a>
+                </p>
+            </div>
+
+            <h3 style="margin-top: 40px;">SMS Notifications (Twilio)</h3>
+            <p>Configure Twilio integration for sending SMS notifications to customers.</p>
+
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">Enable SMS Notifications</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="sms_enabled" id="sms_enabled" value="1" <?php checked($sms_enabled, '1'); ?>>
+                                Enable SMS notifications via Twilio
+                            </label>
+                            <p class="description">When enabled, you can send SMS notifications to customers who have opted in.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">Test Mode</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="sms_test_mode" id="sms_test_mode" value="1" <?php checked($sms_test_mode, '1'); ?>>
+                                Enable test mode (no SMS will actually be sent)
+                            </label>
+                            <p class="description"><strong>Recommended:</strong> Keep this enabled until you're ready to send real SMS messages.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="twilio_account_sid">Twilio Account SID</label>
+                        </th>
+                        <td>
+                            <input type="text" name="twilio_account_sid" id="twilio_account_sid" value="<?php echo esc_attr($twilio_account_sid); ?>" class="regular-text" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                            <p class="description">Your Twilio Account SID from the <a href="https://www.twilio.com/console" target="_blank">Twilio Console</a>.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="twilio_auth_token">Twilio Auth Token</label>
+                        </th>
+                        <td>
+                            <input type="password" name="twilio_auth_token" id="twilio_auth_token" value="<?php echo esc_attr($twilio_auth_token); ?>" class="regular-text" placeholder="********************************">
+                            <p class="description">Your Twilio Auth Token from the <a href="https://www.twilio.com/console" target="_blank">Twilio Console</a>. Keep this secure!</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="twilio_phone_number">Twilio Phone Number</label>
+                        </th>
+                        <td>
+                            <input type="text" name="twilio_phone_number" id="twilio_phone_number" value="<?php echo esc_attr($twilio_phone_number); ?>" class="regular-text" placeholder="+441234567890">
+                            <p class="description">Your Twilio phone number in E.164 format (e.g., +441234567890).</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="sms_cost_per_message">Cost Per Message (£)</label>
+                        </th>
+                        <td>
+                            <input type="number" name="sms_cost_per_message" id="sms_cost_per_message" value="<?php echo esc_attr($sms_cost_per_message); ?>" class="small-text" step="0.0001" min="0">
+                            <p class="description">Estimated cost per SMS for tracking purposes. Default: £0.04</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="submit">
+                <input type="submit" name="wp_staff_diary_save_communications" class="button button-primary" value="Save Communications Settings">
+            </p>
+        </form>
+
+        <div class="wp-staff-diary-info-box" style="background: #f0f6fc; border-left: 4px solid #2271b1; padding: 15px; margin-top: 30px;">
+            <h3 style="margin-top: 0;">How SMS Notifications Work</h3>
+            <ul style="list-style: disc; padding-left: 20px;">
+                <li><strong>Customer Opt-In:</strong> Customers must opt-in to receive SMS notifications. This is managed in the customer details.</li>
+                <li><strong>Test Mode:</strong> When enabled, SMS messages are logged but not actually sent. Use this to test your workflows safely.</li>
+                <li><strong>Twilio Account:</strong> You need a Twilio account with an active phone number. Sign up at <a href="https://www.twilio.com" target="_blank">twilio.com</a>.</li>
+                <li><strong>Cost Tracking:</strong> All SMS messages are logged with estimated costs for your records.</li>
+                <li><strong>Available Variables:</strong> Use {{customer_name}}, {{job_number}}, {{balance_due}}, {{company_name}}, and other variables in your SMS templates.</li>
             </ul>
         </div>
     </div>
