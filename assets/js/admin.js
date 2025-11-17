@@ -1427,10 +1427,10 @@
             html += '<h3>Schedule</h3>';
             html += '<div class="detail-grid">';
             if (entry.fitting_date) {
-                html += `<div class="detail-item"><strong>Date:</strong> ${entry.fitting_date_formatted}</div>`;
+                html += `<div class="detail-item"><strong>Measure Date:</strong> ${entry.fitting_date_formatted}</div>`;
             }
             if (entry.job_time) {
-                html += `<div class="detail-item"><strong>Time:</strong> ${entry.job_time_formatted}</div>`;
+                html += `<div class="detail-item"><strong>Measure Time:</strong> ${entry.job_time_formatted}</div>`;
             }
             html += '</div>';
             html += '</div>';

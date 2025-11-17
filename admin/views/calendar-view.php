@@ -56,13 +56,15 @@ $entries = $wpdb->get_results($wpdb->prepare(
 
 // Get ALL jobs with unknown fitting dates (not limited to current week)
 // Exclude quotes from this section as well
+// Order by fitting_date if available, otherwise job_date (soonest first)
 $unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
     "SELECT * FROM $table_diary
      WHERE user_id = %d
      AND fitting_date_unknown = 1
      AND is_cancelled = 0
      AND status != 'quotation'
-     ORDER BY job_date DESC",
+     ORDER BY
+        CASE WHEN fitting_date IS NOT NULL THEN fitting_date ELSE job_date END ASC",
     $current_user->ID
 ));
 
@@ -220,7 +222,13 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         ?>
                         <tr>
                             <td><strong><?php echo esc_html($order_number); ?></strong></td>
-                            <td><?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?></td>
+                            <td>
+                                <?php
+                                // Show fitting/measure date if available, otherwise show job date
+                                $display_date = !empty($entry->fitting_date) ? $entry->fitting_date : $entry->job_date;
+                                echo esc_html(date('d/m/Y', strtotime($display_date)));
+                                ?>
+                            </td>
                             <td>
                                 <?php if ($customer): ?>
                                     <strong><?php echo esc_html($customer->customer_name); ?></strong>
@@ -313,9 +321,9 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
                             $product_desc = isset($entry->product_description) ? $entry->product_description : '';
                             ?>
-                            <div class="calendar-entry status-<?php echo esc_attr($status_class); ?>"
+                            <div class="calendar-entry status-<?php echo esc_attr($status_class); ?> <?php echo $entry->status === 'measure' ? 'measure-entry' : ''; ?>"
                                  data-entry-id="<?php echo esc_attr($entry->id); ?>"
-                                 style="border-left: 4px solid <?php echo esc_attr($fitter_color); ?>;<?php echo $is_cancelled ? ' opacity: 0.6;' : ''; ?><?php echo $entry->status === 'measure' ? ' background: #f3e5f5;' : ''; ?>">
+                                 style="border-left: 4px solid <?php echo esc_attr($fitter_color); ?>;<?php echo $is_cancelled ? ' opacity: 0.6;' : ''; ?><?php echo $entry->status === 'measure' ? ' background: #f3e5f5; padding: 6px 10px;' : ''; ?>">
                                 <div class="entry-order">
                                     <strong><?php echo esc_html($order_number); ?></strong>
                                 </div>
@@ -337,16 +345,18 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                         <span style="color: #999;">No customer</span>
                                     <?php endif; ?>
                                 </div>
-                                <?php if ($fitter): ?>
+                                <?php if ($entry->status !== 'measure' && $fitter): ?>
                                     <div class="entry-fitter" style="font-size: 11px; color: #666; margin-top: 2px;">
                                         <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($fitter_color); ?>; margin-right: 4px;"></span>
                                         <?php echo esc_html($fitter['name']); ?>
                                     </div>
                                 <?php endif; ?>
-                                <div class="entry-product">
-                                    <?php echo $product_desc ? esc_html(wp_trim_words($product_desc, 5)) : '<span style="color: #999;">—</span>'; ?>
-                                </div>
-                                <div class="entry-status-badge">
+                                <?php if ($entry->status !== 'measure'): ?>
+                                    <div class="entry-product">
+                                        <?php echo $product_desc ? esc_html(wp_trim_words($product_desc, 5)) : '<span style="color: #999;">—</span>'; ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="entry-status-badge" style="<?php echo $entry->status === 'measure' ? 'display: none;' : ''; ?>">
                                     <span class="status-badge-mini status-<?php echo esc_attr($status_class); ?>"></span>
                                 </div>
                                 <div class="entry-actions">
