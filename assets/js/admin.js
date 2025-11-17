@@ -1845,6 +1845,7 @@
          * Cancel entry
          */
         function cancelEntry(entryId) {
+            console.log('Cancelling entry ID:', entryId);
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
@@ -1854,14 +1855,17 @@
                     entry_id: entryId
                 },
                 success: function(response) {
+                    console.log('Cancel response:', response);
                     if (response.success) {
                         alert(response.data.message);
-                        location.reload();
+                        console.log('Forcing hard reload from server...');
+                        location.reload(true); // Force reload from server, not cache
                     } else {
                         alert('Error: ' + response.data.message);
                     }
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    console.error('Cancel error:', status, error);
                     alert('An error occurred while cancelling the entry.');
                 }
             });
