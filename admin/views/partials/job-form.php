@@ -356,11 +356,11 @@ $accessories = $db->get_all_accessories();
             </div>
         </div>
 
-        <!-- Notes Section -->
+        <!-- Internal Notes Section -->
         <div class="form-section">
-            <h3>Additional Notes</h3>
+            <h3>Internal Notes</h3>
             <div class="form-field">
-                <textarea id="notes" name="notes" rows="4" placeholder="Add any additional notes or special instructions..."></textarea>
+                <textarea id="notes" name="notes" rows="4" placeholder="Add any internal notes or special instructions..."></textarea>
             </div>
         </div>
     </div>

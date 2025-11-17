@@ -1129,10 +1129,10 @@
                 html += '</div>';
             }
 
-            // Notes
+            // Internal Notes
             if (entry.notes) {
                 html += '<div class="detail-section">';
-                html += '<h3>Additional Notes</h3>';
+                html += '<h3>Internal Notes</h3>';
                 html += `<div class="notes-content">${entry.notes.replace(/\n/g, '<br>')}</div>`;
                 html += '</div>';
             }

@@ -1223,9 +1223,9 @@
         html += '<tr style="font-weight: bold; font-size: 16px; border-top: 2px solid #ddd;"><td>Total:</td><td style="text-align: right;">£' + parseFloat(quote.total || '0').toFixed(2) + '</td></tr>';
         html += '</table>';
 
-        // Notes
+        // Internal Notes
         if (quote.notes) {
-            html += '<h3>Additional Notes</h3>';
+            html += '<h3>Internal Notes</h3>';
             html += '<p>' + quote.notes.replace(/\n/g, '<br>') + '</p>';
         }
 

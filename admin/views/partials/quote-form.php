@@ -243,11 +243,11 @@ $accessories = $db->get_all_accessories();
             <input type="file" id="quote-photo-upload-input" accept="image/*" style="display: none;">
         </div>
 
-        <!-- Notes Section -->
+        <!-- Internal Notes Section -->
         <div class="form-section">
-            <h3>Additional Notes</h3>
+            <h3>Internal Notes</h3>
             <div class="form-field">
-                <textarea id="quote-notes" name="notes" rows="4" placeholder="Add any additional notes, customer preferences, or special requirements..."></textarea>
+                <textarea id="quote-notes" name="notes" rows="4" placeholder="Add any internal notes, customer preferences, or special requirements..."></textarea>
             </div>
         </div>
     </div>
