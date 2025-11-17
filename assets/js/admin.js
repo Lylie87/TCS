@@ -156,6 +156,14 @@
             }
         });
 
+        // Cancel entry button
+        $(document).on('click', '.cancel-entry', function() {
+            const entryId = $(this).data('id');
+            if (confirm('Are you sure you want to cancel this entry? It will be removed from the calendar but can be restored later.')) {
+                cancelEntry(entryId);
+            }
+        });
+
         // Submit entry form
         $('#diary-entry-form').on('submit', function(e) {
             e.preventDefault();
@@ -201,10 +209,18 @@
             $('#measure-modal-title').text('Add New Measure');
             $('#measure-entry-form')[0].reset();
             $('#measure-entry-id').val('');
+            $('#measure-customer-id').val('');
             $('#measure-number-display').hide();
             $('#measure-date').val(new Date().toISOString().split('T')[0]);
             $('#measure-job-date').val(new Date().toISOString().split('T')[0]);
             $('#measure-photos-container').html('<p class="description">No photos uploaded yet.</p>');
+
+            // Reset customer selection
+            $('#measure-customer-search-container').show();
+            $('#measure-selected-customer-display').hide();
+            $('#measure-manual-customer-entry').hide();
+            $('#measure-customer-search').val('');
+
             $('#measure-modal').fadeIn();
         }
 
@@ -488,12 +504,6 @@
          * Save measure entry
          */
         function saveMeasure() {
-            // Debug: Check if elements exist
-            console.log('Customer name element exists:', $('#measure-customer-name').length);
-            console.log('Customer name value:', $('#measure-customer-name').val());
-            console.log('Customer phone element exists:', $('#measure-customer-phone').length);
-            console.log('Customer phone value:', $('#measure-customer-phone').val());
-
             const formData = {
                 action: 'save_diary_entry',
                 nonce: wpStaffDiary.nonce,
@@ -506,10 +516,18 @@
                 fitting_address_line_3: $('#measure-address-line-3').val(),
                 fitting_postcode: $('#measure-postcode').val(),
                 notes: $('#measure-notes').val(),
-                status: $('#measure-status').val(), // 'measure'
-                measure_customer_name: $('#measure-customer-name').val(),
-                measure_customer_phone: $('#measure-customer-phone').val()
+                status: $('#measure-status').val() // 'measure'
             };
+
+            // Check if existing customer is selected
+            const customerId = $('#measure-customer-id').val();
+            if (customerId) {
+                formData.customer_id = customerId;
+            } else {
+                // New customer - send name and phone for inline creation
+                formData.measure_customer_name = $('#measure-customer-name').val();
+                formData.measure_customer_phone = $('#measure-customer-phone').val();
+            }
 
             console.log('Saving measure with data:', formData);
 
@@ -716,6 +734,120 @@
                     alert('An error occurred while adding the customer.');
                 }
             });
+        });
+
+        // ===========================================
+        // MEASURE CUSTOMER MANAGEMENT
+        // ===========================================
+
+        let measureCustomerSearchTimeout = null;
+        let measureSelectedCustomerId = 0;
+
+        // Measure customer search with debounce
+        $('#measure-customer-search').on('keyup', function() {
+            const searchTerm = $(this).val();
+
+            clearTimeout(measureCustomerSearchTimeout);
+
+            if (searchTerm.length < 2) {
+                $('#measure-customer-search-results').html('').hide();
+                return;
+            }
+
+            measureCustomerSearchTimeout = setTimeout(function() {
+                searchMeasureCustomers(searchTerm);
+            }, 300);
+        });
+
+        /**
+         * Search customers for measure
+         */
+        function searchMeasureCustomers(searchTerm) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'search_customers',
+                    nonce: wpStaffDiary.nonce,
+                    search: searchTerm
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayMeasureCustomerSearchResults(response.data.customers);
+                    }
+                },
+                error: function() {
+                    console.error('Error searching customers for measure');
+                }
+            });
+        }
+
+        /**
+         * Display customer search results for measure
+         */
+        function displayMeasureCustomerSearchResults(customers) {
+            if (customers.length === 0) {
+                $('#measure-customer-search-results').html('<div class="search-result-item">No customers found</div>').show();
+                return;
+            }
+
+            let html = '';
+            customers.forEach(function(customer) {
+                const phone = customer.customer_phone ? ` - ${customer.customer_phone}` : '';
+                html += `<div class="search-result-item measure-customer-result" data-customer-id="${customer.id}" data-customer-name="${customer.customer_name}" data-customer-phone="${customer.customer_phone || ''}" data-customer-address="${customer.customer_address || ''}">
+                    <strong>${customer.customer_name}</strong>${phone}
+                </div>`;
+            });
+
+            $('#measure-customer-search-results').html(html).show();
+        }
+
+        // Select customer from search results for measure
+        $(document).on('click', '.measure-customer-result', function() {
+            const customerId = $(this).data('customer-id');
+            const customerName = $(this).data('customer-name');
+            const customerPhone = $(this).data('customer-phone');
+            const customerAddress = $(this).data('customer-address');
+
+            selectMeasureCustomer(customerId, customerName, customerPhone, customerAddress);
+        });
+
+        /**
+         * Select a customer for measure
+         */
+        function selectMeasureCustomer(customerId, customerName, customerPhone, customerAddress) {
+            measureSelectedCustomerId = customerId;
+            $('#measure-customer-id').val(customerId);
+            $('#measure-selected-customer-name').text(customerName);
+            $('#measure-customer-search-container').hide();
+            $('#measure-selected-customer-display').show();
+            $('#measure-customer-search-results').html('').hide();
+            $('#measure-manual-customer-entry').hide();
+
+            // Pre-fill address if available
+            if (customerAddress) {
+                // Parse address and pre-fill fields
+                const addressLines = customerAddress.split('\n');
+                $('#measure-address-line-1').val(addressLines[0] || '');
+                $('#measure-address-line-2').val(addressLines[1] || '');
+                $('#measure-address-line-3').val(addressLines[2] || '');
+                $('#measure-postcode').val(addressLines[3] || '');
+            }
+        }
+
+        // Clear customer selection for measure
+        $('#measure-clear-customer-btn').on('click', function() {
+            measureSelectedCustomerId = 0;
+            $('#measure-customer-id').val('');
+            $('#measure-selected-customer-display').hide();
+            $('#measure-customer-search').val('').show();
+            $('#measure-customer-search-container').show();
+        });
+
+        // Add new customer inline for measure
+        $('#measure-add-new-customer-inline').on('click', function() {
+            $('#measure-customer-search-container').hide();
+            $('#measure-manual-customer-entry').show();
         });
 
         // ===========================================
@@ -1332,6 +1464,9 @@
             html += `<button type="button" class="button edit-entry" data-id="${entry.id}" style="margin-left: 10px;">
                 <span class="dashicons dashicons-edit"></span> Edit Measure
             </button>`;
+            html += `<button type="button" class="button cancel-entry" data-id="${entry.id}" style="margin-left: 10px; background: #d63638; color: white; border-color: #d63638;">
+                <span class="dashicons dashicons-no"></span> Cancel Measure
+            </button>`;
             html += '</div>';
 
             html += '</div>'; // Close job-sheet-content
@@ -1564,6 +1699,36 @@
                 });
             }
         });
+
+        // ===========================================
+        // CANCEL ENTRY
+        // ===========================================
+
+        /**
+         * Cancel entry
+         */
+        function cancelEntry(entryId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'cancel_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while cancelling the entry.');
+                }
+            });
+        }
 
         // ===========================================
         // DELETE ENTRY

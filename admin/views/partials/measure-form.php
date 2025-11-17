@@ -33,13 +33,37 @@ if (!defined('ABSPATH')) {
         <!-- Customer Section -->
         <div class="form-section">
             <h3>Customer Details</h3>
-            <div class="form-field">
-                <label for="measure-customer-name">Customer Name <span class="required">*</span></label>
-                <input type="text" id="measure-customer-name" name="customer_name" required>
+            <input type="hidden" id="measure-customer-id" name="customer_id" value="">
+
+            <!-- Customer Search -->
+            <div class="form-field" id="measure-customer-search-container">
+                <label for="measure-customer-search">Search Customer <span class="required">*</span></label>
+                <input type="text" id="measure-customer-search" placeholder="Start typing customer name...">
+                <div id="measure-customer-search-results" class="search-results-dropdown"></div>
+                <button type="button" class="button" id="measure-add-new-customer-inline" style="margin-top: 10px;">
+                    <span class="dashicons dashicons-plus-alt"></span> Add New Customer
+                </button>
             </div>
-            <div class="form-field">
-                <label for="measure-customer-phone">Phone Number <span class="required">*</span></label>
-                <input type="tel" id="measure-customer-phone" name="customer_phone" required>
+
+            <!-- Selected Customer Display -->
+            <div id="measure-selected-customer-display" class="selected-customer-display" style="display: none;">
+                <label>Selected Customer</label>
+                <div class="selected-customer-info">
+                    <strong id="measure-selected-customer-name"></strong>
+                    <button type="button" class="button button-small" id="measure-clear-customer-btn">Change Customer</button>
+                </div>
+            </div>
+
+            <!-- Manual Customer Entry (for new customers) -->
+            <div id="measure-manual-customer-entry" style="display: none;">
+                <div class="form-field">
+                    <label for="measure-customer-name">Customer Name <span class="required">*</span></label>
+                    <input type="text" id="measure-customer-name" name="customer_name">
+                </div>
+                <div class="form-field">
+                    <label for="measure-customer-phone">Phone Number <span class="required">*</span></label>
+                    <input type="tel" id="measure-customer-phone" name="customer_phone">
+                </div>
             </div>
         </div>
 
