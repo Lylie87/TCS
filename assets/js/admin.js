@@ -1324,6 +1324,7 @@
                         alert('An error occurred while uploading the photo.');
                         $input.val('');
                     }
+                });
             });
 
             // Clear the file input
