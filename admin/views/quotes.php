@@ -100,7 +100,8 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         }
 
                         $order_number = isset($quote->order_number) ? $quote->order_number : 'Quote #' . $quote->id;
-                        $customer_name = $customer ? $customer->customer_name : '';
+                        // Ensure customer_name is a string to avoid PHP 8.1+ deprecation warnings
+                        $customer_name = $customer && $customer->customer_name ? $customer->customer_name : '';
                         ?>
                         <tr data-quote-id="<?php echo esc_attr($quote->id); ?>"
                             data-customer-name="<?php echo esc_attr(strtolower($customer_name)); ?>">
@@ -110,8 +111,8 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             </td>
                             <td>
                                 <?php if ($customer): ?>
-                                    <strong><?php echo esc_html($customer->customer_name); ?></strong>
-                                    <?php if ($customer->customer_phone): ?>
+                                    <strong><?php echo esc_html($customer->customer_name ?? ''); ?></strong>
+                                    <?php if (!empty($customer->customer_phone)): ?>
                                         <br><small><?php echo esc_html($customer->customer_phone); ?></small>
                                     <?php endif; ?>
                                 <?php else: ?>
@@ -119,7 +120,11 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php echo $quote->product_description ? esc_html(wp_trim_words($quote->product_description, 5)) : '<span style="color: #999;">—</span>'; ?>
+                                <?php
+                                // Ensure product_description is a string to avoid PHP 8.1+ deprecation warnings
+                                $product_desc = $quote->product_description ?? '';
+                                echo !empty($product_desc) ? esc_html(wp_trim_words($product_desc, 5)) : '<span style="color: #999;">—</span>';
+                                ?>
                             </td>
                             <td style="text-align: right;">
                                 <strong>£<?php echo number_format($total, 2); ?></strong>
