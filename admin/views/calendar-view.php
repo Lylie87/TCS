@@ -143,6 +143,9 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             <a href="?page=wp-staff-diary&view=list" class="button">
                 <span class="dashicons dashicons-list-view"></span> List View
             </a>
+            <button type="button" class="button" id="add-new-measure" style="background: #9b59b6; color: white; border-color: #8e44ad;">
+                <span class="dashicons dashicons-location"></span> Add Measure
+            </button>
             <button type="button" class="button button-primary" id="add-new-entry">
                 <span class="dashicons dashicons-plus-alt"></span> Add New Job
             </button>
@@ -601,6 +604,16 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <button type="button" class="button" id="cancel-quick-customer">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Add/Edit Measure Modal -->
+<div id="measure-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2 id="measure-modal-title">Add New Measure</h2>
+
+        <?php include WP_STAFF_DIARY_PATH . 'admin/views/partials/measure-form.php'; ?>
     </div>
 </div>
 

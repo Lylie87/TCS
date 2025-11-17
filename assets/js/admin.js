@@ -129,6 +129,11 @@
             openEntryModal();
         });
 
+        // Add new measure button
+        $(document).on('click', '#add-new-measure', function() {
+            openMeasureModal();
+        });
+
         // Edit entry button
         $(document).on('click', '.edit-entry', function() {
             const entryId = $(this).data('id');
@@ -157,6 +162,12 @@
             saveEntry();
         });
 
+        // Submit measure form
+        $('#measure-entry-form').on('submit', function(e) {
+            e.preventDefault();
+            saveMeasure();
+        });
+
         /**
          * Open modal for new entry
          */
@@ -181,6 +192,20 @@
             updateCalculations();
 
             $('#entry-modal').fadeIn();
+        }
+
+        /**
+         * Open measure modal for adding new measure
+         */
+        function openMeasureModal() {
+            $('#measure-modal-title').text('Add New Measure');
+            $('#measure-entry-form')[0].reset();
+            $('#measure-entry-id').val('');
+            $('#measure-number-display').hide();
+            $('#measure-date').val(new Date().toISOString().split('T')[0]);
+            $('#measure-job-date').val(new Date().toISOString().split('T')[0]);
+            $('#measure-photos-container').html('<p class="description">No photos uploaded yet.</p>');
+            $('#measure-modal').fadeIn();
         }
 
         /**
@@ -455,6 +480,49 @@
                     console.error('AJAX Error:', xhr, status, error);
                     alert('An error occurred while saving the entry.');
                     $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
+                }
+            });
+        }
+
+        /**
+         * Save measure entry
+         */
+        function saveMeasure() {
+            const formData = {
+                action: 'save_diary_entry',
+                nonce: wpStaffDiary.nonce,
+                entry_id: $('#measure-entry-id').val(),
+                job_date: $('#measure-job-date').val(),
+                fitting_date: $('#measure-date').val(),
+                job_time: $('#measure-time').val(),
+                fitting_address_line_1: $('#measure-address-line-1').val(),
+                fitting_address_line_2: $('#measure-address-line-2').val(),
+                fitting_address_line_3: $('#measure-address-line-3').val(),
+                fitting_postcode: $('#measure-postcode').val(),
+                notes: $('#measure-notes').val(),
+                status: $('#measure-status').val(), // 'measure'
+                measure_customer_name: $('#measure-customer-name').val(),
+                measure_customer_phone: $('#measure-customer-phone').val()
+            };
+
+            $('#save-measure-btn').prop('disabled', true).html('<span class="dashicons dashicons-update"></span> Saving...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                        $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred while saving the measure.');
+                    $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
                 }
             });
         }
