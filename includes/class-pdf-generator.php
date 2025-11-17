@@ -578,7 +578,7 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '<h2>Job Details</h2>';
         $html .= '<table class="info-table">';
         if ($entry->job_date) {
-            $html .= '<tr><td width="25%"><strong>Job Date:</strong></td><td>' . date('d/m/Y', strtotime($entry->job_date));
+            $html .= '<tr><td width="25%"><strong>Order Date:</strong></td><td>' . date('d/m/Y', strtotime($entry->job_date));
             if ($entry->job_time) $html .= ' at ' . date('H:i', strtotime($entry->job_time));
             $html .= '</td></tr>';
         }
@@ -675,8 +675,9 @@ class WP_Staff_Diary_PDF_Generator {
             $html .= '<div style="font-size: 10px;">' . nl2br(htmlspecialchars($company_bank)) . '</div>';
         }
 
-        // Terms and Conditions
+        // Separator before Terms & Conditions
         if ($terms) {
+            $html .= '<hr style="margin-top: 20px; margin-bottom: 15px; border: 0; border-top: 1px solid #ddd;" />';
             $html .= '<div class="terms">';
             $html .= '<strong>Terms & Conditions:</strong><br>';
             $html .= strip_tags($terms, '<p><br><strong><em><ul><ol><li>');
