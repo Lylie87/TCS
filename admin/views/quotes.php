@@ -108,7 +108,32 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             data-customer-name="<?php echo esc_attr(strtolower($customer_name)); ?>">
                             <td><strong><?php echo esc_html($order_number); ?></strong></td>
                             <td>
-                                <?php echo esc_html(date('d/m/Y', strtotime($quote->created_at))); ?>
+                                <?php
+                                echo esc_html(date('d/m/Y', strtotime($quote->created_at)));
+
+                                // Calculate quote age
+                                $created_date = new DateTime($quote->created_at);
+                                $today = new DateTime();
+                                $age_days = $today->diff($created_date)->days;
+
+                                // Determine age color
+                                if ($age_days <= 6) {
+                                    $age_color = '#28a745';
+                                    $age_bg = '#d4edda';
+                                } elseif ($age_days <= 13) {
+                                    $age_color = '#856404';
+                                    $age_bg = '#fff3cd';
+                                } else {
+                                    $age_color = '#721c24';
+                                    $age_bg = '#f8d7da';
+                                }
+
+                                $age_text = $age_days == 0 ? 'Today' : ($age_days == 1 ? '1 day' : $age_days . ' days');
+                                ?>
+                                <br>
+                                <span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 3px; display: inline-block; margin-top: 4px; background-color: <?php echo $age_bg; ?>; color: <?php echo $age_color; ?>;">
+                                    <?php echo $age_text; ?>
+                                </span>
                             </td>
                             <td>
                                 <?php if ($customer): ?>
@@ -177,13 +202,14 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             </div>
 
             <div class="form-field">
-                <label for="convert-fitting-time-period">Time Period</label>
-                <select id="convert-fitting-time-period">
-                    <option value="">Not specified</option>
+                <label for="convert-fitting-time-period">Time Period <span class="required">*</span></label>
+                <select id="convert-fitting-time-period" required>
+                    <option value="">Select time period...</option>
                     <option value="am">Morning (AM)</option>
                     <option value="pm">Afternoon (PM)</option>
                     <option value="all-day">All Day</option>
                 </select>
+                <p class="description">Select AM or PM to view availability across all fitters</p>
             </div>
 
             <div class="form-field">
@@ -196,7 +222,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <p class="description">Select a fitter to see their availability</p>
+                <p class="description">Available fitter will be auto-assigned when you select a date</p>
             </div>
 
             <!-- Availability Display -->
@@ -268,7 +294,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <input type="text" id="quick-address-line-2">
             </div>
             <div class="form-field">
-                <label for="quick-address-line-3">Address Line 3</label>
+                <label for="quick-address-line-3">Town/City</label>
                 <input type="text" id="quick-address-line-3">
             </div>
             <div class="form-field">

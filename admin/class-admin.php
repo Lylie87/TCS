@@ -529,10 +529,35 @@ class WP_Staff_Diary_Admin {
             return;
         }
 
+        // Handle measure-specific customer creation
+        $customer_id = !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null;
+
+        // If this is a measure and we have inline customer data, create/update customer
+        if ($status === 'measure' && !empty($_POST['measure_customer_name'])) {
+            $customer_name = sanitize_text_field($_POST['measure_customer_name']);
+            $customer_phone = !empty($_POST['measure_customer_phone']) ? sanitize_text_field($_POST['measure_customer_phone']) : '';
+
+            // Create a simple customer record for the measure
+            $customer_data = array(
+                'customer_name' => $customer_name,
+                'customer_phone' => $customer_phone
+            );
+
+            $customer_id = $this->db->create_customer($customer_data);
+
+            // Log for debugging
+            error_log('Measure customer created: ID=' . $customer_id . ', Name=' . $customer_name);
+
+            if (!$customer_id) {
+                wp_send_json_error(array('message' => 'Failed to create customer for measure'));
+                return;
+            }
+        }
+
         // Prepare data for main entry
         $data = array(
             'user_id' => $user_id,
-            'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+            'customer_id' => $customer_id,
             'fitter_id' => isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null,
             'job_date' => !empty($_POST['job_date']) ? sanitize_text_field($_POST['job_date']) : null,
             'quote_date' => !empty($_POST['quote_date']) ? sanitize_text_field($_POST['quote_date']) : null,
@@ -663,13 +688,46 @@ class WP_Staff_Diary_Admin {
         $entry_id = intval($_POST['entry_id']);
         $user_id = get_current_user_id();
 
+        error_log('===== CANCEL ENTRY START =====');
+        error_log('Cancel entry called for ID: ' . $entry_id);
+        error_log('Current user ID: ' . $user_id);
+
         // Verify ownership or admin
         $entry = $this->db->get_entry($entry_id);
-        if (!$entry || ($entry->user_id != $user_id && !current_user_can('edit_users'))) {
-            wp_send_json_error(array('message' => 'Permission denied'));
+        if (!$entry) {
+            error_log('Entry not found for ID: ' . $entry_id);
+            wp_send_json_error(array('message' => 'Entry not found'));
+            return;
         }
 
+        error_log('Entry owner user_id: ' . $entry->user_id);
+        error_log('Entry current status: ' . $entry->status);
+        error_log('Entry current is_cancelled: ' . $entry->is_cancelled);
+
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            error_log('Permission denied for entry ID: ' . $entry_id);
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        error_log('Calling cancel_entry on database...');
+
+        // Log the last query to see exactly what SQL is being executed
+        global $wpdb;
+        $wpdb->show_errors();
+
         $result = $this->db->cancel_entry($entry_id);
+
+        error_log('Last SQL query: ' . $wpdb->last_query);
+        error_log('Last SQL error: ' . $wpdb->last_error);
+        error_log('Cancel result (rows affected): ' . var_export($result, true));
+
+        // Verify the update
+        $updated_entry = $this->db->get_entry($entry_id);
+        error_log('After cancel - status: ' . ($updated_entry ? $updated_entry->status : 'NULL'));
+        error_log('After cancel - is_cancelled: ' . ($updated_entry ? $updated_entry->is_cancelled : 'NULL'));
+        error_log('===== CANCEL ENTRY END =====');
+
         if ($result !== false) {
             wp_send_json_success(array('message' => 'Entry cancelled successfully'));
         } else {
@@ -2120,11 +2178,7 @@ class WP_Staff_Diary_Admin {
         $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
         $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : date('Y-m-d');
         $days = isset($_POST['days']) ? intval($_POST['days']) : 14; // Default 2 weeks
-
-        if ($fitter_id === null) {
-            wp_send_json_error(array('message' => 'Fitter ID is required'));
-            return;
-        }
+        $time_period = isset($_POST['time_period']) ? strtolower(sanitize_text_field($_POST['time_period'])) : null;
 
         global $wpdb;
         $table_diary = $wpdb->prefix . 'staff_diary_entries';
@@ -2132,25 +2186,82 @@ class WP_Staff_Diary_Admin {
         // Calculate date range
         $end_date = date('Y-m-d', strtotime($start_date . ' + ' . $days . ' days'));
 
-        // Get all jobs for this fitter in the date range (excluding cancelled and quotations)
-        $jobs = $wpdb->get_results($wpdb->prepare(
-            "SELECT fitting_date, fitting_time_period, order_number, status
-             FROM $table_diary
-             WHERE fitter_id = %d
-             AND is_cancelled = 0
-             AND status != 'quotation'
-             AND fitting_date_unknown = 0
-             AND fitting_date BETWEEN %s AND %s
-             ORDER BY fitting_date ASC",
-            $fitter_id,
-            $start_date,
-            $end_date
-        ));
+        // If no fitter specified, check availability across ALL fitters
+        if ($fitter_id === null) {
+            // Get all fitters from settings
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+
+            // Debug logging
+            error_log('Fitters config: ' . print_r($fitters_config, true));
+
+            if (empty($fitters_config) || !is_array($fitters_config)) {
+                wp_send_json_error(array(
+                    'message' => 'No fitters configured in settings. Please add fitters in Settings > Fitters.',
+                    'debug' => array(
+                        'fitters_config_type' => gettype($fitters_config),
+                        'fitters_config_value' => $fitters_config
+                    )
+                ));
+                return;
+            }
+
+            $fitter_ids = array_keys($fitters_config);
+
+            if (empty($fitter_ids)) {
+                wp_send_json_error(array(
+                    'message' => 'No valid fitter IDs found.',
+                    'debug' => array(
+                        'fitters_config' => $fitters_config,
+                        'fitter_ids' => $fitter_ids
+                    )
+                ));
+                return;
+            }
+
+            $fitter_ids = array_map('intval', $fitter_ids);
+            $placeholders = implode(',', array_fill(0, count($fitter_ids), '%d'));
+
+            // Get all jobs for ALL fitters in the date range
+            $query = "SELECT fitter_id, fitting_date, fitting_time_period, order_number, status
+                     FROM $table_diary
+                     WHERE fitter_id IN ($placeholders)
+                     AND is_cancelled = 0
+                     AND status != 'quotation'
+                     AND fitting_date_unknown = 0
+                     AND fitting_date BETWEEN %s AND %s
+                     ORDER BY fitting_date ASC";
+
+            $params = array_merge($fitter_ids, array($start_date, $end_date));
+            $jobs = $wpdb->get_results($wpdb->prepare($query, $params));
+        } else{
+            // Get all jobs for this specific fitter in the date range
+            $jobs = $wpdb->get_results($wpdb->prepare(
+                "SELECT fitter_id, fitting_date, fitting_time_period, order_number, status
+                 FROM $table_diary
+                 WHERE fitter_id = %d
+                 AND is_cancelled = 0
+                 AND status != 'quotation'
+                 AND fitting_date_unknown = 0
+                 AND fitting_date BETWEEN %s AND %s
+                 ORDER BY fitting_date ASC",
+                $fitter_id,
+                $start_date,
+                $end_date
+            ));
+        }
 
         // Organize jobs by date
         $availability = array();
         $current = new DateTime($start_date);
         $end = new DateTime($end_date);
+
+        // Get all fitter IDs for counting
+        if ($fitter_id === null) {
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+            $total_fitters = count($fitters_config);
+        } else {
+            $total_fitters = 1;
+        }
 
         while ($current <= $end) {
             $date_str = $current->format('Y-m-d');
@@ -2168,31 +2279,64 @@ class WP_Staff_Diary_Admin {
                 'jobs' => array(),
                 'am_available' => true,
                 'pm_available' => true,
-                'all_day_booked' => false
+                'all_day_booked' => false,
+                'am_booked_fitters' => array(),
+                'pm_booked_fitters' => array(),
+                'available_fitter_id' => null
             );
 
             $current->modify('+1 day');
         }
 
-        // Mark booked slots
+        // Mark booked slots - track which fitters are booked per time slot
         foreach ($jobs as $job) {
             if (isset($availability[$job->fitting_date])) {
                 $availability[$job->fitting_date]['jobs'][] = array(
                     'order_number' => $job->order_number,
                     'time_period' => $job->fitting_time_period,
-                    'status' => $job->status
+                    'status' => $job->status,
+                    'fitter_id' => $job->fitter_id
                 );
 
-                // Update availability based on time period
+                // Track which fitters are booked for each time period
                 $time_period = strtolower($job->fitting_time_period);
-                if ($time_period === 'am') {
-                    $availability[$job->fitting_date]['am_available'] = false;
-                } elseif ($time_period === 'pm') {
-                    $availability[$job->fitting_date]['pm_available'] = false;
-                } elseif ($time_period === 'all-day') {
-                    $availability[$job->fitting_date]['am_available'] = false;
-                    $availability[$job->fitting_date]['pm_available'] = false;
-                    $availability[$job->fitting_date]['all_day_booked'] = true;
+                if ($time_period === 'am' || $time_period === 'all-day') {
+                    $availability[$job->fitting_date]['am_booked_fitters'][] = $job->fitter_id;
+                }
+                if ($time_period === 'pm' || $time_period === 'all-day') {
+                    $availability[$job->fitting_date]['pm_booked_fitters'][] = $job->fitter_id;
+                }
+            }
+        }
+
+        // Get fitter list for auto-assignment if needed
+        $fitter_list = null;
+        if ($fitter_id === null && $time_period !== null) {
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+            if (!empty($fitters_config)) {
+                $fitter_list = array_keys($fitters_config);
+                $fitter_list = array_map('intval', $fitter_list);
+            }
+        }
+
+        // Determine availability based on how many fitters are booked
+        foreach ($availability as $date_str => &$day) {
+            $am_booked_count = count(array_unique($day['am_booked_fitters']));
+            $pm_booked_count = count(array_unique($day['pm_booked_fitters']));
+
+            // If ALL fitters are booked for a time period, mark as unavailable
+            $day['am_available'] = $am_booked_count < $total_fitters;
+            $day['pm_available'] = $pm_booked_count < $total_fitters;
+            $day['all_day_booked'] = !$day['am_available'] && !$day['pm_available'];
+
+            // Find an available fitter for this date/time if checking specific period
+            if ($time_period !== null && $fitter_id === null && $fitter_list !== null) {
+                $booked_fitters = ($time_period === 'am') ? $day['am_booked_fitters'] : $day['pm_booked_fitters'];
+                foreach ($fitter_list as $fitter) {
+                    if (!in_array($fitter, $booked_fitters)) {
+                        $day['available_fitter_id'] = $fitter;
+                        break;
+                    }
                 }
             }
         }

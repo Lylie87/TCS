@@ -219,6 +219,10 @@ class WP_Staff_Diary_Upgrade {
             $wpdb->query("ALTER TABLE $table_diary ADD KEY customer_id (customer_id)");
         }
 
+        // Fix any existing entries that have status='cancelled' but is_cancelled=0
+        $wpdb->query("UPDATE $table_diary SET is_cancelled = 1 WHERE status = 'cancelled' AND is_cancelled = 0");
+        error_log('Fixed ' . $wpdb->rows_affected . ' entries with status=cancelled but is_cancelled=0');
+
         // Update image_category column in images table
         $table_images = $wpdb->prefix . 'staff_diary_images';
         $column_check = $wpdb->get_results("SHOW COLUMNS FROM $table_images LIKE 'image_category'");

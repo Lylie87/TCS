@@ -71,20 +71,34 @@
      * Initialize modal operations
      */
     function initModals() {
-        // Close modals on X click
-        $('.wp-staff-diary-modal-close').on('click', closeAllModals);
+        // Close modals on X click (but handle customer modal separately)
+        $('.wp-staff-diary-modal-close').on('click', function() {
+            // Check if this is the customer modal's close button
+            if ($(this).closest('#quick-add-customer-modal').length) {
+                $('#quick-add-customer-modal').fadeOut(200);
+            } else {
+                closeAllModals();
+            }
+        });
 
-        // Close modals on background click
+        // Close modals on background click (but handle customer modal separately)
         $('.wp-staff-diary-modal').on('click', function(e) {
             if (e.target === this) {
-                closeAllModals();
+                // Check if this is the customer modal
+                if ($(this).attr('id') === 'quick-add-customer-modal') {
+                    $('#quick-add-customer-modal').fadeOut(200);
+                } else {
+                    closeAllModals();
+                }
             }
         });
 
         // Cancel buttons
         $('#cancel-quote-btn').on('click', closeAllModals);
         $('.cancel-convert').on('click', closeAllModals);
-        $('#cancel-quick-customer').on('click', closeAllModals);
+        $('#cancel-quick-customer').on('click', function() {
+            $('#quick-add-customer-modal').fadeOut(200);
+        });
     }
 
     /**
@@ -118,6 +132,14 @@
                     const quote = response.data.entry || response.data;
                     populateQuoteForm(quote);
                     $('#quote-modal-title').text('Edit Quote');
+
+                    // Enable photo uploads and update button text for existing quotes
+                    $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Update Quote');
+                    $('#quote-upload-photo-btn').prop('disabled', false);
+
+                    // Load photos for this quote
+                    loadQuotePhotos(quoteId);
+
                     $('#quote-modal').fadeIn(200);
                 } else {
                     alert('Error loading quote: ' + (response.data.message || 'Unknown error'));
@@ -232,9 +254,24 @@
             data: Object.fromEntries(formData),
             success: function(response) {
                 if (response.success) {
-                    alert('Quote saved successfully!');
-                    closeAllModals();
-                    location.reload();
+                    const isNewQuote = !currentQuoteId;
+
+                    if (isNewQuote && response.data.entry_id) {
+                        // New quote created - store ID and keep modal open for photo uploads
+                        currentQuoteId = response.data.entry_id;
+                        alert('Quote saved successfully! You can now add photos to this quote.');
+
+                        // Update button text to show we're now editing
+                        $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Update Quote');
+
+                        // Enable photo upload button
+                        $('#quote-upload-photo-btn').prop('disabled', false);
+                    } else {
+                        // Existing quote updated - close and reload
+                        alert('Quote updated successfully!');
+                        closeAllModals();
+                        location.reload();
+                    }
                 } else {
                     alert('Error saving quote: ' + (response.data.message || 'Unknown error'));
                     $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Quote');
@@ -257,42 +294,64 @@
         $('#availability-calendar').empty();
         $('#convert-to-job-modal').fadeIn(200);
 
-        // Add fitter selection handler to load availability
-        $('#convert-fitter').off('change').on('change', function() {
-            const fitterId = $(this).val();
-            if (fitterId) {
-                loadFitterAvailability(fitterId);
+        // Add time period selection handler to load availability when AM/PM is selected
+        $('#convert-fitting-time-period').off('change').on('change', function() {
+            const timePeriod = $(this).val();
+
+            // Only load availability if a time period is selected
+            if (timePeriod && (timePeriod === 'am' || timePeriod === 'pm')) {
+                $('#fitter-availability-display').show();
+                loadFitterAvailability(null, timePeriod);
             } else {
                 $('#fitter-availability-display').hide();
+                $('#availability-calendar').empty();
+
+                // Restore all fitters when not using AM/PM filtering
+                filterAvailableFitters(null, null);
             }
         });
     }
 
     /**
      * Load fitter availability
+     * @param {number|null} fitterId - Specific fitter ID or null for all fitters
+     * @param {string|null} timePeriod - 'am', 'pm', or null for all day
      */
-    function loadFitterAvailability(fitterId) {
+    function loadFitterAvailability(fitterId, timePeriod) {
         $('#fitter-availability-display').show();
         $('#availability-loading').show();
         $('#availability-calendar').empty();
 
+        const requestData = {
+            action: 'get_fitter_availability',
+            nonce: wpStaffDiary.nonce,
+            start_date: new Date().toISOString().split('T')[0],
+            days: 14
+        };
+
+        // Only include fitter_id if specified (otherwise check all fitters)
+        if (fitterId) {
+            requestData.fitter_id = fitterId;
+        }
+
+        // Include time period for filtering availability
+        if (timePeriod) {
+            requestData.time_period = timePeriod;
+        }
+
         $.ajax({
             url: wpStaffDiary.ajaxUrl,
             type: 'POST',
-            data: {
-                action: 'get_fitter_availability',
-                nonce: wpStaffDiary.nonce,
-                fitter_id: fitterId,
-                start_date: new Date().toISOString().split('T')[0],
-                days: 14
-            },
+            data: requestData,
             success: function(response) {
                 $('#availability-loading').hide();
                 if (response.success) {
                     currentAvailability = response.data.availability;
-                    displayFitterAvailability(response.data.availability);
+                    displayFitterAvailability(response.data.availability, timePeriod);
                 } else {
-                    $('#availability-calendar').html('<p style="color: #d63638;">Error loading availability</p>');
+                    const errorMsg = response.data && response.data.message ? response.data.message : 'Error loading availability';
+                    $('#availability-calendar').html('<p style="color: #d63638;">' + errorMsg + '</p>');
+                    console.error('Availability error:', response);
                 }
             },
             error: function() {
@@ -303,9 +362,60 @@
     }
 
     /**
-     * Display fitter availability calendar
+     * Filter fitter dropdown to show only available fitters for selected date/time
+     * @param {string} date - Selected date (YYYY-MM-DD)
+     * @param {string|null} timePeriod - 'am', 'pm', or null
      */
-    function displayFitterAvailability(availability) {
+    function filterAvailableFitters(date, timePeriod) {
+        const $fitterSelect = $('#convert-fitter');
+
+        // Store original options if not already stored
+        if (!$fitterSelect.data('original-options')) {
+            $fitterSelect.data('original-options', $fitterSelect.html());
+        }
+
+        // If no date or time period, restore all options
+        if (!date || !timePeriod || (timePeriod !== 'am' && timePeriod !== 'pm')) {
+            $fitterSelect.html($fitterSelect.data('original-options'));
+            return;
+        }
+
+        // Find the availability data for this date
+        const dayData = currentAvailability.find(day => day.date === date);
+        if (!dayData) {
+            // No data for this date, restore all options
+            $fitterSelect.html($fitterSelect.data('original-options'));
+            return;
+        }
+
+        // Get the list of booked fitters for the selected time period
+        const bookedFitters = timePeriod === 'am' ? dayData.am_booked_fitters : dayData.pm_booked_fitters;
+
+        // Filter the fitter dropdown to exclude booked fitters
+        const $originalOptions = $($fitterSelect.data('original-options'));
+        const $filteredOptions = $originalOptions.filter(function() {
+            const fitterId = parseInt($(this).val());
+
+            // Keep the empty option and any fitters not in the booked list
+            return !$(this).val() || !bookedFitters.includes(fitterId);
+        });
+
+        // Update the dropdown
+        $fitterSelect.empty();
+        $fitterSelect.append($filteredOptions.clone());
+
+        // If only one fitter is available (plus the empty option), auto-select it
+        if ($fitterSelect.find('option').length === 2) {
+            $fitterSelect.find('option:eq(1)').prop('selected', true);
+        }
+    }
+
+    /**
+     * Display fitter availability calendar
+     * @param {Array} availability - Availability data
+     * @param {string|null} timePeriod - Selected time period filter
+     */
+    function displayFitterAvailability(availability, timePeriod) {
         const $calendar = $('#availability-calendar');
         $calendar.empty();
 
@@ -356,7 +466,8 @@
                 'background: white;' +
                 'cursor: pointer;' +
                 'transition: all 0.2s;' +
-                '" data-date="' + day.date + '" data-available="' + (statusClass === 'available' ? '1' : '0') + '"></div>');
+                '" data-date="' + day.date + '" data-available="' + (statusClass === 'available' ? '1' : '0') + '" ' +
+                'data-available-fitter-id="' + (day.available_fitter_id || '') + '"></div>');
 
             $dayCard.html(
                 '<div style="font-weight: bold; margin-bottom: 3px;">' + day.day_name.substring(0, 3) + '</div>' +
@@ -368,17 +479,29 @@
             // Add click handler to select date
             $dayCard.on('click', function() {
                 const date = $(this).data('date');
+                const availableFitterId = $(this).data('available-fitter-id');
+
                 $('#convert-fitting-date').val(date);
 
                 // Highlight selected
                 $('.availability-day-card').css('box-shadow', 'none');
                 $(this).css('box-shadow', '0 0 0 3px #2271b1');
 
-                // Pre-select time period if partially booked
-                if (!day.am_available && day.pm_available) {
-                    $('#convert-fitting-time-period').val('pm');
-                } else if (day.am_available && !day.pm_available) {
-                    $('#convert-fitting-time-period').val('am');
+                // Filter fitter dropdown to show only available fitters
+                filterAvailableFitters(date, timePeriod);
+
+                // Auto-assign available fitter if one was found
+                if (availableFitterId) {
+                    $('#convert-fitter').val(availableFitterId);
+                }
+
+                // Pre-select time period if partially booked and no specific period selected
+                if (!timePeriod) {
+                    if (!day.am_available && day.pm_available) {
+                        $('#convert-fitting-time-period').val('pm');
+                    } else if (day.am_available && !day.pm_available) {
+                        $('#convert-fitting-time-period').val('am');
+                    }
                 }
             });
 
@@ -563,6 +686,14 @@
         $('#quote-selected-customer-display').show();
         $('#quote-customer-search').hide();
         $('#quote-customer-search-results').empty().hide();
+
+        // Auto-fill fitting address from customer address
+        if (customer.address_line_1 || customer.address_line_2 || customer.address_line_3 || customer.postcode) {
+            $('#quote-fitting-address-line-1').val(customer.address_line_1 || '');
+            $('#quote-fitting-address-line-2').val(customer.address_line_2 || '');
+            $('#quote-fitting-address-line-3').val(customer.address_line_3 || '');
+            $('#quote-fitting-postcode').val(customer.postcode || '');
+        }
     }
 
     /**
@@ -733,8 +864,47 @@
      * Load quote photos
      */
     function loadQuotePhotos(quoteId) {
-        // This would fetch and display photos for the current quote
-        // Similar to job photos in main admin.js
+        if (!quoteId) return;
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'get_diary_entry',
+                nonce: wpStaffDiary.nonce,
+                entry_id: quoteId
+            },
+            success: function(response) {
+                if (response.success) {
+                    const entry = response.data.entry || response.data;
+
+                    if (entry.images && entry.images.length > 0) {
+                        let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
+                        entry.images.forEach(function(image) {
+                            const categoryLabel = image.category ? ` (${image.category})` : '';
+                            const captionLabel = image.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${image.image_caption}</div>` : '';
+
+                            photosHtml += `<div style="position: relative;">
+                                <img src="${image.image_url}"
+                                     alt="Quote photo"
+                                     style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                                     onclick="window.open('${image.image_url}', '_blank')"
+                                     title="Click to open full size">
+                                <div style="font-size: 10px; margin-top: 2px; color: #999; font-weight: 600;">${categoryLabel}</div>
+                                ${captionLabel}
+                            </div>`;
+                        });
+                        photosHtml += '</div>';
+                        $('#quote-photos-container').html(photosHtml);
+                    } else {
+                        $('#quote-photos-container').html('<p class="description">No photos uploaded yet.</p>');
+                    }
+                }
+            },
+            error: function() {
+                console.error('Failed to load quote photos');
+            }
+        });
     }
 
     /**
@@ -762,11 +932,10 @@
      * Calculate quote total
      */
     function calculateQuoteTotal() {
-        // Product total
+        // Product total (without fitting cost)
         const qty = parseFloat($('#quote-sq-mtr-qty').val()) || 0;
         const pricePerUnit = parseFloat($('#quote-price-per-sq-mtr').val()) || 0;
-        const fittingCost = parseFloat($('#quote-fitting-cost').val()) || 0;
-        const productTotal = (qty * pricePerUnit) + fittingCost;
+        const productTotal = qty * pricePerUnit;
 
         $('#quote-product-total-display').text(productTotal.toFixed(2));
 
@@ -780,8 +949,11 @@
 
         $('#quote-accessories-total-display').text(accessoriesTotal.toFixed(2));
 
-        // Subtotal
-        const subtotal = productTotal + accessoriesTotal;
+        // Fitting cost (separate line item)
+        const fittingCost = parseFloat($('#quote-fitting-cost').val()) || 0;
+
+        // Subtotal (product + accessories + fitting)
+        const subtotal = productTotal + accessoriesTotal + fittingCost;
         $('#quote-subtotal-display').text(subtotal.toFixed(2));
 
         // VAT
@@ -902,6 +1074,10 @@
         $('.quote-accessory-checkbox').prop('checked', false);
         $('.quote-accessory-quantity').prop('disabled', true).val(1);
         calculateQuoteTotal();
+
+        // Reset save button text and disable photo uploads for new quotes
+        $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Save Quote');
+        $('#quote-upload-photo-btn').prop('disabled', true);
     }
 
     /**
@@ -1047,10 +1223,50 @@
         html += '<tr style="font-weight: bold; font-size: 16px; border-top: 2px solid #ddd;"><td>Total:</td><td style="text-align: right;">£' + parseFloat(quote.total || '0').toFixed(2) + '</td></tr>';
         html += '</table>';
 
-        // Notes
+        // Internal Notes
         if (quote.notes) {
-            html += '<h3>Additional Notes</h3>';
+            html += '<h3>Internal Notes</h3>';
             html += '<p>' + quote.notes.replace(/\n/g, '<br>') + '</p>';
+        }
+
+        // Send Discount Offer Section (only for quotes)
+        if (quote.customer && quote.customer.customer_email) {
+            html += '<div style="background: #f9f9f9; padding: 20px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2271b1;">';
+            html += '<h3 style="margin-top: 0;">Send Discount Offer</h3>';
+
+            // Show existing discount if applied
+            if (quote.discount_type && quote.discount_value) {
+                const discountDisplay = quote.discount_type === 'percentage' ? quote.discount_value + '%' : '£' + parseFloat(quote.discount_value).toFixed(2);
+                html += '<div class="notice notice-info inline" style="margin-bottom: 15px; padding: 10px; background: #fff;">';
+                html += '<strong>Current Discount:</strong> ' + discountDisplay + ' (' + quote.discount_type + ')';
+                if (quote.discount_applied_date) {
+                    html += ' - Sent on ' + quote.discount_applied_date;
+                }
+                html += '</div>';
+            }
+
+            html += '<div class="discount-form">';
+            html += '<p style="margin-top: 0;">Send a special discount offer to help convert this quote to a job.</p>';
+            html += '<p style="color: #666; margin-bottom: 15px;"><strong>Customer Email:</strong> ' + quote.customer.customer_email + '</p>';
+            html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">';
+            html += '<div>';
+            html += '<label style="display: block; margin-bottom: 5px;"><strong>Discount Amount:</strong></label>';
+            html += '<input type="number" id="discount-value-' + quote.id + '" step="0.01" min="0.01" value="5" style="width: 100%; padding: 8px;" placeholder="Enter amount">';
+            html += '</div>';
+            html += '<div>';
+            html += '<label style="display: block; margin-bottom: 5px;"><strong>Discount Type:</strong></label>';
+            html += '<select id="discount-type-' + quote.id + '" style="width: 100%; padding: 8px;">';
+            html += '<option value="percentage">Percentage (%)</option>';
+            html += '<option value="fixed">Fixed Amount (£)</option>';
+            html += '</select>';
+            html += '</div>';
+            html += '</div>';
+            html += '<button type="button" class="button button-primary" id="send-discount-btn" data-entry-id="' + quote.id + '">';
+            html += '<span class="dashicons dashicons-email"></span> Send Discount Email';
+            html += '</button>';
+            html += '<p class="description" style="margin: 10px 0 0 0;">This will send an email to the customer with the discount offer and a link to accept the quote.</p>';
+            html += '</div>';
+            html += '</div>';
         }
 
         // Photos
@@ -1058,7 +1274,18 @@
             html += '<h3>Photos</h3>';
             html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
             quote.images.forEach(function(img) {
-                html += '<img src="' + img.image_url + '" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;" />';
+                const categoryLabel = img.category ? ` (${img.category})` : '';
+                const captionLabel = img.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${img.image_caption}</div>` : '';
+
+                html += `<div style="position: relative;">
+                    <img src="${img.image_url}"
+                         alt="Quote photo"
+                         style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                         onclick="window.open('${img.image_url}', '_blank')"
+                         title="Click to open full size">
+                    <div style="font-size: 10px; margin-top: 2px; color: #999; font-weight: 600;">${categoryLabel}</div>
+                    ${captionLabel}
+                </div>`;
             });
             html += '</div>';
         }
@@ -1224,11 +1451,115 @@
         $('.wp-staff-diary-modal').fadeOut(200);
     }
 
+    // ===========================================
+    // DISCOUNT OFFERS (for Quotes)
+    // ===========================================
+
+    /**
+     * Send discount email button click (for quotes)
+     */
+    $(document).on('click', '#send-discount-btn', function() {
+        const $button = $(this);
+        const entryId = $button.data('entry-id');
+        const discountType = $('#discount-type-' + entryId).val();
+        const discountValue = parseFloat($('#discount-value-' + entryId).val());
+
+        // Validation
+        if (!discountValue || discountValue <= 0) {
+            alert('Please enter a valid discount amount');
+            return;
+        }
+
+        if (discountType === 'percentage' && discountValue > 100) {
+            alert('Percentage discount cannot exceed 100%');
+            return;
+        }
+
+        // Confirmation
+        const discountDisplay = discountType === 'percentage' ? discountValue + '%' : '£' + discountValue.toFixed(2);
+        if (!confirm('Are you sure you want to send a ' + discountDisplay + ' discount offer to the customer?')) {
+            return;
+        }
+
+        // Disable button and show loading
+        $button.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'send_discount_email',
+                nonce: wpStaffDiary.nonce,
+                entry_id: entryId,
+                discount_type: discountType,
+                discount_value: discountValue
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('Discount email sent successfully!');
+                    // Reload the quote details to show updated discount info
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + response.data.message);
+                    $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
+                }
+            },
+            error: function() {
+                alert('An error occurred while sending the discount email');
+                $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
+            }
+        });
+    });
+
     // Initialize on document ready
     $(document).ready(function() {
         // Only initialize if we're on the quotes page
         if ($('#add-new-quote').length) {
             initQuotes();
+
+            // Check for URL parameters to pre-fill from measure conversion
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('action') === 'new' && urlParams.get('from_measure')) {
+                // Open the add quote modal
+                openAddQuoteModal();
+
+                // Pre-fill the form with measure data
+                const customerId = urlParams.get('customer_id');
+                if (customerId) {
+                    // Fetch customer details and select them
+                    $.ajax({
+                        url: wpStaffDiary.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'get_customer',
+                            nonce: wpStaffDiary.nonce,
+                            customer_id: customerId
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.customer) {
+                                selectCustomer(response.data.customer);
+                            }
+                        }
+                    });
+                }
+                if (urlParams.get('fitting_date')) {
+                    $('#quote-fitting-date').val(urlParams.get('fitting_date'));
+                }
+                if (urlParams.get('fitting_address_line_1')) {
+                    $('#quote-use-different-address').prop('checked', true).trigger('change');
+                    $('#quote-fitting-address-line-1').val(urlParams.get('fitting_address_line_1'));
+                    $('#quote-fitting-address-line-2').val(urlParams.get('fitting_address_line_2') || '');
+                    $('#quote-fitting-address-line-3').val(urlParams.get('fitting_address_line_3') || '');
+                    $('#quote-fitting-postcode').val(urlParams.get('fitting_postcode') || '');
+                }
+                if (urlParams.get('notes')) {
+                    $('#quote-notes').val(urlParams.get('notes'));
+                }
+
+                // Clean up URL
+                const cleanUrl = window.location.pathname + '?page=wp-staff-diary-quotes';
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
         }
     });
 

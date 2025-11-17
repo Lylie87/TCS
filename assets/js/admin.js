@@ -18,6 +18,75 @@
         let currentDiscountValue = 0;
 
         // ===========================================
+        // PHOTO CATEGORY MODAL
+        // ===========================================
+
+        /**
+         * Show photo category selection modal
+         */
+        function showPhotoCategory(file, entryId, callback) {
+            // Prevent duplicate modals
+            if ($('#photo-category-modal-admin').length > 0) {
+                return;
+            }
+
+            const categoryHtml = `
+                <div style="padding: 20px;">
+                    <h3 style="margin-top: 0;">Photo Category</h3>
+                    <p>Select the category for this photo:</p>
+                    <select id="photo-category-select-admin" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                        <option value="before">Before</option>
+                        <option value="during">During</option>
+                        <option value="after">After</option>
+                        <option value="general">General</option>
+                    </select>
+                    <p>Add a caption (optional):</p>
+                    <input type="text" id="photo-caption-input-admin" placeholder="Enter photo caption..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                    <div style="text-align: right;">
+                        <button type="button" class="button" id="cancel-photo-upload-admin" style="margin-right: 10px;">Cancel</button>
+                        <button type="button" class="button button-primary" id="confirm-photo-upload-admin">Upload Photo</button>
+                    </div>
+                </div>
+            `;
+
+            // Create temporary modal
+            $('body').append(`
+                <div id="photo-category-modal-admin" style="display: none; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
+                    <div style="background-color: #fff; margin: 10% auto; padding: 0; border: 1px solid #888; width: 400px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        ${categoryHtml}
+                    </div>
+                </div>
+            `);
+
+            $('#photo-category-modal-admin').fadeIn();
+
+            // Handle cancel
+            $('#cancel-photo-upload-admin').on('click', function() {
+                $('#photo-category-modal-admin').remove();
+                $(document).off('keydown.photoCategoryModalAdmin');
+                callback(null);
+            });
+
+            // Handle confirm
+            $('#confirm-photo-upload-admin').on('click', function() {
+                const category = $('#photo-category-select-admin').val();
+                const caption = $('#photo-caption-input-admin').val();
+                $('#photo-category-modal-admin').remove();
+                $(document).off('keydown.photoCategoryModalAdmin');
+                callback({category: category, caption: caption});
+            });
+
+            // Handle escape key
+            $(document).on('keydown.photoCategoryModalAdmin', function(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    $('#photo-category-modal-admin').remove();
+                    $(document).off('keydown.photoCategoryModalAdmin');
+                    callback(null);
+                }
+            });
+        }
+
+        // ===========================================
         // NAVIGATION & UI CONTROLS
         // ===========================================
 
@@ -56,8 +125,13 @@
         // ===========================================
 
         // Add new entry button
-        $('#add-new-entry').on('click', function() {
+        $(document).on('click', '#add-new-entry', function() {
             openEntryModal();
+        });
+
+        // Add new measure button
+        $(document).on('click', '#add-new-measure', function() {
+            openMeasureModal();
         });
 
         // Edit entry button
@@ -82,10 +156,24 @@
             }
         });
 
+        // Cancel entry button
+        $(document).on('click', '.cancel-entry', function() {
+            const entryId = $(this).data('id');
+            if (confirm('Are you sure you want to cancel this entry? It will be removed from the calendar but can be restored later.')) {
+                cancelEntry(entryId);
+            }
+        });
+
         // Submit entry form
         $('#diary-entry-form').on('submit', function(e) {
             e.preventDefault();
             saveEntry();
+        });
+
+        // Submit measure form
+        $('#measure-entry-form').on('submit', function(e) {
+            e.preventDefault();
+            saveMeasure();
         });
 
         /**
@@ -115,6 +203,28 @@
         }
 
         /**
+         * Open measure modal for adding new measure
+         */
+        function openMeasureModal() {
+            $('#measure-modal-title').text('Add New Measure');
+            $('#measure-entry-form')[0].reset();
+            $('#measure-entry-id').val('');
+            $('#measure-customer-id').val('');
+            $('#measure-number-display').hide();
+            $('#measure-date').val(new Date().toISOString().split('T')[0]);
+            $('#measure-job-date').val(new Date().toISOString().split('T')[0]);
+            $('#measure-photos-container').html('<p class="description">No photos uploaded yet.</p>');
+
+            // Reset customer selection
+            $('#measure-customer-search-container').show();
+            $('#measure-selected-customer-display').hide();
+            $('#measure-manual-customer-entry').hide();
+            $('#measure-customer-search').val('');
+
+            $('#measure-modal').fadeIn();
+        }
+
+        /**
          * Load entry for editing
          */
         function loadEntryForEdit(entryId) {
@@ -128,7 +238,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        populateEntryForm(response.data);
+                        // Data is wrapped in response.data.entry by the modular jobs controller
+                        const entry = response.data.entry || response.data;
+                        populateEntryForm(entry);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
@@ -237,8 +349,17 @@
                 if (entry.images && entry.images.length > 0) {
                     let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
                     entry.images.forEach(function(image) {
+                        const categoryLabel = image.category ? ` (${image.category})` : '';
+                        const captionLabel = image.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${image.image_caption}</div>` : '';
+
                         photosHtml += `<div style="position: relative;">
-                            <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                            <img src="${image.image_url}"
+                                 alt="Job photo"
+                                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                                 onclick="window.open('${image.image_url}', '_blank')"
+                                 title="Click to open full size">
+                            <div style="font-size: 10px; margin-top: 2px; color: #999; font-weight: 600;">${categoryLabel}</div>
+                            ${captionLabel}
                         </div>`;
                     });
                     photosHtml += '</div>';
@@ -375,6 +496,70 @@
                     console.error('AJAX Error:', xhr, status, error);
                     alert('An error occurred while saving the entry.');
                     $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
+                }
+            });
+        }
+
+        /**
+         * Save measure entry
+         * @param {Function} callback - Optional callback function to run after successful save
+         * @param {Boolean} keepOpen - If true, don't reload page/close modal after save
+         */
+        function saveMeasure(callback, keepOpen) {
+            // Validate customer selection
+            const customerId = $('#measure-customer-id').val();
+            if (!customerId) {
+                alert('Please select or add a customer first.');
+                return;
+            }
+
+            const formData = {
+                action: 'save_diary_entry',
+                nonce: wpStaffDiary.nonce,
+                entry_id: $('#measure-entry-id').val(),
+                customer_id: customerId,
+                job_date: $('#measure-job-date').val(),
+                fitting_date: $('#measure-date').val(),
+                job_time: $('#measure-time').val(),
+                fitting_address_line_1: $('#measure-address-line-1').val(),
+                fitting_address_line_2: $('#measure-address-line-2').val(),
+                fitting_address_line_3: $('#measure-address-line-3').val(),
+                fitting_postcode: $('#measure-postcode').val(),
+                notes: $('#measure-notes').val(),
+                status: $('#measure-status').val() // 'measure'
+            };
+
+            console.log('Saving measure with data:', formData);
+
+            $('#save-measure-btn').prop('disabled', true).html('<span class="dashicons dashicons-update"></span> Saving...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        if (keepOpen) {
+                            // Show success message without alert
+                            console.log('Measure saved successfully:', response.data.entry_id);
+                            $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
+
+                            // Call callback if provided
+                            if (callback && typeof callback === 'function') {
+                                callback(response.data.entry_id);
+                            }
+                        } else {
+                            alert(response.data.message);
+                            location.reload();
+                        }
+                    } else {
+                        alert('Error: ' + response.data.message);
+                        $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred while saving the measure.');
+                    $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
                 }
             });
         }
@@ -548,9 +733,23 @@
                 data: customerData,
                 success: function(response) {
                     if (response.success) {
-                        selectCustomer(response.data.customer.id, response.data.customer.customer_name);
+                        const source = $('#quick-add-customer-modal').data('source');
+                        if (source === 'measure') {
+                            // Pre-fill measure form with customer details
+                            const customer = response.data.customer;
+                            const customerAddress = [
+                                customer.address_line_1,
+                                customer.address_line_2,
+                                customer.address_line_3,
+                                customer.postcode
+                            ].filter(Boolean).join('\n');
+                            selectMeasureCustomer(customer.id, customer.customer_name, customer.customer_phone || '', customerAddress);
+                        } else {
+                            selectCustomer(response.data.customer.id, response.data.customer.customer_name);
+                        }
                         $('#quick-add-customer-modal').fadeOut();
                         $('#quick-add-customer-form')[0].reset();
+                        $('#quick-add-customer-modal').removeData('source');
                         alert(response.data.message);
                     } else {
                         alert('Error: ' + response.data.message);
@@ -560,6 +759,121 @@
                     alert('An error occurred while adding the customer.');
                 }
             });
+        });
+
+        // ===========================================
+        // MEASURE CUSTOMER MANAGEMENT
+        // ===========================================
+
+        let measureCustomerSearchTimeout = null;
+        let measureSelectedCustomerId = 0;
+
+        // Measure customer search with debounce
+        $('#measure-customer-search').on('keyup', function() {
+            const searchTerm = $(this).val();
+
+            clearTimeout(measureCustomerSearchTimeout);
+
+            if (searchTerm.length < 2) {
+                $('#measure-customer-search-results').html('').hide();
+                return;
+            }
+
+            measureCustomerSearchTimeout = setTimeout(function() {
+                searchMeasureCustomers(searchTerm);
+            }, 300);
+        });
+
+        /**
+         * Search customers for measure
+         */
+        function searchMeasureCustomers(searchTerm) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'search_customers',
+                    nonce: wpStaffDiary.nonce,
+                    search: searchTerm
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayMeasureCustomerSearchResults(response.data.customers);
+                    }
+                },
+                error: function() {
+                    console.error('Error searching customers for measure');
+                }
+            });
+        }
+
+        /**
+         * Display customer search results for measure
+         */
+        function displayMeasureCustomerSearchResults(customers) {
+            if (customers.length === 0) {
+                $('#measure-customer-search-results').html('<div class="search-result-item">No customers found</div>').show();
+                return;
+            }
+
+            let html = '';
+            customers.forEach(function(customer) {
+                const phone = customer.customer_phone ? ` - ${customer.customer_phone}` : '';
+                html += `<div class="search-result-item measure-customer-result" data-customer-id="${customer.id}" data-customer-name="${customer.customer_name}" data-customer-phone="${customer.customer_phone || ''}" data-customer-address="${customer.customer_address || ''}">
+                    <strong>${customer.customer_name}</strong>${phone}
+                </div>`;
+            });
+
+            $('#measure-customer-search-results').html(html).show();
+        }
+
+        // Select customer from search results for measure
+        $(document).on('click', '.measure-customer-result', function() {
+            const customerId = $(this).data('customer-id');
+            const customerName = $(this).data('customer-name');
+            const customerPhone = $(this).data('customer-phone');
+            const customerAddress = $(this).data('customer-address');
+
+            selectMeasureCustomer(customerId, customerName, customerPhone, customerAddress);
+        });
+
+        /**
+         * Select a customer for measure
+         */
+        function selectMeasureCustomer(customerId, customerName, customerPhone, customerAddress) {
+            measureSelectedCustomerId = customerId;
+            $('#measure-customer-id').val(customerId);
+            $('#measure-selected-customer-name').text(customerName);
+            $('#measure-customer-search-container').hide();
+            $('#measure-selected-customer-display').show();
+            $('#measure-customer-search-results').html('').hide();
+            $('#measure-manual-customer-entry').hide();
+
+            // Pre-fill address if available
+            if (customerAddress) {
+                // Parse address and pre-fill fields
+                const addressLines = customerAddress.split('\n');
+                $('#measure-address-line-1').val(addressLines[0] || '');
+                $('#measure-address-line-2').val(addressLines[1] || '');
+                $('#measure-address-line-3').val(addressLines[2] || '');
+                $('#measure-postcode').val(addressLines[3] || '');
+            }
+        }
+
+        // Clear customer selection for measure
+        $('#measure-clear-customer-btn').on('click', function() {
+            measureSelectedCustomerId = 0;
+            $('#measure-customer-id').val('');
+            $('#measure-selected-customer-display').hide();
+            $('#measure-customer-search').val('').show();
+            $('#measure-customer-search-container').show();
+        });
+
+        // Add new customer inline for measure - open the quick add modal
+        $('#measure-add-new-customer-inline').on('click', function() {
+            // Set a flag to know we're adding from measure form
+            $('#quick-add-customer-modal').data('source', 'measure');
+            $('#quick-add-customer-modal').fadeIn();
         });
 
         // ===========================================
@@ -855,7 +1169,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        displayEntryDetails(response.data);
+                        // Data is wrapped in response.data.entry by the modular jobs controller
+                        const entry = response.data.entry || response.data;
+                        displayEntryDetails(entry);
                     } else {
                         alert('Error loading entry: ' + response.data.message);
                     }
@@ -870,6 +1186,12 @@
          * Display entry details in view modal
          */
         function displayEntryDetails(entry) {
+            // Check if this is a measure - display simpler view
+            if (entry.status === 'measure') {
+                displayMeasureDetails(entry);
+                return;
+            }
+
             let html = '<div class="job-sheet-content">';
 
             // Header
@@ -991,8 +1313,10 @@
             if (entry.images && entry.images.length > 0) {
                 html += '<div class="job-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">';
                 entry.images.forEach(function(image) {
+                    const categoryLabel = image.category ? `<div style="font-size: 11px; color: #999; font-weight: 600; margin-top: 4px;">(${image.category})</div>` : '';
                     html += `<div class="job-image-item" style="position: relative;">
-                        <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                        <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')" title="Click to open full size">
+                        ${categoryLabel}
                         ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
                     </div>`;
                 });
@@ -1045,48 +1369,11 @@
                 html += '</div>';
             }
 
-            // Notes
+            // Internal Notes
             if (entry.notes) {
                 html += '<div class="detail-section">';
-                html += '<h3>Additional Notes</h3>';
+                html += '<h3>Internal Notes</h3>';
                 html += `<div class="notes-content">${entry.notes.replace(/\n/g, '<br>')}</div>`;
-                html += '</div>';
-            }
-
-            // Send Discount Offer Section
-            if (entry.is_cancelled != 1 && entry.customer && entry.customer.customer_email) {
-                html += '<div class="detail-section">';
-                html += '<h3>Send Discount Offer</h3>';
-
-                // Show existing discount if applied
-                if (entry.discount_type && entry.discount_value) {
-                    const discountDisplay = entry.discount_type === 'percentage' ? entry.discount_value + '%' : '£' + parseFloat(entry.discount_value).toFixed(2);
-                    html += `<div class="notice notice-info inline" style="margin-bottom: 15px; padding: 10px;">
-                        <strong>Current Discount:</strong> ${discountDisplay} (${entry.discount_type})
-                        ${entry.discount_applied_date ? ' - Sent on ' + entry.discount_applied_date : ''}
-                    </div>`;
-                }
-
-                html += `<div class="discount-form" style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
-                    <p style="margin-top: 0;">Send a special discount offer to <strong>${entry.customer.customer_email}</strong></p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                        <div>
-                            <label style="display: block; margin-bottom: 5px;"><strong>Discount Amount:</strong></label>
-                            <input type="number" id="discount-value-${entry.id}" step="0.01" min="0.01" value="5" style="width: 100%;" placeholder="Enter amount">
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 5px;"><strong>Discount Type:</strong></label>
-                            <select id="discount-type-${entry.id}" style="width: 100%;">
-                                <option value="percentage">Percentage (%)</option>
-                                <option value="fixed">Fixed Amount (£)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="button" class="button button-primary" id="send-discount-btn" data-entry-id="${entry.id}">
-                        <span class="dashicons dashicons-email"></span> Send Discount Email
-                    </button>
-                    <p class="description" style="margin: 10px 0 0 0;">This will send an email to the customer with the discount offer and a link to accept the quote.</p>
-                </div>`;
                 html += '</div>';
             }
 
@@ -1108,6 +1395,112 @@
             $('#view-entry-modal').fadeIn();
         }
 
+        /**
+         * Display measure details in view modal
+         */
+        function displayMeasureDetails(entry) {
+            let html = '<div class="job-sheet-content">';
+
+            // Header
+            html += `<div class="job-sheet-header" style="background: #9b59b6;">
+                <h2 style="color: white;">Measure Appointment</h2>
+                <div class="order-number-large" style="color: white;">Measure #${entry.order_number}</div>
+            </div>`;
+
+            // Customer Section
+            html += '<div class="detail-section">';
+            html += '<h3>Customer Details</h3>';
+            if (entry.customer) {
+                html += `<div class="detail-grid">
+                    <div class="detail-item"><strong>Name:</strong> ${entry.customer.customer_name}</div>
+                    ${entry.customer.customer_phone ? `<div class="detail-item"><strong>Phone:</strong> ${entry.customer.customer_phone}</div>` : ''}
+                </div>`;
+            } else {
+                html += '<p style="color: #999;">No customer information</p>';
+            }
+            html += '</div>';
+
+            // Measure Address Section
+            html += '<div class="detail-section">';
+            html += '<h3>Measure Address</h3>';
+            if (entry.fitting_address_line_1 || entry.fitting_address_line_2 || entry.fitting_address_line_3 || entry.fitting_postcode) {
+                let address = [];
+                if (entry.fitting_address_line_1) address.push(entry.fitting_address_line_1);
+                if (entry.fitting_address_line_2) address.push(entry.fitting_address_line_2);
+                if (entry.fitting_address_line_3) address.push(entry.fitting_address_line_3);
+                if (entry.fitting_postcode) address.push(entry.fitting_postcode);
+                html += `<div class="detail-item">${address.join('<br>')}</div>`;
+            } else {
+                html += '<p style="color: #999;">No address specified</p>';
+            }
+            html += '</div>';
+
+            // Measure Schedule Section
+            html += '<div class="detail-section">';
+            html += '<h3>Schedule</h3>';
+            html += '<div class="detail-grid">';
+            if (entry.fitting_date) {
+                html += `<div class="detail-item"><strong>Measure Date:</strong> ${entry.fitting_date_formatted}</div>`;
+            }
+            if (entry.job_time) {
+                html += `<div class="detail-item"><strong>Measure Time:</strong> ${entry.job_time_formatted}</div>`;
+            }
+            html += '</div>';
+            html += '</div>';
+
+            // Photos Section
+            html += '<div class="detail-section">';
+            html += '<h3>Photos</h3>';
+            if (entry.images && entry.images.length > 0) {
+                html += '<div class="job-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">';
+                entry.images.forEach(function(image) {
+                    const categoryLabel = image.category ? `<div style="font-size: 11px; color: #999; font-weight: 600; margin-top: 4px;">(${image.category})</div>` : '';
+                    html += `<div class="job-image-item" style="position: relative;">
+                        <img src="${image.image_url}" alt="Measure photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')" title="Click to open full size">
+                        ${categoryLabel}
+                        ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
+                    </div>`;
+                });
+                html += '</div>';
+            } else {
+                html += '<p style="color: #999;">No photos uploaded yet.</p>';
+            }
+            html += `<button type="button" class="button" id="upload-photo-btn" data-entry-id="${entry.id}">
+                <span class="dashicons dashicons-camera"></span> Upload Photo
+            </button>`;
+            html += `<input type="file" id="photo-upload-input-${entry.id}" accept="image/*" style="display: none;">`;
+            html += '</div>';
+
+            // Internal Notes
+            if (entry.notes) {
+                html += '<div class="detail-section">';
+                html += '<h3>Internal Notes</h3>';
+                html += `<div class="notes-content">${entry.notes.replace(/\n/g, '<br>')}</div>`;
+                html += '</div>';
+            }
+
+            // Actions - Convert buttons
+            html += '<div class="detail-section detail-actions">';
+            html += `<button type="button" class="button button-primary" id="convert-measure-to-quote-btn" data-measure-id="${entry.id}" style="background: #2271b1; border-color: #2271b1;">
+                <span class="dashicons dashicons-clipboard"></span> Convert to Quote
+            </button>`;
+            html += `<button type="button" class="button button-primary" id="convert-measure-to-job-btn" data-measure-id="${entry.id}" style="background: #00a32a; border-color: #00a32a; margin-left: 10px;">
+                <span class="dashicons dashicons-hammer"></span> Convert to Job
+            </button>`;
+            html += `<button type="button" class="button edit-entry" data-id="${entry.id}" style="margin-left: 10px;">
+                <span class="dashicons dashicons-edit"></span> Edit Measure
+            </button>`;
+            html += `<button type="button" class="button cancel-entry" data-id="${entry.id}" style="margin-left: 10px; background: #d63638; color: white; border-color: #d63638;">
+                <span class="dashicons dashicons-no"></span> Cancel Measure
+            </button>`;
+            html += '</div>';
+
+            html += '</div>'; // Close job-sheet-content
+
+            $('#entry-details-content').html(html);
+            $('#view-entry-modal').fadeIn();
+        }
+
         // ===========================================
         // PHOTOS - Upload
         // ===========================================
@@ -1115,44 +1508,67 @@
         // Photo upload button click
         $(document).on('click', '#upload-photo-btn', function() {
             const entryId = $(this).data('entry-id');
-            $(`#photo-upload-input-${entryId}`).click();
+            console.log('Upload photo clicked, entry ID:', entryId);
+            const inputElement = $(`#photo-upload-input-${entryId}`);
+            console.log('Input element found:', inputElement.length);
+            if (inputElement.length > 0) {
+                inputElement.click();
+            } else {
+                console.error('Photo input element not found: #photo-upload-input-' + entryId);
+            }
         });
 
         // Photo file selected in view modal (not edit form)
         $(document).on('change', '[id^="photo-upload-input-"]:not(#photo-upload-input-form)', function() {
             const entryId = $(this).attr('id').replace('photo-upload-input-', '');
             const file = this.files[0];
+            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
+                $input.val('');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('action', 'upload_job_image');
-            formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('diary_entry_id', entryId);
-            formData.append('image', file);
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        alert('Photo uploaded successfully!');
-                        viewEntryDetails(entryId); // Reload the view
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while uploading the photo.');
+            // Show category selection modal
+            showPhotoCategory(file, entryId, function(result) {
+                if (!result) {
+                    $input.val('');
+                    return;
                 }
+
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            viewEntryDetails(entryId); // Reload the view
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function() {
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
+                });
             });
         });
 
@@ -1214,43 +1630,170 @@
         $(document).on('change', '#photo-upload-input-form', function() {
             const entryId = $(this).data('entry-id');
             const file = this.files[0];
+            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
+                $input.val('');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('action', 'upload_job_image');
-            formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('diary_entry_id', entryId);
-            formData.append('image', file);
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        alert('Photo uploaded successfully!');
-                        // Reload entry to show new photo
-                        loadEntryForEdit(entryId);
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while uploading the photo.');
+            // Show category selection modal
+            showPhotoCategory(file, entryId, function(result) {
+                if (!result) {
+                    $input.val('');
+                    return;
                 }
+
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            // Reload entry to show new photo
+                            loadEntryForEdit(entryId);
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function() {
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
+                });
             });
 
             // Clear the file input
             $(this).val('');
         });
+
+        // Measure photo upload button click
+        $(document).on('click', '#upload-measure-photo-btn', function() {
+            const entryId = $('#measure-entry-id').val();
+
+            if (!entryId) {
+                if (confirm('You need to save the measure first before uploading photos. Would you like to save now?')) {
+                    // Save the measure, then trigger photo upload
+                    saveMeasure(function(savedEntryId) {
+                        // After successful save, set the entry ID and trigger photo upload
+                        $('#measure-entry-id').val(savedEntryId);
+                        $('#measure-photo-upload-input').click();
+                    }, true); // true = don't close modal after save
+                }
+                return;
+            }
+
+            $('#measure-photo-upload-input').click();
+        });
+
+        // Measure photo file selected
+        $(document).on('change', '#measure-photo-upload-input', function() {
+            const entryId = $('#measure-entry-id').val();
+            const file = this.files[0];
+            const $input = $(this);
+
+            if (!file) return;
+
+            if (!entryId) {
+                alert('Please save the measure first before uploading photos.');
+                $input.val('');
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                $input.val('');
+                return;
+            }
+
+            // Show category selection modal
+            showPhotoCategory(file, entryId, function(result) {
+                if (!result) {
+                    $input.val('');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            // Reload photos in the form
+                            loadMeasurePhotos(entryId);
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function() {
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
+                });
+            });
+
+            // Clear the file input
+            $(this).val('');
+        });
+
+        /**
+         * Load photos for measure form
+         */
+        function loadMeasurePhotos(entryId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_entry_photos',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
+                success: function(response) {
+                    if (response.success && response.data.photos) {
+                        let html = '';
+                        response.data.photos.forEach(function(photo) {
+                            const categoryLabel = photo.category ? ` (${photo.category})` : '';
+                            html += `<div class="photo-item" style="display: inline-block; margin: 10px; position: relative;">
+                                <img src="${photo.image_url}" style="max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" onclick="window.open('${photo.image_url}', '_blank')" title="Click to open full size">
+                                <div style="font-size: 11px; color: #666;">${categoryLabel}</div>
+                            </div>`;
+                        });
+                        $('#measure-photos-container').html(html || '<p class="description">No photos uploaded yet.</p>');
+                    }
+                }
+            });
+        }
 
         // Record payment button click in edit form
         $(document).on('click', '#record-payment-form-btn', function() {
@@ -1293,6 +1836,46 @@
                 });
             }
         });
+
+        // ===========================================
+        // CANCEL ENTRY
+        // ===========================================
+
+        /**
+         * Cancel entry
+         */
+        function cancelEntry(entryId) {
+            console.log('Cancelling entry ID:', entryId);
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'cancel_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
+                success: function(response) {
+                    console.log('Cancel response:', response);
+                    if (response.success) {
+                        // Close all modals first
+                        $('.wp-staff-diary-modal').fadeOut();
+                        console.log('Modals closed, reloading page...');
+
+                        // Use setTimeout to ensure modal close animation completes
+                        setTimeout(function() {
+                            console.log('Executing reload now');
+                            window.location.reload();
+                        }, 300);
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Cancel error:', status, error);
+                    alert('An error occurred while cancelling the entry.');
+                }
+            });
+        }
 
         // ===========================================
         // DELETE ENTRY
@@ -1557,64 +2140,128 @@
         });
 
         // ===========================================
-        // DISCOUNT OFFERS
+        // MEASURE CONVERSIONS
         // ===========================================
 
         /**
-         * Send discount email button click
+         * Convert measure to quote
          */
-        $(document).on('click', '#send-discount-btn', function() {
-            const $button = $(this);
-            const entryId = $button.data('entry-id');
-            const discountType = $(`#discount-type-${entryId}`).val();
-            const discountValue = parseFloat($(`#discount-value-${entryId}`).val());
+        $(document).on('click', '#convert-measure-to-quote-btn', function() {
+            const measureId = $(this).data('measure-id');
 
-            // Validation
-            if (!discountValue || discountValue <= 0) {
-                alert('Please enter a valid discount amount');
-                return;
-            }
+            // Close view modal
+            $('#view-entry-modal').fadeOut();
 
-            if (discountType === 'percentage' && discountValue > 100) {
-                alert('Percentage discount cannot exceed 100%');
-                return;
-            }
-
-            // Confirmation
-            const discountDisplay = discountType === 'percentage' ? discountValue + '%' : '£' + discountValue.toFixed(2);
-            if (!confirm(`Are you sure you want to send a ${discountDisplay} discount offer to the customer?`)) {
-                return;
-            }
-
-            // Disable button and show loading
-            $button.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Sending...');
-
+            // Fetch measure data and populate quote form
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'send_discount_email',
+                    action: 'get_diary_entry',
                     nonce: wpStaffDiary.nonce,
-                    entry_id: entryId,
-                    discount_type: discountType,
-                    discount_value: discountValue
+                    entry_id: measureId
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert('Discount email sent successfully!');
-                        // Reload the entry details to show updated discount info
-                        viewEntryDetails(entryId);
+                        const measure = response.data.entry || response.data;
+
+                        // Redirect to quotes page with pre-filled data
+                        const params = new URLSearchParams({
+                            action: 'new',
+                            from_measure: measureId,
+                            customer_id: measure.customer_id || '',
+                            fitting_date: measure.fitting_date || '',
+                            fitting_address_line_1: measure.fitting_address_line_1 || '',
+                            fitting_address_line_2: measure.fitting_address_line_2 || '',
+                            fitting_address_line_3: measure.fitting_address_line_3 || '',
+                            fitting_postcode: measure.fitting_postcode || '',
+                            notes: measure.notes || ''
+                        });
+
+                        window.location.href = 'admin.php?page=wp-staff-diary-quotes&' + params.toString();
                     } else {
-                        alert('Error: ' + response.data.message);
-                        $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
+                        alert('Error loading measure data');
                     }
                 },
                 error: function() {
-                    alert('An error occurred while sending the discount email');
-                    $button.prop('disabled', false).html('<span class="dashicons dashicons-email"></span> Send Discount Email');
+                    alert('An error occurred while loading measure data');
                 }
             });
         });
+
+        /**
+         * Convert measure to job
+         */
+        $(document).on('click', '#convert-measure-to-job-btn', function() {
+            const measureId = $(this).data('measure-id');
+
+            // Close view modal
+            $('#view-entry-modal').fadeOut();
+
+            // Fetch measure data and open job form
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: measureId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const measure = response.data.entry || response.data;
+
+                        // Open job entry modal
+                        $('#entry-modal-title').text('Convert Measure to Job');
+                        $('#diary-entry-form')[0].reset();
+                        $('#entry-id').val('');
+
+                        // Pre-fill form with measure data
+                        if (measure.customer_id) {
+                            $('#customer-id').val(measure.customer_id);
+                            if (measure.customer) {
+                                $('#customer-search').hide();
+                                $('#selected-customer-name').text(measure.customer.customer_name);
+                                $('#selected-customer-display').show();
+                            }
+                        }
+
+                        // Pre-fill address
+                        if (measure.fitting_address_line_1) {
+                            $('#use-different-address').prop('checked', true).trigger('change');
+                            $('#fitting-address-line-1').val(measure.fitting_address_line_1);
+                            $('#fitting-address-line-2').val(measure.fitting_address_line_2 || '');
+                            $('#fitting-address-line-3').val(measure.fitting_address_line_3 || '');
+                            $('#fitting-postcode').val(measure.fitting_postcode || '');
+                        }
+
+                        // Pre-fill date (from measure date to fitting date)
+                        if (measure.fitting_date) {
+                            $('#fitting-date').val(measure.fitting_date);
+                        }
+
+                        // Pre-fill notes
+                        if (measure.notes) {
+                            $('#notes').val(measure.notes);
+                        }
+
+                        // Set job date to today
+                        $('#job-date').val(new Date().toISOString().split('T')[0]);
+
+                        $('#entry-modal').fadeIn();
+                    } else {
+                        alert('Error loading measure data');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while loading measure data');
+                }
+            });
+        });
+
+        // ===========================================
+        // DISCOUNT OFFERS
+        // ===========================================
 
         // ===========================================
         // CURRENCY SETTINGS (Settings Page)

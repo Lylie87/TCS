@@ -287,15 +287,15 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 10px; margin-bottom: 5px; border-bottom: 2px solid #2271b1; padding-bottom: 3px; }
+            h2 { font-size: 16px; color: #333; margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
-            .info-table { width: 100%; border-collapse: collapse; }
-            .info-table td { padding: 5px; font-size: 10px; }
+            .info-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
-            .financial-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
             .financial-table td.amount { text-align: right; }
             .total-row { background-color: #d1e7f7; font-weight: bold; font-size: 11px; }
@@ -304,13 +304,25 @@ class WP_Staff_Diary_PDF_Generator {
             .quote-validity { font-size: 10px; color: #666; margin-top: 5px; font-style: italic; }
             .quote-banner { background-color: #2271b1; color: white; padding: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 15px; }
             .address-section { background-color: #f9f9f9; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+            .next-steps-section { margin-top: 20px; padding: 10px; background-color: #e8f5e9; border-left: 4px solid #4caf50; font-size: 10px; }
         </style>';
 
-        // Company Header
-        $html .= '<div class="company-header">';
-        if ($company_logo && file_exists(get_attached_file($company_logo))) {
-            $html .= '<img src="' . get_attached_file($company_logo) . '" height="60" /><br>';
+        // Company Header with Logo
+        $html .= '<table style="width: 100%; margin-bottom: 20px; border: 0;" cellpadding="0" cellspacing="0"><tr>';
+
+        // Logo cell
+        if ($company_logo) {
+            $logo_path = get_attached_file($company_logo);
+            if ($logo_path && file_exists($logo_path)) {
+                $html .= '<td style="width: 100px; vertical-align: top; padding-right: 10px;">';
+                // Use @ prefix for TCPDF to load from filesystem
+                $html .= '<img src="@' . $logo_path . '" style="height: 50px; width: auto;" />';
+                $html .= '</td>';
+            }
         }
+
+        // Company info cell
+        $html .= '<td style="vertical-align: top;">';
         $html .= '<h1>' . htmlspecialchars($company_name) . '</h1>';
         if ($company_address) {
             $html .= '<div style="font-size: 10px;">' . nl2br(htmlspecialchars($company_address)) . '</div>';
@@ -327,7 +339,7 @@ class WP_Staff_Diary_PDF_Generator {
             if ($company_reg) $html .= 'Reg: ' . htmlspecialchars($company_reg);
             $html .= '</div>';
         }
-        $html .= '</div>';
+        $html .= '</td></tr></table>';
 
         // Quote Banner
         $html .= '<div class="quote-banner">QUOTATION</div>';
@@ -450,7 +462,7 @@ class WP_Staff_Diary_PDF_Generator {
         }
 
         // Quote-specific message
-        $html .= '<div style="margin-top: 15px; padding: 10px; background-color: #e8f5e9; border-left: 4px solid #4caf50; font-size: 10px;">';
+        $html .= '<div class="next-steps-section">';
         $html .= '<strong>Next Steps:</strong><br>';
         $html .= 'If you would like to proceed with this quotation, please contact us to arrange a fitting date and confirm your booking.';
         $html .= '</div>';
@@ -477,15 +489,15 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 10px; margin-bottom: 5px; border-bottom: 2px solid #2271b1; padding-bottom: 3px; }
+            h2 { font-size: 16px; color: #333; margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
-            .info-table { width: 100%; border-collapse: collapse; }
-            .info-table td { padding: 5px; font-size: 10px; }
+            .info-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
-            .financial-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
             .financial-table td.amount { text-align: right; }
             .total-row { background-color: #f9f9f9; font-weight: bold; }
@@ -495,11 +507,22 @@ class WP_Staff_Diary_PDF_Generator {
             .order-number { font-size: 20px; color: #2271b1; font-weight: bold; }
         </style>';
 
-        // Company Header
-        $html .= '<div class="company-header">';
-        if ($company_logo && file_exists(get_attached_file($company_logo))) {
-            $html .= '<img src="' . get_attached_file($company_logo) . '" height="60" /><br>';
+        // Company Header with Logo
+        $html .= '<table style="width: 100%; margin-bottom: 20px; border: 0;" cellpadding="0" cellspacing="0"><tr>';
+
+        // Logo cell
+        if ($company_logo) {
+            $logo_path = get_attached_file($company_logo);
+            if ($logo_path && file_exists($logo_path)) {
+                $html .= '<td style="width: 100px; vertical-align: top; padding-right: 10px;">';
+                // Use @ prefix for TCPDF to load from filesystem
+                $html .= '<img src="@' . $logo_path . '" style="height: 50px; width: auto;" />';
+                $html .= '</td>';
+            }
         }
+
+        // Company info cell
+        $html .= '<td style="vertical-align: top;">';
         $html .= '<h1>' . htmlspecialchars($company_name) . '</h1>';
         if ($company_address) {
             $html .= '<div style="font-size: 10px;">' . nl2br(htmlspecialchars($company_address)) . '</div>';
@@ -516,7 +539,7 @@ class WP_Staff_Diary_PDF_Generator {
             if ($company_reg) $html .= 'Reg: ' . htmlspecialchars($company_reg);
             $html .= '</div>';
         }
-        $html .= '</div>';
+        $html .= '</td></tr></table>';
 
         // Job Sheet Title
         $html .= '<h1>JOB SHEET</h1>';
@@ -553,7 +576,7 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '<h2>Job Details</h2>';
         $html .= '<table class="info-table">';
         if ($entry->job_date) {
-            $html .= '<tr><td width="25%"><strong>Job Date:</strong></td><td>' . date('d/m/Y', strtotime($entry->job_date));
+            $html .= '<tr><td width="25%"><strong>Order Date:</strong></td><td>' . date('d/m/Y', strtotime($entry->job_date));
             if ($entry->job_time) $html .= ' at ' . date('H:i', strtotime($entry->job_time));
             $html .= '</td></tr>';
         }
@@ -650,8 +673,9 @@ class WP_Staff_Diary_PDF_Generator {
             $html .= '<div style="font-size: 10px;">' . nl2br(htmlspecialchars($company_bank)) . '</div>';
         }
 
-        // Terms and Conditions
+        // Separator before Terms & Conditions
         if ($terms) {
+            $html .= '<hr style="margin-top: 20px; margin-bottom: 15px; border: 0; border-top: 1px solid #ddd;" />';
             $html .= '<div class="terms">';
             $html .= '<strong>Terms & Conditions:</strong><br>';
             $html .= strip_tags($terms, '<p><br><strong><em><ul><ol><li>');
