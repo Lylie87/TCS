@@ -48,6 +48,11 @@ register_deactivation_hook(__FILE__, 'deactivate_wp_staff_diary');
 require WP_STAFF_DIARY_PATH . 'includes/class-wp-staff-diary.php';
 
 /**
+ * Load database class early (needed by other classes)
+ */
+require_once WP_STAFF_DIARY_PATH . 'includes/class-database.php';
+
+/**
  * Currency helper class
  */
 require_once WP_STAFF_DIARY_PATH . 'includes/class-currency-helper.php';
