@@ -137,6 +137,9 @@
                     $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Update Quote');
                     $('#quote-upload-photo-btn').prop('disabled', false);
 
+                    // Load photos for this quote
+                    loadQuotePhotos(quoteId);
+
                     $('#quote-modal').fadeIn(200);
                 } else {
                     alert('Error loading quote: ' + (response.data.message || 'Unknown error'));
@@ -804,8 +807,47 @@
      * Load quote photos
      */
     function loadQuotePhotos(quoteId) {
-        // This would fetch and display photos for the current quote
-        // Similar to job photos in main admin.js
+        if (!quoteId) return;
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'get_diary_entry',
+                nonce: wpStaffDiary.nonce,
+                entry_id: quoteId
+            },
+            success: function(response) {
+                if (response.success) {
+                    const entry = response.data.entry || response.data;
+
+                    if (entry.images && entry.images.length > 0) {
+                        let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
+                        entry.images.forEach(function(image) {
+                            const categoryLabel = image.category ? ` (${image.category})` : '';
+                            const captionLabel = image.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${image.image_caption}</div>` : '';
+
+                            photosHtml += `<div style="position: relative;">
+                                <img src="${image.image_url}"
+                                     alt="Quote photo"
+                                     style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                                     onclick="window.open('${image.image_url}', '_blank')"
+                                     title="Click to open full size">
+                                <div style="font-size: 10px; margin-top: 2px; color: #999; font-weight: 600;">${categoryLabel}</div>
+                                ${captionLabel}
+                            </div>`;
+                        });
+                        photosHtml += '</div>';
+                        $('#quote-photos-container').html(photosHtml);
+                    } else {
+                        $('#quote-photos-container').html('<p class="description">No photos uploaded yet.</p>');
+                    }
+                }
+            },
+            error: function() {
+                console.error('Failed to load quote photos');
+            }
+        });
     }
 
     /**

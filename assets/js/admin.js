@@ -18,6 +18,75 @@
         let currentDiscountValue = 0;
 
         // ===========================================
+        // PHOTO CATEGORY MODAL
+        // ===========================================
+
+        /**
+         * Show photo category selection modal
+         */
+        function showPhotoCategory(file, entryId, callback) {
+            // Prevent duplicate modals
+            if ($('#photo-category-modal-admin').length > 0) {
+                return;
+            }
+
+            const categoryHtml = `
+                <div style="padding: 20px;">
+                    <h3 style="margin-top: 0;">Photo Category</h3>
+                    <p>Select the category for this photo:</p>
+                    <select id="photo-category-select-admin" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                        <option value="before">Before</option>
+                        <option value="during">During</option>
+                        <option value="after">After</option>
+                        <option value="general">General</option>
+                    </select>
+                    <p>Add a caption (optional):</p>
+                    <input type="text" id="photo-caption-input-admin" placeholder="Enter photo caption..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                    <div style="text-align: right;">
+                        <button type="button" class="button" id="cancel-photo-upload-admin" style="margin-right: 10px;">Cancel</button>
+                        <button type="button" class="button button-primary" id="confirm-photo-upload-admin">Upload Photo</button>
+                    </div>
+                </div>
+            `;
+
+            // Create temporary modal
+            $('body').append(`
+                <div id="photo-category-modal-admin" style="display: none; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
+                    <div style="background-color: #fff; margin: 10% auto; padding: 0; border: 1px solid #888; width: 400px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        ${categoryHtml}
+                    </div>
+                </div>
+            `);
+
+            $('#photo-category-modal-admin').fadeIn();
+
+            // Handle cancel
+            $('#cancel-photo-upload-admin').on('click', function() {
+                $('#photo-category-modal-admin').remove();
+                $(document).off('keydown.photoCategoryModalAdmin');
+                callback(null);
+            });
+
+            // Handle confirm
+            $('#confirm-photo-upload-admin').on('click', function() {
+                const category = $('#photo-category-select-admin').val();
+                const caption = $('#photo-caption-input-admin').val();
+                $('#photo-category-modal-admin').remove();
+                $(document).off('keydown.photoCategoryModalAdmin');
+                callback({category: category, caption: caption});
+            });
+
+            // Handle escape key
+            $(document).on('keydown.photoCategoryModalAdmin', function(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    $('#photo-category-modal-admin').remove();
+                    $(document).off('keydown.photoCategoryModalAdmin');
+                    callback(null);
+                }
+            });
+        }
+
+        // ===========================================
         // NAVIGATION & UI CONTROLS
         // ===========================================
 
@@ -239,8 +308,17 @@
                 if (entry.images && entry.images.length > 0) {
                     let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
                     entry.images.forEach(function(image) {
+                        const categoryLabel = image.category ? ` (${image.category})` : '';
+                        const captionLabel = image.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${image.image_caption}</div>` : '';
+
                         photosHtml += `<div style="position: relative;">
-                            <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                            <img src="${image.image_url}"
+                                 alt="Job photo"
+                                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                                 onclick="window.open('${image.image_url}', '_blank')"
+                                 title="Click to open full size">
+                            <div style="font-size: 10px; margin-top: 2px; color: #999; font-weight: 600;">${categoryLabel}</div>
+                            ${captionLabel}
                         </div>`;
                     });
                     photosHtml += '</div>';
@@ -995,8 +1073,10 @@
             if (entry.images && entry.images.length > 0) {
                 html += '<div class="job-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">';
                 entry.images.forEach(function(image) {
+                    const categoryLabel = image.category ? `<div style="font-size: 11px; color: #999; font-weight: 600; margin-top: 4px;">(${image.category})</div>` : '';
                     html += `<div class="job-image-item" style="position: relative;">
-                        <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')">
+                        <img src="${image.image_url}" alt="Job photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${image.image_url}', '_blank')" title="Click to open full size">
+                        ${categoryLabel}
                         ${image.image_caption ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${image.image_caption}</p>` : ''}
                     </div>`;
                 });
@@ -1089,37 +1169,53 @@
         $(document).on('change', '[id^="photo-upload-input-"]:not(#photo-upload-input-form)', function() {
             const entryId = $(this).attr('id').replace('photo-upload-input-', '');
             const file = this.files[0];
+            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
+                $input.val('');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('action', 'upload_job_image');
-            formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('diary_entry_id', entryId);
-            formData.append('image', file);
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        alert('Photo uploaded successfully!');
-                        viewEntryDetails(entryId); // Reload the view
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while uploading the photo.');
+            // Show category selection modal
+            showPhotoCategory(file, entryId, function(result) {
+                if (!result) {
+                    $input.val('');
+                    return;
                 }
+
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            viewEntryDetails(entryId); // Reload the view
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function() {
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
+                });
             });
         });
 
@@ -1181,38 +1277,53 @@
         $(document).on('change', '#photo-upload-input-form', function() {
             const entryId = $(this).data('entry-id');
             const file = this.files[0];
+            const $input = $(this);
 
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
                 alert('Please select an image file');
+                $input.val('');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('action', 'upload_job_image');
-            formData.append('nonce', wpStaffDiary.nonce);
-            formData.append('diary_entry_id', entryId);
-            formData.append('image', file);
-
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        alert('Photo uploaded successfully!');
-                        // Reload entry to show new photo
-                        loadEntryForEdit(entryId);
-                    } else {
-                        alert('Error: ' + (response.data.message || 'Failed to upload photo'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while uploading the photo.');
+            // Show category selection modal
+            showPhotoCategory(file, entryId, function(result) {
+                if (!result) {
+                    $input.val('');
+                    return;
                 }
+
+                const formData = new FormData();
+                formData.append('action', 'upload_job_image');
+                formData.append('nonce', wpStaffDiary.nonce);
+                formData.append('diary_entry_id', entryId);
+                formData.append('image', file);
+                formData.append('category', result.category);
+                if (result.caption) {
+                    formData.append('caption', result.caption);
+                }
+
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Photo uploaded successfully!');
+                            // Reload entry to show new photo
+                            loadEntryForEdit(entryId);
+                        } else {
+                            alert('Error: ' + (response.data.message || 'Failed to upload photo'));
+                        }
+                        $input.val('');
+                    },
+                    error: function() {
+                        alert('An error occurred while uploading the photo.');
+                        $input.val('');
+                    }
             });
 
             // Clear the file input
