@@ -49,6 +49,7 @@ class WP_Staff_Diary {
 
         // Services
         require_once WP_STAFF_DIARY_PATH . 'includes/services/class-template-service.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/services/class-sms-service.php';
 
         // Legacy admin class (for backwards compatibility)
         require_once WP_STAFF_DIARY_PATH . 'admin/class-admin.php';
