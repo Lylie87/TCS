@@ -71,20 +71,34 @@
      * Initialize modal operations
      */
     function initModals() {
-        // Close modals on X click
-        $('.wp-staff-diary-modal-close').on('click', closeAllModals);
+        // Close modals on X click (but handle customer modal separately)
+        $('.wp-staff-diary-modal-close').on('click', function() {
+            // Check if this is the customer modal's close button
+            if ($(this).closest('#quick-add-customer-modal').length) {
+                $('#quick-add-customer-modal').fadeOut(200);
+            } else {
+                closeAllModals();
+            }
+        });
 
-        // Close modals on background click
+        // Close modals on background click (but handle customer modal separately)
         $('.wp-staff-diary-modal').on('click', function(e) {
             if (e.target === this) {
-                closeAllModals();
+                // Check if this is the customer modal
+                if ($(this).attr('id') === 'quick-add-customer-modal') {
+                    $('#quick-add-customer-modal').fadeOut(200);
+                } else {
+                    closeAllModals();
+                }
             }
         });
 
         // Cancel buttons
         $('#cancel-quote-btn').on('click', closeAllModals);
         $('.cancel-convert').on('click', closeAllModals);
-        $('#cancel-quick-customer').on('click', closeAllModals);
+        $('#cancel-quick-customer').on('click', function() {
+            $('#quick-add-customer-modal').fadeOut(200);
+        });
     }
 
     /**
@@ -118,6 +132,11 @@
                     const quote = response.data.entry || response.data;
                     populateQuoteForm(quote);
                     $('#quote-modal-title').text('Edit Quote');
+
+                    // Enable photo uploads and update button text for existing quotes
+                    $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Update Quote');
+                    $('#quote-upload-photo-btn').prop('disabled', false);
+
                     $('#quote-modal').fadeIn(200);
                 } else {
                     alert('Error loading quote: ' + (response.data.message || 'Unknown error'));
@@ -232,9 +251,24 @@
             data: Object.fromEntries(formData),
             success: function(response) {
                 if (response.success) {
-                    alert('Quote saved successfully!');
-                    closeAllModals();
-                    location.reload();
+                    const isNewQuote = !currentQuoteId;
+
+                    if (isNewQuote && response.data.entry_id) {
+                        // New quote created - store ID and keep modal open for photo uploads
+                        currentQuoteId = response.data.entry_id;
+                        alert('Quote saved successfully! You can now add photos to this quote.');
+
+                        // Update button text to show we're now editing
+                        $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Update Quote');
+
+                        // Enable photo upload button
+                        $('#quote-upload-photo-btn').prop('disabled', false);
+                    } else {
+                        // Existing quote updated - close and reload
+                        alert('Quote updated successfully!');
+                        closeAllModals();
+                        location.reload();
+                    }
                 } else {
                     alert('Error saving quote: ' + (response.data.message || 'Unknown error'));
                     $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Quote');
@@ -253,44 +287,56 @@
     function openConvertToJobModal(quoteId) {
         $('#convert-quote-id').val(quoteId);
         $('#convert-to-job-form')[0].reset();
-        $('#fitter-availability-display').hide();
+        $('#fitter-availability-display').show();
         $('#availability-calendar').empty();
         $('#convert-to-job-modal').fadeIn(200);
 
-        // Add fitter selection handler to load availability
-        $('#convert-fitter').off('change').on('change', function() {
-            const fitterId = $(this).val();
-            if (fitterId) {
-                loadFitterAvailability(fitterId);
-            } else {
-                $('#fitter-availability-display').hide();
-            }
+        // Load availability for ALL fitters by default
+        loadFitterAvailability(null);
+
+        // Add time period selection handler to refresh availability
+        $('#convert-fitting-time-period').off('change').on('change', function() {
+            const timePeriod = $(this).val();
+            loadFitterAvailability(null, timePeriod);
         });
     }
 
     /**
      * Load fitter availability
+     * @param {number|null} fitterId - Specific fitter ID or null for all fitters
+     * @param {string|null} timePeriod - 'am', 'pm', or null for all day
      */
-    function loadFitterAvailability(fitterId) {
+    function loadFitterAvailability(fitterId, timePeriod) {
         $('#fitter-availability-display').show();
         $('#availability-loading').show();
         $('#availability-calendar').empty();
 
+        const requestData = {
+            action: 'get_fitter_availability',
+            nonce: wpStaffDiary.nonce,
+            start_date: new Date().toISOString().split('T')[0],
+            days: 14
+        };
+
+        // Only include fitter_id if specified (otherwise check all fitters)
+        if (fitterId) {
+            requestData.fitter_id = fitterId;
+        }
+
+        // Include time period for filtering availability
+        if (timePeriod) {
+            requestData.time_period = timePeriod;
+        }
+
         $.ajax({
             url: wpStaffDiary.ajaxUrl,
             type: 'POST',
-            data: {
-                action: 'get_fitter_availability',
-                nonce: wpStaffDiary.nonce,
-                fitter_id: fitterId,
-                start_date: new Date().toISOString().split('T')[0],
-                days: 14
-            },
+            data: requestData,
             success: function(response) {
                 $('#availability-loading').hide();
                 if (response.success) {
                     currentAvailability = response.data.availability;
-                    displayFitterAvailability(response.data.availability);
+                    displayFitterAvailability(response.data.availability, timePeriod);
                 } else {
                     $('#availability-calendar').html('<p style="color: #d63638;">Error loading availability</p>');
                 }
@@ -304,8 +350,10 @@
 
     /**
      * Display fitter availability calendar
+     * @param {Array} availability - Availability data
+     * @param {string|null} timePeriod - Selected time period filter
      */
-    function displayFitterAvailability(availability) {
+    function displayFitterAvailability(availability, timePeriod) {
         const $calendar = $('#availability-calendar');
         $calendar.empty();
 
@@ -356,7 +404,8 @@
                 'background: white;' +
                 'cursor: pointer;' +
                 'transition: all 0.2s;' +
-                '" data-date="' + day.date + '" data-available="' + (statusClass === 'available' ? '1' : '0') + '"></div>');
+                '" data-date="' + day.date + '" data-available="' + (statusClass === 'available' ? '1' : '0') + '" ' +
+                'data-available-fitter-id="' + (day.available_fitter_id || '') + '"></div>');
 
             $dayCard.html(
                 '<div style="font-weight: bold; margin-bottom: 3px;">' + day.day_name.substring(0, 3) + '</div>' +
@@ -368,17 +417,26 @@
             // Add click handler to select date
             $dayCard.on('click', function() {
                 const date = $(this).data('date');
+                const availableFitterId = $(this).data('available-fitter-id');
+
                 $('#convert-fitting-date').val(date);
 
                 // Highlight selected
                 $('.availability-day-card').css('box-shadow', 'none');
                 $(this).css('box-shadow', '0 0 0 3px #2271b1');
 
-                // Pre-select time period if partially booked
-                if (!day.am_available && day.pm_available) {
-                    $('#convert-fitting-time-period').val('pm');
-                } else if (day.am_available && !day.pm_available) {
-                    $('#convert-fitting-time-period').val('am');
+                // Auto-assign available fitter if one was found
+                if (availableFitterId) {
+                    $('#convert-fitter').val(availableFitterId);
+                }
+
+                // Pre-select time period if partially booked and no specific period selected
+                if (!timePeriod) {
+                    if (!day.am_available && day.pm_available) {
+                        $('#convert-fitting-time-period').val('pm');
+                    } else if (day.am_available && !day.pm_available) {
+                        $('#convert-fitting-time-period').val('am');
+                    }
                 }
             });
 
@@ -563,6 +621,14 @@
         $('#quote-selected-customer-display').show();
         $('#quote-customer-search').hide();
         $('#quote-customer-search-results').empty().hide();
+
+        // Auto-fill fitting address from customer address
+        if (customer.address_line_1 || customer.address_line_2 || customer.address_line_3 || customer.postcode) {
+            $('#quote-fitting-address-line-1').val(customer.address_line_1 || '');
+            $('#quote-fitting-address-line-2').val(customer.address_line_2 || '');
+            $('#quote-fitting-address-line-3').val(customer.address_line_3 || '');
+            $('#quote-fitting-postcode').val(customer.postcode || '');
+        }
     }
 
     /**
@@ -762,11 +828,10 @@
      * Calculate quote total
      */
     function calculateQuoteTotal() {
-        // Product total
+        // Product total (without fitting cost)
         const qty = parseFloat($('#quote-sq-mtr-qty').val()) || 0;
         const pricePerUnit = parseFloat($('#quote-price-per-sq-mtr').val()) || 0;
-        const fittingCost = parseFloat($('#quote-fitting-cost').val()) || 0;
-        const productTotal = (qty * pricePerUnit) + fittingCost;
+        const productTotal = qty * pricePerUnit;
 
         $('#quote-product-total-display').text(productTotal.toFixed(2));
 
@@ -780,8 +845,11 @@
 
         $('#quote-accessories-total-display').text(accessoriesTotal.toFixed(2));
 
-        // Subtotal
-        const subtotal = productTotal + accessoriesTotal;
+        // Fitting cost (separate line item)
+        const fittingCost = parseFloat($('#quote-fitting-cost').val()) || 0;
+
+        // Subtotal (product + accessories + fitting)
+        const subtotal = productTotal + accessoriesTotal + fittingCost;
         $('#quote-subtotal-display').text(subtotal.toFixed(2));
 
         // VAT
@@ -902,6 +970,10 @@
         $('.quote-accessory-checkbox').prop('checked', false);
         $('.quote-accessory-quantity').prop('disabled', true).val(1);
         calculateQuoteTotal();
+
+        // Reset save button text and disable photo uploads for new quotes
+        $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Save Quote');
+        $('#quote-upload-photo-btn').prop('disabled', true);
     }
 
     /**
@@ -1264,16 +1336,6 @@
         $('.wp-staff-diary-modal').fadeOut(200);
     }
 
-    // Initialize on document ready
-    $(document).ready(function() {
-        // Only initialize if we're on the quotes page
-        if ($('#add-new-quote').length) {
-            initQuotes();
-        }
-    });
-
-})(jQuery);
-
     // ===========================================
     // DISCOUNT OFFERS (for Quotes)
     // ===========================================
@@ -1334,3 +1396,12 @@
         });
     });
 
+    // Initialize on document ready
+    $(document).ready(function() {
+        // Only initialize if we're on the quotes page
+        if ($('#add-new-quote').length) {
+            initQuotes();
+        }
+    });
+
+})(jQuery);
