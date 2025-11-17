@@ -125,7 +125,7 @@
         // ===========================================
 
         // Add new entry button
-        $('#add-new-entry').on('click', function() {
+        $(document).on('click', '#add-new-entry', function() {
             openEntryModal();
         });
 
