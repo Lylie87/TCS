@@ -153,6 +153,7 @@ class WP_Staff_Diary {
 
         // AJAX handlers - Quotes & Discounts
         $this->loader->add_action('wp_ajax_send_discount_email', $plugin_admin, 'send_discount_email');
+        $this->loader->add_action('wp_ajax_send_discount_offer', $plugin_admin, 'send_discount_email');
 
         // AJAX handlers - WooCommerce Integration
         $this->loader->add_action('wp_ajax_search_woocommerce_products', $plugin_admin, 'search_woocommerce_products');

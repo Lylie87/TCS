@@ -193,8 +193,12 @@ class WP_Staff_Diary_Email_Template_Processor {
         $company_name = get_option('wp_staff_diary_company_name', get_bloginfo('name'));
         $subject = sprintf('Special Discount Offer - %s - Order #%s', $company_name, $entry->order_number);
 
-        // Send email
-        $headers = array('Content-Type: text/plain; charset=UTF-8');
+        // Send email with company name as sender
+        $admin_email = get_option('admin_email');
+        $headers = array(
+            'Content-Type: text/plain; charset=UTF-8',
+            'From: ' . $company_name . ' <' . $admin_email . '>'
+        );
         $sent = wp_mail($customer_email, $subject, $email_content, $headers);
 
         if ($sent) {
