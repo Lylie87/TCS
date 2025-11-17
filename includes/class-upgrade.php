@@ -68,6 +68,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_2_0();
         }
 
+        // Upgrade to v2.6.1 - Add quote and discount tracking
+        if (version_compare($from_version, '2.6.1', '<')) {
+            self::upgrade_to_2_6_1();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
@@ -220,6 +225,16 @@ class WP_Staff_Diary_Upgrade {
         if (empty($column_check)) {
             $wpdb->query("ALTER TABLE $table_images ADD COLUMN image_category varchar(50) DEFAULT 'general' AFTER image_caption");
             $wpdb->query("ALTER TABLE $table_images ADD KEY image_category (image_category)");
+        }
+
+        // Add SMS opt-in fields to customers table (v2.7.0)
+        $table_customers = $wpdb->prefix . 'staff_diary_customers';
+        $sms_optin_check = $wpdb->get_results("SHOW COLUMNS FROM $table_customers LIKE 'sms_opt_in'");
+        if (empty($sms_optin_check)) {
+            $wpdb->query("ALTER TABLE $table_customers ADD COLUMN sms_opt_in tinyint(1) DEFAULT 1 AFTER customer_phone");
+            $wpdb->query("ALTER TABLE $table_customers ADD COLUMN sms_opt_in_date datetime DEFAULT NULL AFTER sms_opt_in");
+            $wpdb->query("ALTER TABLE $table_customers ADD COLUMN sms_opt_out_date datetime DEFAULT NULL AFTER sms_opt_in_date");
+            $wpdb->query("ALTER TABLE $table_customers ADD KEY sms_opt_in (sms_opt_in)");
         }
 
         // Insert default accessories if table is empty
@@ -414,5 +429,109 @@ class WP_Staff_Diary_Upgrade {
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_notification_logs);
+    }
+
+    /**
+     * Upgrade to version 2.6.1
+     * Add quote and discount tracking system
+     */
+    private static function upgrade_to_2_6_1() {
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+        $charset_collate = $wpdb->get_charset_collate();
+
+        // Add quote_date column
+        $quote_date_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'quote_date'");
+        if (empty($quote_date_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN quote_date date DEFAULT NULL AFTER job_date");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY quote_date (quote_date)");
+        }
+
+        // Add discount tracking columns to entries table
+        $discount_type_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'discount_type'");
+        if (empty($discount_type_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN discount_type varchar(20) DEFAULT NULL AFTER fitting_cost");
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN discount_value decimal(10,2) DEFAULT NULL AFTER discount_type");
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN discount_applied_date datetime DEFAULT NULL AFTER discount_value");
+        }
+
+        // Add quote acceptance tracking columns
+        $acceptance_token_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'acceptance_token'");
+        if (empty($acceptance_token_exists)) {
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN acceptance_token varchar(64) DEFAULT NULL AFTER discount_applied_date");
+            $wpdb->query("ALTER TABLE $table_diary ADD COLUMN accepted_date datetime DEFAULT NULL AFTER acceptance_token");
+            $wpdb->query("ALTER TABLE $table_diary ADD KEY acceptance_token (acceptance_token)");
+        }
+
+        // Create discount offers tracking table
+        $table_discount_offers = $wpdb->prefix . 'staff_diary_discount_offers';
+
+        $sql_discount_offers = "CREATE TABLE $table_discount_offers (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) NOT NULL,
+            discount_type varchar(20) NOT NULL,
+            discount_value decimal(10,2) NOT NULL,
+            email_sent_date datetime DEFAULT NULL,
+            sent_by bigint(20) DEFAULT NULL,
+            accepted_date datetime DEFAULT NULL,
+            status varchar(20) DEFAULT 'sent',
+            email_content text DEFAULT NULL,
+            metadata text DEFAULT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY status (status),
+            KEY email_sent_date (email_sent_date)
+        ) $charset_collate;";
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql_discount_offers);
+
+        // Add quotation settings options
+        if (get_option('wp_staff_diary_quote_enable_auto_discount') === false) {
+            add_option('wp_staff_diary_quote_enable_auto_discount', '0');
+        }
+        if (get_option('wp_staff_diary_quote_auto_discount_days') === false) {
+            add_option('wp_staff_diary_quote_auto_discount_days', '7');
+        }
+        if (get_option('wp_staff_diary_quote_auto_discount_type') === false) {
+            add_option('wp_staff_diary_quote_auto_discount_type', 'percentage');
+        }
+        if (get_option('wp_staff_diary_quote_auto_discount_value') === false) {
+            add_option('wp_staff_diary_quote_auto_discount_value', '5');
+        }
+        if (get_option('wp_staff_diary_quote_validity_days') === false) {
+            add_option('wp_staff_diary_quote_validity_days', '30');
+        }
+        if (get_option('wp_staff_diary_quote_email_template') === false) {
+            add_option('wp_staff_diary_quote_email_template', self::get_default_quote_email_template());
+        }
+
+        // Flag to flush rewrite rules for quote acceptance URLs
+        update_option('wp_staff_diary_flush_rewrite_rules', '1');
+    }
+
+    /**
+     * Get default quote discount email template
+     */
+    private static function get_default_quote_email_template() {
+        return "Dear {customer_name},
+
+Thank you for your interest in our services. We provided you with a quote on {quote_date} for {product_description}.
+
+We're pleased to offer you a special {discount_type_label} discount on this quote:
+
+Original Amount: {original_amount}
+Discount: {discount_display}
+Final Amount: {final_amount}
+
+This offer is valid until {expiry_date}. To accept this quote and secure your booking, please click the link below:
+
+{quote_link}
+
+If you have any questions, please don't hesitate to contact us.
+
+Best regards,
+{company_name}";
     }
 }

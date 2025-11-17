@@ -47,6 +47,10 @@ class WP_Staff_Diary {
         require_once WP_STAFF_DIARY_PATH . 'includes/class-database.php';
         require_once WP_STAFF_DIARY_PATH . 'includes/class-pdf-generator.php';
 
+        // Services
+        require_once WP_STAFF_DIARY_PATH . 'includes/services/class-template-service.php';
+        require_once WP_STAFF_DIARY_PATH . 'includes/services/class-sms-service.php';
+
         // Legacy admin class (for backwards compatibility)
         require_once WP_STAFF_DIARY_PATH . 'admin/class-admin.php';
         require_once WP_STAFF_DIARY_PATH . 'public/class-public.php';
@@ -146,6 +150,9 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_add_accessory', $plugin_admin, 'add_accessory');
         $this->loader->add_action('wp_ajax_update_accessory', $plugin_admin, 'update_accessory');
         $this->loader->add_action('wp_ajax_delete_accessory', $plugin_admin, 'delete_accessory');
+
+        // AJAX handlers - Quotes & Discounts
+        $this->loader->add_action('wp_ajax_send_discount_email', $plugin_admin, 'send_discount_email');
 
         // AJAX handlers - WooCommerce Integration
         $this->loader->add_action('wp_ajax_search_woocommerce_products', $plugin_admin, 'search_woocommerce_products');

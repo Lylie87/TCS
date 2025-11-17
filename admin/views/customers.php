@@ -121,6 +121,19 @@ $customers = $db->get_all_customers();
             <div class="form-row">
                 <label for="customer-phone">Phone</label>
                 <input type="tel" id="customer-phone" name="customer_phone" style="width: 100%;">
+                <p class="description" style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
+                    For SMS notifications, use E.164 format (e.g., +441234567890)
+                </p>
+            </div>
+
+            <div class="form-row">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="customer-sms-opt-in" name="sms_opt_in" value="1" style="margin-right: 8px;">
+                    <span>Customer has opted in to receive SMS notifications</span>
+                </label>
+                <p class="description" style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
+                    Only customers who opt in will receive SMS payment reminders and notifications.
+                </p>
             </div>
 
             <div class="form-row">
@@ -313,6 +326,7 @@ jQuery(document).ready(function($) {
                     $('#customer-id').val(customer.id);
                     $('#customer-name').val(customer.customer_name);
                     $('#customer-phone').val(customer.customer_phone || '');
+                    $('#customer-sms-opt-in').prop('checked', customer.sms_opt_in == 1);
                     $('#customer-email').val(customer.customer_email || '');
                     $('#address-line-1').val(customer.address_line_1 || '');
                     $('#address-line-2').val(customer.address_line_2 || '');
@@ -448,6 +462,7 @@ jQuery(document).ready(function($) {
             nonce: wpStaffDiary.nonce,
             customer_name: $('#customer-name').val(),
             customer_phone: $('#customer-phone').val(),
+            sms_opt_in: $('#customer-sms-opt-in').is(':checked') ? '1' : '0',
             customer_email: $('#customer-email').val(),
             address_line_1: $('#address-line-1').val(),
             address_line_2: $('#address-line-2').val(),
@@ -493,12 +508,13 @@ jQuery(document).ready(function($) {
         $('#customer-modal').fadeOut();
     });
 
-    // Close modal when clicking outside
-    $(window).on('click', function(event) {
-        if ($(event.target).hasClass('wp-staff-diary-modal')) {
-            $('.wp-staff-diary-modal').fadeOut();
-        }
-    });
+    // Close modal when clicking outside - DISABLED to prevent accidental data loss
+    // Users must explicitly click the X button or Cancel button to close modals
+    // $(window).on('click', function(event) {
+    //     if ($(event.target).hasClass('wp-staff-diary-modal')) {
+    //         $('.wp-staff-diary-modal').fadeOut();
+    //     }
+    // });
 
     // Search Customers
     let searchTimeout;

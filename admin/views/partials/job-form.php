@@ -155,6 +155,11 @@ $accessories = $db->get_all_accessories();
                     <label for="job-date">Order Date <span class="required">*</span></label>
                     <input type="date" id="job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>" required>
                 </div>
+                <div class="form-field">
+                    <label for="quote-date">Quote Date</label>
+                    <input type="date" id="quote-date" name="quote_date">
+                    <p class="description">Date the quote was provided to the customer</p>
+                </div>
                 <?php if ($job_time_type === 'time'): ?>
                 <div class="form-field">
                     <label for="job-time">Job Time</label>
@@ -302,8 +307,16 @@ $accessories = $db->get_all_accessories();
                     <td class="amount">£<span id="vat-display">0.00</span></td>
                 </tr>
                 <?php endif; ?>
+                <tr id="original-total-row" style="display: none;">
+                    <td>Original Total:</td>
+                    <td class="amount">£<span id="original-total-display">0.00</span></td>
+                </tr>
+                <tr id="discount-row" style="display: none;">
+                    <td>Discount (<span id="discount-label-display"></span>):</td>
+                    <td class="amount" style="color: #2271b1;">-£<span id="discount-amount-display">0.00</span></td>
+                </tr>
                 <tr class="total-row">
-                    <td><strong>Total:</strong></td>
+                    <td><strong><span id="total-label">Total:</span></strong></td>
                     <td class="amount"><strong>£<span id="total-display">0.00</span></strong></td>
                 </tr>
             </table>

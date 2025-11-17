@@ -106,6 +106,7 @@ class WP_Staff_Diary_Customers_Controller extends WP_Staff_Diary_Base_Controller
             'address_line_3' => 'text',
             'postcode' => 'text',
             'customer_phone' => 'text',
+            'sms_opt_in' => 'text',
             'customer_email' => 'email',
             'notes' => 'textarea'
         ));
@@ -223,6 +224,7 @@ class WP_Staff_Diary_Customers_Controller extends WP_Staff_Diary_Base_Controller
             'address_line_3' => 'text',
             'postcode' => 'text',
             'customer_phone' => 'text',
+            'sms_opt_in' => 'text',
             'customer_email' => 'email',
             'notes' => 'textarea'
         ));

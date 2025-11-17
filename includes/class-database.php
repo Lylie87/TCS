@@ -810,4 +810,182 @@ class WP_Staff_Diary_Database {
             $limit
         ));
     }
+
+    /**
+     * Get all email templates
+     *
+     * @return array
+     */
+    public function get_all_email_templates() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_email_templates';
+
+        return $wpdb->get_results("SELECT * FROM $table ORDER BY template_name ASC");
+    }
+
+    /**
+     * Get a single email template by ID
+     *
+     * @param int $id Template ID
+     * @return object|null
+     */
+    public function get_email_template($id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_email_templates';
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d",
+            $id
+        ));
+    }
+
+    /**
+     * Get email template by slug
+     *
+     * @param string $slug Template slug
+     * @return object|null
+     */
+    public function get_email_template_by_slug($slug) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_email_templates';
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE template_slug = %s AND is_active = 1",
+            $slug
+        ));
+    }
+
+    /**
+     * Create email template
+     *
+     * @param array $data Template data
+     * @return int|false Template ID on success, false on failure
+     */
+    public function create_email_template($data) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_email_templates';
+
+        $result = $wpdb->insert($table, array(
+            'template_name' => $data['template_name'],
+            'template_slug' => $data['template_slug'],
+            'subject' => $data['subject'],
+            'body' => $data['body'],
+            'is_active' => isset($data['is_active']) ? $data['is_active'] : 1,
+            'is_default' => isset($data['is_default']) ? $data['is_default'] : 0
+        ));
+
+        return $result ? $wpdb->insert_id : false;
+    }
+
+    /**
+     * Update email template
+     *
+     * @param int $id Template ID
+     * @param array $data Template data
+     * @return bool
+     */
+    public function update_email_template($id, $data) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_email_templates';
+
+        return $wpdb->update(
+            $table,
+            array(
+                'template_name' => $data['template_name'],
+                'template_slug' => $data['template_slug'],
+                'subject' => $data['subject'],
+                'body' => $data['body'],
+                'is_active' => isset($data['is_active']) ? $data['is_active'] : 1
+            ),
+            array('id' => $id)
+        ) !== false;
+    }
+
+    /**
+     * Delete email template
+     *
+     * @param int $id Template ID
+     * @return bool
+     */
+    public function delete_email_template($id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_email_templates';
+
+        // Don't delete default templates
+        $template = $this->get_email_template($id);
+        if ($template && $template->is_default) {
+            return false;
+        }
+
+        return $wpdb->delete($table, array('id' => $id)) !== false;
+    }
+
+    /**
+     * Log SMS message
+     *
+     * @param array $data SMS log data
+     * @return int|false Log ID on success, false on failure
+     */
+    public function log_sms($data) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_sms_log';
+
+        $result = $wpdb->insert($table, array(
+            'diary_entry_id' => isset($data['diary_entry_id']) ? $data['diary_entry_id'] : null,
+            'customer_id' => isset($data['customer_id']) ? $data['customer_id'] : null,
+            'phone_number' => $data['phone_number'],
+            'message' => $data['message'],
+            'status' => isset($data['status']) ? $data['status'] : 'pending',
+            'twilio_sid' => isset($data['twilio_sid']) ? $data['twilio_sid'] : null,
+            'cost' => isset($data['cost']) ? $data['cost'] : 0.0000,
+            'error_message' => isset($data['error_message']) ? $data['error_message'] : null
+        ));
+
+        return $result ? $wpdb->insert_id : false;
+    }
+
+    /**
+     * Get SMS logs for a diary entry
+     *
+     * @param int $diary_entry_id Diary entry ID
+     * @return array
+     */
+    public function get_sms_logs($diary_entry_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_sms_log';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table WHERE diary_entry_id = %d ORDER BY sent_at DESC",
+            $diary_entry_id
+        ));
+    }
+
+    /**
+     * Get total SMS cost for reporting
+     *
+     * @param string $start_date Optional start date
+     * @param string $end_date Optional end date
+     * @return float
+     */
+    public function get_total_sms_cost($start_date = null, $end_date = null) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'staff_diary_sms_log';
+
+        $sql = "SELECT SUM(cost) as total FROM $table WHERE status = 'sent'";
+        $params = array();
+
+        if ($start_date && $end_date) {
+            $sql .= " AND sent_at BETWEEN %s AND %s";
+            $params[] = $start_date;
+            $params[] = $end_date;
+        }
+
+        if (!empty($params)) {
+            $result = $wpdb->get_var($wpdb->prepare($sql, $params));
+        } else {
+            $result = $wpdb->get_var($sql);
+        }
+
+        return $result ? floatval($result) : 0.0;
+    }
 }
