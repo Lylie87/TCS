@@ -1214,3 +1214,354 @@
         align-self: flex-end;
     }
 }
+
+/* ===================================================================
+   MOBILE & TABLET RESPONSIVE OPTIMIZATIONS (Tablet: 768px-1024px)
+   =================================================================== */
+
+/* Tablet Breakpoint (768px - 1024px) */
+@media screen and (max-width: 1024px) {
+    /* Tables - Make them scrollable horizontally */
+    .wp-list-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    /* Forms - Stack on tablets */
+    .form-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Modal adjustments for tablets */
+    .wp-staff-diary-modal-content {
+        max-width: 90% !important;
+        margin: 5% auto;
+    }
+
+    /* Calendar actions - wrap on smaller screens */
+    .calendar-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .calendar-actions .button {
+        font-size: 13px;
+        padding: 4px 10px;
+    }
+}
+
+/* Mobile Breakpoint (max-width: 768px) */
+@media screen and (max-width: 768px) {
+    /* Page header adjustments */
+    .wrap h1 {
+        font-size: 20px;
+    }
+
+    /* Diary header - stack elements vertically */
+    .diary-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    .date-selector,
+    .view-actions,
+    .filter-options {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Tables - Responsive design */
+    .wp-list-table thead {
+        display: none;
+    }
+
+    .wp-list-table,
+    .wp-list-table tbody,
+    .wp-list-table tr,
+    .wp-list-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .wp-list-table tr {
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        background: #fff;
+    }
+
+    .wp-list-table td {
+        text-align: left !important;
+        padding: 8px 0;
+        border: none;
+        position: relative;
+        padding-left: 40%;
+    }
+
+    .wp-list-table td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0;
+        width: 35%;
+        padding-right: 10px;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    /* Buttons - make them full width on mobile */
+    .modal-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .modal-footer .button {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* Form fields - full width */
+    .form-field input[type="text"],
+    .form-field input[type="email"],
+    .form-field input[type="tel"],
+    .form-field input[type="number"],
+    .form-field input[type="date"],
+    .form-field select,
+    .form-field textarea {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Modals - full screen on mobile */
+    .wp-staff-diary-modal-content {
+        max-width: 95% !important;
+        max-height: 95vh !important;
+        margin: 2.5% auto;
+        padding: 15px;
+    }
+
+    /* Calendar navigation - stack vertically */
+    .calendar-navigation {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .calendar-navigation .button {
+        width: 100%;
+    }
+
+    .calendar-actions {
+        flex-direction: column;
+    }
+
+    .calendar-actions .button {
+        width: 100%;
+    }
+
+    /* Calendar entries - adjust for mobile */
+    .calendar-entry {
+        padding: 10px;
+        font-size: 13px;
+    }
+
+    .calendar-entry .entry-order {
+        font-size: 14px;
+    }
+
+    .calendar-entry .entry-time {
+        font-size: 12px;
+    }
+
+    /* Quote/Measure forms - adjust spacing */
+    .form-sections {
+        gap: 15px;
+    }
+
+    .form-section {
+        padding: 12px;
+    }
+
+    .form-section h3 {
+        font-size: 16px;
+    }
+
+    /* Settings page - stack form tables */
+    .form-table th,
+    .form-table td {
+        display: block;
+        width: 100%;
+        padding: 10px 0;
+    }
+
+    .form-table th {
+        padding-bottom: 5px;
+    }
+
+    .form-table td {
+        padding-top: 5px;
+    }
+
+    /* Dashboard widget - adjust calendar grid */
+    .dashboard-calendar {
+        font-size: 12px;
+    }
+
+    .dashboard-entry {
+        font-size: 11px;
+        padding: 4px;
+    }
+
+    /* Accessibility items on mobile */
+    .accessory-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    /* Payment history - adjust on mobile */
+    .payment-history-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    /* Fitter badges - adjust size */
+    .fitter-badge {
+        font-size: 10px !important;
+        padding: 2px 6px !important;
+    }
+
+    /* Search boxes - full width */
+    #quote-search,
+    #customer-search,
+    .search-results {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Touch-friendly tap targets */
+    .button,
+    .button-small,
+    a.button {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 15px;
+    }
+
+    /* Status badges - adjust for readability */
+    .status-badge,
+    .availability-type-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    /* Unknown fitting dates section - adjust padding */
+    .unknown-fitting-dates-section {
+        padding: 15px;
+    }
+
+    /* Availability alerts - adjust for mobile */
+    .fitter-availability-alert {
+        font-size: 12px;
+        padding: 10px;
+    }
+}
+
+/* Small Mobile (max-width: 480px) */
+@media screen and (max-width: 480px) {
+    /* Further reduce text sizes */
+    body {
+        font-size: 14px;
+    }
+
+    .wrap h1 {
+        font-size: 18px;
+    }
+
+    .wrap h2 {
+        font-size: 16px;
+    }
+
+    .form-section h3 {
+        font-size: 15px;
+    }
+
+    /* Stack all inline elements */
+    .calculation-display {
+        font-size: 14px;
+    }
+
+    /* Reduce modal padding further */
+    .wp-staff-diary-modal-content {
+        padding: 10px;
+    }
+
+    /* Make action buttons more prominent */
+    .button-primary {
+        font-size: 16px;
+        padding: 12px 20px;
+    }
+
+    /* Calendar entries - more compact */
+    .calendar-entry {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    /* Fitter availability alerts - more compact */
+    div[style*="background: #e3f2fd"] {
+        font-size: 11px;
+        padding: 10px;
+    }
+}
+
+/* Landscape Tablet (768px - 1024px in landscape) */
+@media screen and (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    /* Optimize for landscape tablets */
+    .wp-staff-diary-modal-content {
+        max-width: 80% !important;
+    }
+
+    .calendar-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+
+    /* Use more horizontal space */
+    .form-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    /* Hide navigation and action buttons when printing */
+    .calendar-navigation,
+    .calendar-actions,
+    .view-actions,
+    .modal-footer,
+    .button,
+    .wp-staff-diary-modal-close {
+        display: none !important;
+    }
+
+    /* Optimize for print */
+    .wrap {
+        max-width: 100%;
+    }
+
+    .calendar-entry {
+        page-break-inside: avoid;
+    }
+
+    /* Expand all collapsed sections for print */
+    .unknown-fitting-dates-section,
+    .calendar-day {
+        page-break-inside: avoid;
+    }
+}
