@@ -2262,7 +2262,38 @@
 
             // Open convert modal
             $('#convert-measure-id').val(measureId);
+            $('#convert-measure-fitter-availability-display').hide();
+            $('#measure-availability-calendar').empty();
             $('#convert-measure-to-job-modal').fadeIn();
+
+            // Add time period selection handler to load availability when AM/PM is selected
+            $('#convert-measure-fitting-time-period').off('change').on('change', function() {
+                const timePeriod = $(this).val();
+                const fitterId = $('#convert-measure-fitter').val();
+
+                // Only load availability if a time period AND fitter is selected
+                if (timePeriod && fitterId && (timePeriod === 'am' || timePeriod === 'pm')) {
+                    $('#measure-fitter-availability-display').show();
+                    loadMeasureFitterAvailability(fitterId, timePeriod);
+                } else {
+                    $('#measure-fitter-availability-display').hide();
+                    $('#measure-availability-calendar').empty();
+                }
+            });
+
+            // Also load when fitter changes
+            $('#convert-measure-fitter').off('change').on('change', function() {
+                const fitterId = $(this).val();
+                const timePeriod = $('#convert-measure-fitting-time-period').val();
+
+                if (fitterId && timePeriod && (timePeriod === 'am' || timePeriod === 'pm')) {
+                    $('#measure-fitter-availability-display').show();
+                    loadMeasureFitterAvailability(fitterId, timePeriod);
+                } else {
+                    $('#measure-fitter-availability-display').hide();
+                    $('#measure-availability-calendar').empty();
+                }
+            });
         });
 
         /**
@@ -2322,6 +2353,93 @@
             $('#convert-measure-to-job-modal').fadeOut();
             $('#convert-measure-to-job-form')[0].reset();
         });
+
+        /**
+         * Load fitter availability for measure conversion
+         */
+        function loadMeasureFitterAvailability(fitterId, timePeriod) {
+            $('#measure-availability-loading').show();
+            $('#measure-availability-calendar').empty();
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_fitter_availability',
+                    nonce: wpStaffDiary.nonce,
+                    fitter_id: fitterId,
+                    time_period: timePeriod,
+                    start_date: new Date().toISOString().split('T')[0],
+                    days: 14
+                },
+                success: function(response) {
+                    $('#measure-availability-loading').hide();
+                    if (response.success) {
+                        displayMeasureFitterAvailability(response.data.availability, timePeriod);
+                    } else {
+                        $('#measure-availability-calendar').html('<p style="color: #d63638;">Error loading availability</p>');
+                    }
+                },
+                error: function() {
+                    $('#measure-availability-loading').hide();
+                    $('#measure-availability-calendar').html('<p style="color: #d63638;">Failed to load availability</p>');
+                }
+            });
+        }
+
+        /**
+         * Display fitter availability for measure conversion
+         */
+        function displayMeasureFitterAvailability(availability, timePeriod) {
+            const $calendar = $('#measure-availability-calendar');
+            $calendar.empty();
+
+            if (!availability || availability.length === 0) {
+                $calendar.html('<p>No availability data found.</p>');
+                return;
+            }
+
+            availability.forEach(function(day) {
+                let statusClass = 'available';
+                let statusColor = '#4caf50';
+                let statusText = 'Available';
+
+                if (day.all_day_booked) {
+                    statusClass = 'fully-booked';
+                    statusColor = '#f44336';
+                    statusText = 'Fully Booked';
+                } else if (!day.am_available || !day.pm_available) {
+                    statusClass = 'partially-booked';
+                    statusColor = '#ff9800';
+                    if (!day.am_available && day.pm_available) {
+                        statusText = 'PM Only';
+                    } else if (day.am_available && !day.pm_available) {
+                        statusText = 'AM Only';
+                    }
+                }
+
+                const dateObj = new Date(day.date + 'T00:00:00');
+                const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayNum = dateObj.getDate();
+                const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
+
+                const card = `
+                    <div class="availability-day-card ${statusClass}"
+                         style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; text-align: center; background: white; cursor: pointer;"
+                         data-date="${day.date}"
+                         onclick="$('#convert-measure-fitting-date').val('${day.date}');">
+                        <div style="font-weight: bold; font-size: 14px;">${dayName}</div>
+                        <div style="font-size: 20px; margin: 5px 0;">${dayNum}</div>
+                        <div style="font-size: 11px; color: #666;">${monthName}</div>
+                        <div style="margin-top: 8px; padding: 4px; background: ${statusColor}; color: white; border-radius: 3px; font-size: 10px;">
+                            ${statusText}
+                        </div>
+                    </div>
+                `;
+
+                $calendar.append(card);
+            });
+        }
 
         // ===========================================
         // COMMENTS SYSTEM

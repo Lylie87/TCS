@@ -647,7 +647,34 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <p class="description">Available fitter will be auto-assigned when you select a date</p>
+                <p class="description">Select a fitter to see their availability</p>
+            </div>
+
+            <!-- Availability Display -->
+            <div id="measure-fitter-availability-display" style="display: none; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 4px;">
+                <h4 style="margin-top: 0;">Fitter Availability (Next 2 Weeks)</h4>
+                <div id="measure-availability-loading" style="display: none; text-align: center; padding: 20px;">
+                    <span class="dashicons dashicons-update dashicons-spin" style="font-size: 24px;"></span>
+                    <p>Loading availability...</p>
+                </div>
+                <div id="measure-availability-calendar" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                    <!-- Availability will be populated here -->
+                </div>
+                <div id="measure-availability-legend" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px;">
+                    <strong>Legend:</strong>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #4caf50; border-radius: 2px; margin-right: 5px;"></span>
+                        Available
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #ff9800; border-radius: 2px; margin-right: 5px;"></span>
+                        Partially Booked
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #f44336; border-radius: 2px; margin-right: 5px;"></span>
+                        Fully Booked
+                    </span>
+                </div>
             </div>
 
             <div class="form-field">
