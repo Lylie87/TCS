@@ -240,9 +240,9 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             </td>
                             <td>
                                 <?php if ($customer): ?>
-                                    <strong><?php echo esc_html($customer->customer_name); ?></strong>
+                                    <strong><?php echo esc_html($customer->customer_name ?? ''); ?></strong>
                                     <?php if ($customer->customer_phone): ?>
-                                        <br><small><?php echo esc_html($customer->customer_phone); ?></small>
+                                        <br><small><?php echo esc_html($customer->customer_phone ?? ''); ?></small>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #999;">No customer</span>
@@ -250,8 +250,8 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             </td>
                             <td>
                                 <?php if ($fitter): ?>
-                                    <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color']); ?>; color: white; font-size: 11px; font-weight: 600;">
-                                        <?php echo esc_html($fitter['name']); ?>
+                                    <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color'] ?? '#ddd'); ?>; color: white; font-size: 11px; font-weight: 600;">
+                                        <?php echo esc_html($fitter['name'] ?? ''); ?>
                                     </span>
                                 <?php else: ?>
                                     <span style="color: #999;">Unassigned</span>
@@ -349,15 +349,15 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                 </div>
                                 <div class="entry-customer">
                                     <?php if ($customer): ?>
-                                        <?php echo esc_html($customer->customer_name); ?>
+                                        <?php echo esc_html($customer->customer_name ?? ''); ?>
                                     <?php else: ?>
                                         <span style="color: #999;">No customer</span>
                                     <?php endif; ?>
                                 </div>
                                 <?php if ($entry->status !== 'measure' && $fitter): ?>
                                     <div class="entry-fitter" style="font-size: 11px; color: #666; margin-top: 2px;">
-                                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($fitter_color); ?>; margin-right: 4px;"></span>
-                                        <?php echo esc_html($fitter['name']); ?>
+                                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($fitter_color ?? '#ddd'); ?>; margin-right: 4px;"></span>
+                                        <?php echo esc_html($fitter['name'] ?? ''); ?>
                                     </div>
                                 <?php endif; ?>
                                 <?php if ($entry->status !== 'measure'): ?>
@@ -467,10 +467,10 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <div class="quote-card" style="background: white; border-left: 4px solid <?php echo $urgency_color; ?>; padding: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer;" onclick="viewEntryDetails(<?php echo $quote->id; ?>)">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                         <div>
-                            <strong style="font-size: 14px; color: #2271b1;"><?php echo esc_html($quote->order_number); ?></strong>
+                            <strong style="font-size: 14px; color: #2271b1;"><?php echo esc_html($quote->order_number ?? ''); ?></strong>
                             <?php if ($customer): ?>
                                 <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                                    <?php echo esc_html($customer->customer_name); ?>
+                                    <?php echo esc_html($customer->customer_name ?? ''); ?>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -488,7 +488,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 
                     <?php if ($quote->product_description): ?>
                         <div style="font-size: 12px; color: #444; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            <?php echo esc_html($quote->product_description); ?>
+                            <?php echo esc_html($quote->product_description ?? ''); ?>
                         </div>
                     <?php endif; ?>
 
