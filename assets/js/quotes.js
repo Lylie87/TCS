@@ -209,6 +209,7 @@
         formData.append('action', 'save_diary_entry');
         formData.append('nonce', wpStaffDiary.nonce);
         formData.append('entry_id', currentQuoteId || 0);
+        formData.append('order_number', $('#quote-order-number').val() || '');
         formData.append('status', 'quotation');
         formData.append('job_date', $('#quote-job-date').val());
 
@@ -281,6 +282,27 @@
                     // Store the quote ID
                     if (entryId) {
                         currentQuoteId = entryId;
+                    }
+
+                    // If converting from measure, copy images
+                    if (isNewQuote && window.convertFromMeasureId) {
+                        $.ajax({
+                            url: wpStaffDiary.ajaxUrl,
+                            type: 'POST',
+                            data: {
+                                action: 'copy_images',
+                                nonce: wpStaffDiary.nonce,
+                                source_entry_id: window.convertFromMeasureId,
+                                target_entry_id: entryId
+                            },
+                            success: function(copyResponse) {
+                                if (copyResponse.success && copyResponse.data.copied_count > 0) {
+                                    console.log(copyResponse.data.message);
+                                }
+                                // Clear the flag
+                                delete window.convertFromMeasureId;
+                            }
+                        });
                     }
 
                     if (keepOpen) {
@@ -1557,6 +1579,9 @@
             // Check for URL parameters to pre-fill from measure conversion
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('action') === 'new' && urlParams.get('from_measure')) {
+                // Store measure ID for image copying after save
+                window.convertFromMeasureId = urlParams.get('from_measure');
+
                 // Open the add quote modal
                 openAddQuoteModal();
 

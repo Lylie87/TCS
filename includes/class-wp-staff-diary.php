@@ -140,6 +140,7 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_update_comment', $plugin_admin, 'update_comment');
         $this->loader->add_action('wp_ajax_delete_comment', $plugin_admin, 'delete_comment');
         $this->loader->add_action('wp_ajax_get_comments', $plugin_admin, 'get_comments');
+        $this->loader->add_action('wp_ajax_copy_images', $plugin_admin, 'copy_images');
 
         // AJAX handlers - Statuses
         $this->loader->add_action('wp_ajax_wp_staff_diary_add_status', $plugin_admin, 'add_status');

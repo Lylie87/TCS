@@ -1100,6 +1100,28 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * AJAX: Copy images from one entry to another
+     */
+    public function copy_images() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $source_entry_id = intval($_POST['source_entry_id']);
+        $target_entry_id = intval($_POST['target_entry_id']);
+
+        if (empty($source_entry_id) || empty($target_entry_id)) {
+            wp_send_json_error(array('message' => 'Source and target entry IDs are required'));
+            return;
+        }
+
+        $copied_count = $this->db->copy_images($source_entry_id, $target_entry_id);
+
+        wp_send_json_success(array(
+            'message' => $copied_count . ' image(s) copied successfully',
+            'copied_count' => $copied_count
+        ));
+    }
+
+    /**
      * Get payment with user info
      */
     private function get_payment_with_user_info($payment_id) {

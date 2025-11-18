@@ -287,6 +287,46 @@ class WP_Staff_Diary_Database {
         ));
     }
 
+    /**
+     * Copy images from one entry to another
+     *
+     * @param int $source_entry_id Source entry ID
+     * @param int $target_entry_id Target entry ID
+     * @return int Number of images copied
+     */
+    public function copy_images($source_entry_id, $target_entry_id) {
+        global $wpdb;
+        $table_images = $wpdb->prefix . 'staff_diary_images';
+
+        // Get all images from source entry
+        $source_images = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_images WHERE diary_entry_id = %d",
+            $source_entry_id
+        ));
+
+        $copied_count = 0;
+        foreach ($source_images as $image) {
+            // Copy image record to new entry
+            $result = $wpdb->insert(
+                $table_images,
+                array(
+                    'diary_entry_id' => $target_entry_id,
+                    'image_url' => $image->image_url,
+                    'attachment_id' => $image->attachment_id,
+                    'image_caption' => $image->image_caption,
+                    'image_category' => $image->image_category
+                ),
+                array('%d', '%s', '%d', '%s', '%s')
+            );
+
+            if ($result) {
+                $copied_count++;
+            }
+        }
+
+        return $copied_count;
+    }
+
     // ==================== CUSTOMER METHODS ====================
 
     /**
