@@ -8,7 +8,9 @@
       "Bash(python add_discount.py:*)",
       "Bash(python3:*)",
       "Bash(git restore:*)",
-      "Bash(node -c:*)"
+      "Bash(node -c:*)",
+      "WebFetch(domain:tcs-cfs.co.uk)",
+      "WebFetch(domain:ibb.co)"
     ],
     "deny": [],
     "ask": []

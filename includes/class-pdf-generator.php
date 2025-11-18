@@ -287,7 +287,7 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
+            h2 { font-size: 16px; color: #333; margin-top: 20px; margin-bottom: 20px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
@@ -295,11 +295,13 @@ class WP_Staff_Diary_PDF_Generator {
             .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
             .financial-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
+            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ccc; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
+            .financial-table th.qty-col { text-align: center; }
+            .financial-table td.qty { text-align: center; }
             .financial-table td.amount { text-align: right; }
             .total-row { background-color: #d1e7f7; font-weight: bold; font-size: 11px; }
-            .terms { font-size: 9px; color: #666; margin-top: 15px; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; }
+            .terms { font-size: 9px; color: #666; margin-top: 15px; padding: 10px; border: 1px solid #ccc; background-color: #f9f9f9; }
             .order-number { font-size: 20px; color: #2271b1; font-weight: bold; }
             .quote-validity { font-size: 10px; color: #666; margin-top: 5px; font-style: italic; }
             .quote-banner { background-color: #2271b1; color: white; padding: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 15px; }
@@ -314,10 +316,18 @@ class WP_Staff_Diary_PDF_Generator {
         if ($company_logo) {
             $logo_path = get_attached_file($company_logo);
             if ($logo_path && file_exists($logo_path)) {
-                $html .= '<td style="width: 100px; vertical-align: top; padding-right: 10px;">';
-                // Use @ prefix for TCPDF to load from filesystem
-                $html .= '<img src="@' . $logo_path . '" style="height: 50px; width: auto;" />';
-                $html .= '</td>';
+                // Get image type
+                $image_type = wp_check_filetype($logo_path);
+                $mime_type = $image_type['type'];
+
+                // Convert image to base64 for better TCPDF compatibility
+                $image_data = file_get_contents($logo_path);
+                if ($image_data !== false) {
+                    $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
+                    $html .= '<td style="width: 150px; vertical-align: top; padding-right: 10px;">';
+                    $html .= '<img src="' . $base64_image . '" style="width: 150px; height: auto;" />';
+                    $html .= '</td>';
+                }
             }
         }
 
@@ -400,7 +410,7 @@ class WP_Staff_Diary_PDF_Generator {
         // Product Details
         $html .= '<h2>Quote Details</h2>';
         $html .= '<table class="financial-table">';
-        $html .= '<thead><tr><th width="50%">Description</th><th width="15%">Qty</th><th width="18%">Price</th><th width="17%">Total</th></tr></thead>';
+        $html .= '<thead><tr><th width="50%">Description</th><th width="15%" class="qty-col">Qty</th><th width="18%">Price</th><th width="17%">Total</th></tr></thead>';
         $html .= '<tbody>';
 
         // Main product
@@ -409,7 +419,7 @@ class WP_Staff_Diary_PDF_Generator {
                              ($quote->sq_mtr_qty * $quote->price_per_sq_mtr) : 0;
             $html .= '<tr>';
             $html .= '<td>' . nl2br(htmlspecialchars($quote->product_description)) . '</td>';
-            $html .= '<td>' . ($quote->sq_mtr_qty ? number_format($quote->sq_mtr_qty, 2) . ' m²' : '-') . '</td>';
+            $html .= '<td class="qty">' . ($quote->sq_mtr_qty ? number_format($quote->sq_mtr_qty, 2) . ' m²' : '-') . '</td>';
             $html .= '<td class="amount">£' . ($quote->price_per_sq_mtr ? number_format($quote->price_per_sq_mtr, 2) : '-') . '</td>';
             $html .= '<td class="amount">£' . number_format($product_total, 2) . '</td>';
             $html .= '</tr>';
@@ -419,7 +429,7 @@ class WP_Staff_Diary_PDF_Generator {
         if (isset($quote->fitting_cost) && $quote->fitting_cost > 0) {
             $html .= '<tr>';
             $html .= '<td>Fitting</td>';
-            $html .= '<td>-</td>';
+            $html .= '<td class="qty">-</td>';
             $html .= '<td class="amount">-</td>';
             $html .= '<td class="amount">£' . number_format($quote->fitting_cost, 2) . '</td>';
             $html .= '</tr>';
@@ -430,7 +440,7 @@ class WP_Staff_Diary_PDF_Generator {
             foreach ($accessories as $acc) {
                 $html .= '<tr>';
                 $html .= '<td>' . htmlspecialchars($acc->accessory_name) . '</td>';
-                $html .= '<td>' . number_format($acc->quantity, 2) . '</td>';
+                $html .= '<td class="qty">' . number_format($acc->quantity, 2) . '</td>';
                 $html .= '<td class="amount">£' . number_format($acc->price_per_unit, 2) . '</td>';
                 $html .= '<td class="amount">£' . number_format($acc->total_price, 2) . '</td>';
                 $html .= '</tr>';
