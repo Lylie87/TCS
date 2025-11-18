@@ -510,6 +510,11 @@ class WP_Staff_Diary_Admin {
         $user_id = get_current_user_id();
         $status = sanitize_text_field($_POST['status']);
 
+        // Decode accessories if sent as JSON string
+        if (isset($_POST['accessories']) && is_string($_POST['accessories'])) {
+            $_POST['accessories'] = json_decode(stripslashes($_POST['accessories']), true);
+        }
+
         // If status is 'cancelled' and this is an existing entry, delete it
         if ($status === 'cancelled' && $entry_id > 0) {
             $result = $this->db->delete_entry($entry_id);
