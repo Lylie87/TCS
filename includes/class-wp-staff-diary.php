@@ -176,7 +176,7 @@ class WP_Staff_Diary {
         // Keeping these for backwards compatibility fallback
         // $this->loader->add_action('wp_ajax_search_customers', $plugin_admin, 'search_customers');
         // $this->loader->add_action('wp_ajax_add_customer', $plugin_admin, 'add_customer');
-        // $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer');
+        $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer'); // ACTIVE: Used by measure form
         // $this->loader->add_action('wp_ajax_update_customer', $plugin_admin, 'update_customer');
         // $this->loader->add_action('wp_ajax_delete_customer', $plugin_admin, 'delete_customer');
 

@@ -1626,11 +1626,19 @@
 
             // Check for URL parameters to pre-fill from measure conversion
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('action') === 'new' && urlParams.get('from_measure')) {
-                // Store measure ID for image copying after save
+            // Handle converting measure to quote (action=edit with from_measure param)
+            if ((urlParams.get('action') === 'new' || urlParams.get('action') === 'edit') && urlParams.get('from_measure')) {
+                // Store measure ID - when action=edit, we're updating the measure entry to quotation status
                 window.convertFromMeasureId = urlParams.get('from_measure');
 
-                // Open the add quote modal
+                // If action=edit, load the existing measure entry to update it
+                if (urlParams.get('action') === 'edit' && urlParams.get('entry_id')) {
+                    const entryId = urlParams.get('entry_id');
+                    editQuote(entryId); // Load measure in edit mode to convert to quote
+                    return; // editQuote will handle opening the modal and loading data
+                }
+
+                // Otherwise (action=new), open add modal and pre-fill from URL params
                 openAddQuoteModal();
 
                 // Preserve order number

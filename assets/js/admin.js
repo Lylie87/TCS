@@ -2233,18 +2233,11 @@
                     if (response.success) {
                         const measure = response.data.entry || response.data;
 
-                        // Redirect to quotes page with pre-filled data
+                        // Redirect to quotes page with measure entry_id to UPDATE instead of INSERT
                         const params = new URLSearchParams({
-                            action: 'new',
-                            from_measure: measureId,
-                            order_number: measure.order_number || '',
-                            customer_id: measure.customer_id || '',
-                            fitting_date: measure.fitting_date || '',
-                            fitting_address_line_1: measure.fitting_address_line_1 || '',
-                            fitting_address_line_2: measure.fitting_address_line_2 || '',
-                            fitting_address_line_3: measure.fitting_address_line_3 || '',
-                            fitting_postcode: measure.fitting_postcode || '',
-                            notes: measure.notes || ''
+                            action: 'edit',
+                            entry_id: measureId,  // Pass measure ID to update existing entry
+                            from_measure: measureId
                         });
 
                         window.location.href = 'admin.php?page=wp-staff-diary-quotes&' + params.toString();
