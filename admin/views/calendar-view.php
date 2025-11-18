@@ -150,6 +150,32 @@ $fitters = get_option('wp_staff_diary_fitters', array());
 $job_time_type = get_option('wp_staff_diary_job_time_type', 'none');
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+
+// Get fitter availability for the current week (and a bit beyond for warnings)
+$table_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
+$availability_start = clone $week_start;
+$availability_start->modify('-7 days'); // Look back 1 week
+$availability_end = clone $end_date;
+$availability_end->modify('+14 days'); // Look ahead 2 weeks
+$fitter_availability = $wpdb->get_results($wpdb->prepare(
+    "SELECT * FROM $table_availability
+     WHERE end_date >= %s AND start_date <= %s
+     ORDER BY start_date ASC",
+    $availability_start->format('Y-m-d'),
+    $availability_end->format('Y-m-d')
+));
+
+// Build a helper function to check if a fitter is unavailable on a specific date
+function is_fitter_unavailable($fitter_id, $date, $availability_records) {
+    foreach ($availability_records as $record) {
+        if ($record->fitter_id == $fitter_id) {
+            if ($date >= $record->start_date && $date <= $record->end_date) {
+                return $record; // Return the availability record
+            }
+        }
+    }
+    return false;
+}
 ?>
 
 <div class="wrap wp-staff-diary-wrap">
@@ -185,6 +211,51 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             </button>
         </div>
     </div>
+
+    <!-- Fitter Availability Info -->
+    <?php if (!empty($fitter_availability)): ?>
+        <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 15px; margin: 15px 0; border-radius: 4px;">
+            <strong style="color: #1976d2; display: block; margin-bottom: 8px;">
+                <span class="dashicons dashicons-info" style="font-size: 16px; vertical-align: middle;"></span>
+                Fitter Availability Alerts
+            </strong>
+            <div style="font-size: 13px; color: #555;">
+                <?php
+                // Group availability by fitter for display
+                $availability_by_fitter = array();
+                foreach ($fitter_availability as $avail) {
+                    if (!isset($availability_by_fitter[$avail->fitter_id])) {
+                        $availability_by_fitter[$avail->fitter_id] = array();
+                    }
+                    $availability_by_fitter[$avail->fitter_id][] = $avail;
+                }
+
+                foreach ($availability_by_fitter as $fitter_id => $availabilities) {
+                    $fitter_name = isset($fitters[$fitter_id]) ? $fitters[$fitter_id]['name'] : 'Unknown Fitter';
+                    $fitter_color = isset($fitters[$fitter_id]) ? $fitters[$fitter_id]['color'] : '#ccc';
+
+                    foreach ($availabilities as $avail) {
+                        echo '<div style="margin: 4px 0;">';
+                        echo '<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ' . esc_attr($fitter_color) . '; margin-right: 6px; vertical-align: middle;"></span>';
+                        echo '<strong>' . esc_html($fitter_name) . '</strong>: ';
+                        echo '<span style="color: #d32f2f; font-weight: 600;">' . esc_html(ucfirst($avail->availability_type)) . '</span> ';
+                        echo date('d/m/Y', strtotime($avail->start_date));
+                        if ($avail->start_date != $avail->end_date) {
+                            echo ' - ' . date('d/m/Y', strtotime($avail->end_date));
+                        }
+                        if (!empty($avail->reason)) {
+                            echo ' <span style="color: #666;">(' . esc_html($avail->reason) . ')</span>';
+                        }
+                        echo '</div>';
+                    }
+                }
+                ?>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #bbdefb; font-size: 12px; color: #666;">
+                    <strong>Legend:</strong> Jobs with unavailable fitters are marked with <span style="display: inline-block; padding: 1px 4px; background: #f44336; color: white; border-radius: 2px; font-size: 9px; font-weight: 600;">⚠</span> or <span style="padding: 2px 6px; background: #f44336; color: white; border-radius: 3px; font-size: 10px; font-weight: 600;">UNAVAILABLE</span>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!-- Jobs with Unknown Fitting Dates -->
     <?php if (!empty($unknown_fitting_date_entries)): ?>
@@ -253,6 +324,16 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                     <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color'] ?? '#ddd'); ?>; color: white; font-size: 11px; font-weight: 600;">
                                         <?php echo esc_html($fitter['name'] ?? ''); ?>
                                     </span>
+                                    <?php
+                                    // Check if fitter has upcoming unavailability
+                                    $display_date = !empty($entry->fitting_date) ? $entry->fitting_date : $entry->job_date;
+                                    if ($fitter_id !== null && $display_date) {
+                                        $unavailable = is_fitter_unavailable($fitter_id, $display_date, $fitter_availability);
+                                        if ($unavailable) {
+                                            echo '<span style="display: inline-block; margin-left: 8px; padding: 2px 6px; background: #f44336; color: white; border-radius: 3px; font-size: 10px; font-weight: 600;" title="' . esc_attr(ucfirst($unavailable->availability_type) . ': ' . date('d/m/Y', strtotime($unavailable->start_date)) . ' - ' . date('d/m/Y', strtotime($unavailable->end_date))) . '">UNAVAILABLE</span>';
+                                        }
+                                    }
+                                    ?>
                                 <?php else: ?>
                                     <span style="color: #999;">Unassigned</span>
                                 <?php endif; ?>
@@ -358,6 +439,16 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                                     <div class="entry-fitter" style="font-size: 11px; color: #666; margin-top: 2px;">
                                         <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($fitter_color ?? '#ddd'); ?>; margin-right: 4px;"></span>
                                         <?php echo esc_html($fitter['name'] ?? ''); ?>
+                                        <?php
+                                        // Check if fitter is unavailable on this date
+                                        $job_date = !empty($entry->fitting_date) ? $entry->fitting_date : $entry->job_date;
+                                        if ($fitter_id !== null && $job_date) {
+                                            $unavailable = is_fitter_unavailable($fitter_id, $job_date, $fitter_availability);
+                                            if ($unavailable) {
+                                                echo '<span style="display: inline-block; margin-left: 4px; padding: 1px 4px; background: #f44336; color: white; border-radius: 2px; font-size: 9px; font-weight: 600;" title="' . esc_attr(ucfirst($unavailable->availability_type) . ': ' . date('d/m/Y', strtotime($unavailable->start_date)) . ' - ' . date('d/m/Y', strtotime($unavailable->end_date))) . '">⚠</span>';
+                                            }
+                                        }
+                                        ?>
                                     </div>
                                 <?php endif; ?>
                                 <?php if ($entry->status !== 'measure'): ?>
