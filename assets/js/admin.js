@@ -866,29 +866,25 @@
             $('#measure-customer-search-results').html('').hide();
             $('#measure-manual-customer-entry').hide();
 
-            // Pre-fill address if available
-            if (customerAddress) {
-                // Parse address - customer_address is built from filtered array
-                // so we need to fetch the actual customer data to get proper field mapping
-                $.ajax({
-                    url: wpStaffDiary.ajaxUrl,
-                    type: 'POST',
-                    data: {
-                        action: 'get_customer',
-                        nonce: wpStaffDiary.nonce,
-                        customer_id: customerId
-                    },
-                    success: function(response) {
-                        if (response.success && response.data.customer) {
-                            const customer = response.data.customer;
-                            $('#measure-address-line-1').val(customer.address_line_1 || '');
-                            $('#measure-address-line-2').val(customer.address_line_2 || '');
-                            $('#measure-address-line-3').val(customer.address_line_3 || '');
-                            $('#measure-postcode').val(customer.postcode || '');
-                        }
+            // Pre-fill address - always fetch customer data to get proper field mapping
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_customer',
+                    nonce: wpStaffDiary.nonce,
+                    customer_id: customerId
+                },
+                success: function(response) {
+                    if (response.success && response.data.customer) {
+                        const customer = response.data.customer;
+                        $('#measure-address-line-1').val(customer.address_line_1 || '');
+                        $('#measure-address-line-2').val(customer.address_line_2 || '');
+                        $('#measure-address-line-3').val(customer.address_line_3 || '');
+                        $('#measure-postcode').val(customer.postcode || '');
                     }
-                });
-            }
+                }
+            });
         }
 
         // Clear customer selection for measure

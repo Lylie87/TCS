@@ -1846,6 +1846,17 @@ class WP_Staff_Diary_Admin {
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
         $customers = $this->db->get_all_customers($search);
 
+        // Add formatted address to each customer
+        foreach ($customers as $customer) {
+            $address_parts = array_filter([
+                $customer->address_line_1 ?? '',
+                $customer->address_line_2 ?? '',
+                $customer->address_line_3 ?? '',
+                $customer->postcode ?? ''
+            ]);
+            $customer->customer_address = implode("\n", $address_parts);
+        }
+
         wp_send_json_success(array('customers' => $customers));
     }
 
