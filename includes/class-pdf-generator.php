@@ -420,7 +420,7 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '<h2>Quote Details</h2>';
         $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<table class="financial-table">';
-        $html .= '<thead><tr><th width="50%">Description</th><th width="15%" class="qty-col">Qty</th><th width="18%">Price</th><th width="17%">Total</th></tr></thead>';
+        $html .= '<thead><tr><th width="48%">Description</th><th width="17%" class="qty-col">Qty</th><th width="17.5%">Price</th><th width="17.5%">Total</th></tr></thead>';
         $html .= '<tbody>';
 
         // Main product
@@ -470,6 +470,9 @@ class WP_Staff_Diary_PDF_Generator {
         }
         $html .= '<tr class="total-row"><td><strong>TOTAL QUOTED PRICE:</strong></td><td class="amount"><strong>£' . number_format($total, 2) . '</strong></td></tr>';
         $html .= '</table>';
+
+        // Spacer after Quote Summary
+        $html .= '<div style="height: 20px;"></div>';
 
         // Additional Notes
         if ($quote->notes) {
