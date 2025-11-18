@@ -314,7 +314,7 @@ class WP_Staff_Diary_PDF_Generator {
         // Company Header with Logo
         $html .= '<table style="width: 100%; margin-bottom: 20px; border: 0;" cellpadding="0" cellspacing="0"><tr>';
 
-        // Logo cell
+        // Logo cell - only render if image data successfully loaded
         if ($company_logo) {
             $logo_path = get_attached_file($company_logo);
             if ($logo_path && file_exists($logo_path)) {
@@ -324,7 +324,7 @@ class WP_Staff_Diary_PDF_Generator {
 
                 // Convert image to base64 for better TCPDF compatibility
                 $image_data = file_get_contents($logo_path);
-                if ($image_data !== false) {
+                if ($image_data !== false && !empty($image_data)) {
                     $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
                     $html .= '<td style="width: 150px; vertical-align: top; padding-right: 10px;">';
                     $html .= '<img src="' . $base64_image . '" style="width: 150px; height: auto;" />';
@@ -420,7 +420,7 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '<h2>Quote Details</h2>';
         $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<table class="financial-table">';
-        $html .= '<thead><tr><th width="48%">Description</th><th width="17%" class="qty-col">Qty</th><th width="17.5%">Price</th><th width="17.5%">Total</th></tr></thead>';
+        $html .= '<thead><tr><th width="52%">Description</th><th width="12%" class="qty-col">Qty</th><th width="18%">Price</th><th width="18%">Total</th></tr></thead>';
         $html .= '<tbody>';
 
         // Main product

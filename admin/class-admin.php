@@ -2049,28 +2049,32 @@ class WP_Staff_Diary_Admin {
         $table_images = $wpdb->prefix . 'staff_diary_images';
         $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
         $table_comments = $wpdb->prefix . 'staff_diary_comments';
+        $table_customers = $wpdb->prefix . 'staff_diary_customers';
 
         $jobs_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary");
         $payments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_payments");
         $images_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_images");
         $accessories_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_job_accessories");
         $comments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_comments");
+        $customers_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_customers");
 
-        // Delete all data from job-related tables
+        // Delete all data from job-related tables (includes jobs, quotes, and measures)
         $wpdb->query("TRUNCATE TABLE $table_diary");
         $wpdb->query("TRUNCATE TABLE $table_payments");
         $wpdb->query("TRUNCATE TABLE $table_images");
         $wpdb->query("TRUNCATE TABLE $table_job_accessories");
         $wpdb->query("TRUNCATE TABLE $table_comments");
+        $wpdb->query("TRUNCATE TABLE $table_customers");
 
         // Reset order number to start
         $order_start = get_option('wp_staff_diary_order_start', '01100');
         update_option('wp_staff_diary_order_current', $order_start);
 
         wp_send_json_success(array(
-            'message' => 'All jobs deleted successfully!',
+            'message' => 'All data deleted successfully!',
             'deleted' => array(
-                'jobs' => $jobs_count,
+                'entries' => $jobs_count,  // jobs, quotes, and measures
+                'customers' => $customers_count,
                 'payments' => $payments_count,
                 'images' => $images_count,
                 'accessories' => $accessories_count,
