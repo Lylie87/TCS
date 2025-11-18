@@ -426,9 +426,11 @@
         }
 
         /**
-         * Save entry
+         * Save entry (job)
+         * @param {Function} callback - Optional callback function to run after successful save
+         * @param {Boolean} keepOpen - If true, don't reload page/close modal after save
          */
-        function saveEntry() {
+        function saveEntry(callback, keepOpen) {
             // Gather accessories data
             const accessories = [];
             $('.accessory-checkbox:checked').each(function() {
@@ -484,8 +486,23 @@
                 success: function(response) {
                     console.log('Save response:', response);
                     if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
+                        const entryId = response.data.entry_id;
+
+                        if (!keepOpen) {
+                            alert(response.data.message);
+                            location.reload();
+                        } else {
+                            // Update the entry ID in the form
+                            $('#entry-id').val(entryId);
+
+                            // Re-enable save button
+                            $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
+
+                            // Call callback if provided
+                            if (callback && typeof callback === 'function') {
+                                callback(entryId);
+                            }
+                        }
                     } else {
                         alert('Error: ' + response.data.message);
                         console.error('Save error:', response);
@@ -1635,6 +1652,21 @@
 
         // Photo upload button click in edit form
         $(document).on('click', '#upload-photo-form-btn', function() {
+            const entryId = $('#entry-id').val();
+
+            if (!entryId) {
+                if (confirm('The job needs to be saved before you can upload photos. Would you like to save it now?')) {
+                    // Save the job, then trigger photo upload
+                    saveEntry(function(savedEntryId) {
+                        // After successful save, set the entry ID and trigger photo upload
+                        $('#entry-id').val(savedEntryId);
+                        $('#photo-upload-input-form').data('entry-id', savedEntryId);
+                        $('#photo-upload-input-form').click();
+                    }, true); // true = don't close modal after save
+                }
+                return;
+            }
+
             $('#photo-upload-input-form').click();
         });
 

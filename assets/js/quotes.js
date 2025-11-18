@@ -45,6 +45,18 @@
 
         // Photo upload
         $('#quote-upload-photo-btn').on('click', function() {
+            if (!currentQuoteId) {
+                if (confirm('The quote needs to be saved before you can upload photos. Would you like to save it now?')) {
+                    // Save the quote, then trigger photo upload
+                    saveQuote(function(savedQuoteId) {
+                        // After successful save, trigger photo upload
+                        currentQuoteId = savedQuoteId;
+                        $('#quote-photo-upload-input').click();
+                    }, true); // true = don't close modal after save
+                }
+                return;
+            }
+
             $('#quote-photo-upload-input').click();
         });
         $('#quote-photo-upload-input').on('change', handleQuotePhotoUpload);
@@ -180,9 +192,18 @@
 
     /**
      * Save quote (create or update)
+     * @param {Event|Function} e - Event object or callback function
+     * @param {Boolean} keepOpen - If true, don't reload page/close modal after save
      */
-    function saveQuote(e) {
-        e.preventDefault();
+    function saveQuote(e, keepOpen) {
+        // Handle if first parameter is a callback (when called from photo upload)
+        let callback = null;
+        if (typeof e === 'function') {
+            callback = e;
+            keepOpen = keepOpen || true;
+        } else if (e && e.preventDefault) {
+            e.preventDefault();
+        }
 
         const formData = new FormData();
         formData.append('action', 'save_diary_entry');
@@ -254,18 +275,25 @@
             data: Object.fromEntries(formData),
             success: function(response) {
                 if (response.success) {
+                    const entryId = response.data.entry_id;
                     const isNewQuote = !currentQuoteId;
 
-                    if (isNewQuote && response.data.entry_id) {
-                        // New quote created - store ID and keep modal open for photo uploads
-                        currentQuoteId = response.data.entry_id;
-                        alert('Quote saved successfully! You can now add photos to this quote.');
+                    // Store the quote ID
+                    if (entryId) {
+                        currentQuoteId = entryId;
+                    }
 
-                        // Update button text to show we're now editing
+                    if (keepOpen) {
+                        // Keep modal open and call callback if provided
                         $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Update Quote');
 
-                        // Enable photo upload button
-                        $('#quote-upload-photo-btn').prop('disabled', false);
+                        if (callback && typeof callback === 'function') {
+                            callback(entryId);
+                        }
+                    } else if (isNewQuote) {
+                        // New quote created - keep modal open for photo uploads by default
+                        alert('Quote saved successfully! You can now add photos to this quote.');
+                        $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Update Quote');
                     } else {
                         // Existing quote updated - close and reload
                         alert('Quote updated successfully!');
@@ -1075,9 +1103,8 @@
         $('.quote-accessory-quantity').prop('disabled', true).val(1);
         calculateQuoteTotal();
 
-        // Reset save button text and disable photo uploads for new quotes
+        // Reset save button text
         $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Save Quote');
-        $('#quote-upload-photo-btn').prop('disabled', true);
     }
 
     /**
