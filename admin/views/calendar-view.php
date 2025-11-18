@@ -611,6 +611,60 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
     </div>
 </div>
 
+<!-- Convert Measure to Job Modal -->
+<div id="convert-measure-to-job-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 500px;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2>Convert Measure to Job</h2>
+        <p style="margin: 15px 0; color: #666;">Please provide the fitting details to convert this measure into a job.</p>
+
+        <form id="convert-measure-to-job-form">
+            <input type="hidden" id="convert-measure-id">
+
+            <div class="form-field">
+                <label for="convert-measure-fitting-date">Fitting Date <span class="required">*</span></label>
+                <input type="date" id="convert-measure-fitting-date" required>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-measure-fitting-time-period">Time Period <span class="required">*</span></label>
+                <select id="convert-measure-fitting-time-period" required>
+                    <option value="">Select time period...</option>
+                    <option value="am">Morning (AM)</option>
+                    <option value="pm">Afternoon (PM)</option>
+                    <option value="all-day">All Day</option>
+                </select>
+                <p class="description">Select AM or PM to view availability across all fitters</p>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-measure-fitter">Fitter <span class="required">*</span></label>
+                <select id="convert-measure-fitter" required>
+                    <option value="">Select a fitter...</option>
+                    <?php foreach ($fitters as $fitter_id => $fitter): ?>
+                        <option value="<?php echo esc_attr($fitter_id); ?>">
+                            <?php echo esc_html($fitter['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description">Available fitter will be auto-assigned when you select a date</p>
+            </div>
+
+            <div class="form-field">
+                <label>
+                    <input type="checkbox" id="convert-measure-fitting-date-unknown">
+                    Fitting date not yet confirmed
+                </label>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="button button-primary">Convert to Job</button>
+                <button type="button" class="button cancel-convert-measure">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Quick Add Customer Modal -->
 <div id="quick-add-customer-modal" class="wp-staff-diary-modal" style="display: none; z-index: 100002;">
     <div class="wp-staff-diary-modal-content" style="max-width: 500px;">

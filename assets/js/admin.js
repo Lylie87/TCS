@@ -2271,69 +2271,67 @@
             // Close view modal
             $('#view-entry-modal').fadeOut();
 
-            // Fetch measure data and open job form
+            // Open convert modal
+            $('#convert-measure-id').val(measureId);
+            $('#convert-measure-to-job-modal').fadeIn();
+        });
+
+        /**
+         * Handle measure-to-job conversion form submission
+         */
+        $('#convert-measure-to-job-form').on('submit', function(e) {
+            e.preventDefault();
+
+            const measureId = $('#convert-measure-id').val();
+            const fittingDate = $('#convert-measure-fitting-date').val();
+            const fittingTimePeriod = $('#convert-measure-fitting-time-period').val();
+            const fitterId = $('#convert-measure-fitter').val();
+            const fittingDateUnknown = $('#convert-measure-fitting-date-unknown').is(':checked') ? 1 : 0;
+
+            // Validate required fields (unless date unknown is checked)
+            if (!fittingDateUnknown && (!fittingDate || !fittingTimePeriod || !fitterId)) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
             $.ajax({
                 url: wpStaffDiary.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'get_diary_entry',
+                    action: 'convert_measure_to_job',
                     nonce: wpStaffDiary.nonce,
-                    entry_id: measureId
+                    measure_id: measureId,
+                    fitting_date: fittingDate,
+                    fitting_time_period: fittingTimePeriod,
+                    fitter_id: fitterId,
+                    fitting_date_unknown: fittingDateUnknown
                 },
                 success: function(response) {
                     if (response.success) {
-                        const measure = response.data.entry || response.data;
+                        // Close modal
+                        $('#convert-measure-to-job-modal').fadeOut();
 
-                        // Open job entry modal
-                        $('#entry-modal-title').text('Convert Measure to Job');
-                        $('#diary-entry-form')[0].reset();
-                        $('#entry-id').val('');
+                        // Reset form
+                        $('#convert-measure-to-job-form')[0].reset();
 
-                        // Preserve order number
-                        if (measure.order_number) {
-                            $('#order-number').val(measure.order_number);
-                        }
-
-                        // Pre-fill form with measure data
-                        if (measure.customer_id) {
-                            $('#customer-id').val(measure.customer_id);
-                            if (measure.customer) {
-                                $('#customer-search').hide();
-                                $('#selected-customer-name').text(measure.customer.customer_name);
-                                $('#selected-customer-display').show();
-                            }
-                        }
-
-                        // Pre-fill address
-                        if (measure.fitting_address_line_1) {
-                            $('#fitting-address-line-1').val(measure.fitting_address_line_1);
-                            $('#fitting-address-line-2').val(measure.fitting_address_line_2 || '');
-                            $('#fitting-address-line-3').val(measure.fitting_address_line_3 || '');
-                            $('#fitting-postcode').val(measure.fitting_postcode || '');
-                        }
-
-                        // Pre-fill date (from measure date to fitting date)
-                        if (measure.fitting_date) {
-                            $('#fitting-date').val(measure.fitting_date);
-                        }
-
-                        // Pre-fill notes
-                        if (measure.notes) {
-                            $('#notes').val(measure.notes);
-                        }
-
-                        // Set job date to today
-                        $('#job-date').val(new Date().toISOString().split('T')[0]);
-
-                        $('#entry-modal').fadeIn();
+                        // Reload page to show updated calendar
+                        location.reload();
                     } else {
-                        alert('Error loading measure data');
+                        alert('Error converting measure: ' + (response.data.message || 'Unknown error'));
                     }
                 },
                 error: function() {
-                    alert('An error occurred while loading measure data');
+                    alert('Failed to convert measure to job.');
                 }
             });
+        });
+
+        /**
+         * Cancel convert measure to job
+         */
+        $(document).on('click', '.cancel-convert-measure', function() {
+            $('#convert-measure-to-job-modal').fadeOut();
+            $('#convert-measure-to-job-form')[0].reset();
         });
 
         // ===========================================

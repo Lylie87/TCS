@@ -190,6 +190,7 @@ class WP_Staff_Diary {
 
         // AJAX handlers - Quotes
         $this->loader->add_action('wp_ajax_convert_quote_to_job', $plugin_admin, 'convert_quote_to_job');
+        $this->loader->add_action('wp_ajax_convert_measure_to_job', $plugin_admin, 'convert_measure_to_job');
         $this->loader->add_action('wp_ajax_get_fitter_availability', $plugin_admin, 'get_fitter_availability');
         $this->loader->add_action('wp_ajax_email_quote', $plugin_admin, 'email_quote');
 

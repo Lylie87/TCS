@@ -2569,6 +2569,64 @@ class WP_Staff_Diary_Admin {
         }
     }
 
+    /**
+     * AJAX: Convert measure to job
+     * Updates the measure entry with fitting details and changes status to pending
+     */
+    public function convert_measure_to_job() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $measure_id = intval($_POST['measure_id']);
+        $fitting_date = isset($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null;
+        $fitting_time_period = isset($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null;
+        $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
+        $fitting_date_unknown = isset($_POST['fitting_date_unknown']) ? intval($_POST['fitting_date_unknown']) : 0;
+
+        if (empty($measure_id)) {
+            wp_send_json_error(array('message' => 'Measure ID is required'));
+            return;
+        }
+
+        // Verify the entry exists and is a measure
+        $entry = $this->db->get_entry($measure_id);
+        if (!$entry) {
+            wp_send_json_error(array('message' => 'Measure not found'));
+            return;
+        }
+
+        if ($entry->status !== 'measure') {
+            wp_send_json_error(array('message' => 'This entry is not a measure'));
+            return;
+        }
+
+        // Verify ownership or admin
+        $user_id = get_current_user_id();
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Update the entry with fitting details and change status to pending
+        $update_data = array(
+            'status' => 'pending',
+            'fitter_id' => $fitter_id,
+            'fitting_date' => $fitting_date,
+            'fitting_time_period' => $fitting_time_period,
+            'fitting_date_unknown' => $fitting_date_unknown
+        );
+
+        $result = $this->db->update_entry($measure_id, $update_data);
+
+        if ($result !== false) {
+            wp_send_json_success(array(
+                'message' => 'Measure successfully converted to job',
+                'entry_id' => $measure_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to convert measure to job'));
+        }
+    }
+
     // ==================== PAYMENT REMINDER METHODS ====================
 
     /**
