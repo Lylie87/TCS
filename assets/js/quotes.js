@@ -22,8 +22,8 @@
         // Modal operations
         initModals();
 
-        // Button click handlers
-        $('#add-new-quote').on('click', openAddQuoteModal);
+        // Button click handlers (top and bottom buttons)
+        $('#add-new-quote, #add-new-quote-bottom').on('click', openAddQuoteModal);
         $('.edit-quote').on('click', function() {
             editQuote($(this).data('id'));
         });

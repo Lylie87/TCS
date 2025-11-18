@@ -115,7 +115,7 @@
     <?php if (empty($quotes)): ?>
         <div class="quotes-widget-empty">
             <p>No recent quotes found.</p>
-            <p><a href="<?php echo admin_url('admin.php?page=wp-staff-diary-quotes'); ?>" class="button button-primary">Create New Quote</a></p>
+            <p><a href="<?php echo admin_url('admin.php?page=wp-staff-diary-quotes'); ?>" class="button button-primary">Go to Quotes Page</a></p>
         </div>
     <?php else: ?>
         <?php foreach ($quotes as $quote):
