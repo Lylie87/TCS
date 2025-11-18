@@ -143,10 +143,28 @@
                 if (response.success) {
                     const quote = response.data.entry || response.data;
                     populateQuoteForm(quote);
-                    $('#quote-modal-title').text('Edit Quote');
 
-                    // Enable photo uploads and update button text for existing quotes
-                    $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Update Quote');
+                    // Check if this is a measure being converted (status=measure)
+                    const isConvertingMeasure = quote.status === 'measure';
+
+                    if (isConvertingMeasure) {
+                        // Converting measure to quote
+                        $('#quote-modal-title').text('Convert Measure to Quote');
+                        $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Save Quote');
+
+                        // Clear notes field (notes history is preserved in comments table)
+                        $('#quote-notes').val('');
+
+                        // Uncheck billing address different by default
+                        $('#quote-billing-address-different').prop('checked', false);
+                        $('#quote-billing-address-section').hide();
+                    } else {
+                        // Regular quote edit
+                        $('#quote-modal-title').text('Edit Quote');
+                        $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Update Quote');
+                    }
+
+                    // Enable photo uploads
                     $('#quote-upload-photo-btn').prop('disabled', false);
 
                     // Load photos for this quote
@@ -314,10 +332,11 @@
                         alert('Quote saved successfully! You can now add photos to this quote.');
                         $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Update Quote');
                     } else {
-                        // Existing quote updated - close and reload
+                        // Existing quote updated - close and reload with clean URL
                         alert('Quote updated successfully!');
                         closeAllModals();
-                        location.reload();
+                        // Clean URL to prevent modal reopening
+                        window.location.href = window.location.pathname + window.location.search.split('&entry_id=')[0].split('?entry_id=')[0].replace(/[\?&]action=edit/g, '').replace(/[\?&]from_measure=\d+/g, '') || window.location.pathname;
                     }
                 } else {
                     alert('Error saving quote: ' + (response.data.message || 'Unknown error'));

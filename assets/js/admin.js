@@ -2328,22 +2328,22 @@
         // ===========================================
 
         /**
-         * Generate comments section HTML
+         * Generate internal notes section HTML
          */
         function generateCommentsSection(entryId) {
             let html = '<div class="detail-section comments-section">';
-            html += '<h3><span class="dashicons dashicons-admin-comments"></span> Comments</h3>';
+            html += '<h3><span class="dashicons dashicons-admin-comments"></span> Internal Notes</h3>';
             html += `<div class="comments-list" id="comments-list-${entryId}">`;
             html += `<div class="loading-comments" style="text-align: center; padding: 20px; color: #666;">`;
-            html += `<span class="dashicons dashicons-update" style="animation: rotation 2s infinite linear;"></span> Loading comments...`;
+            html += `<span class="dashicons dashicons-update" style="animation: rotation 2s infinite linear;"></span> Loading notes...`;
             html += `</div>`;
             html += '</div>';
 
-            // Add comment form
+            // Add note form
             html += '<div class="add-comment-form">';
-            html += '<textarea placeholder="Add a comment..." id="new-comment-text-' + entryId + '"></textarea>';
+            html += '<textarea placeholder="Add new internal note..." id="new-comment-text-' + entryId + '"></textarea>';
             html += '<button type="button" class="button button-primary add-comment-btn" data-entry-id="' + entryId + '">';
-            html += '<span class="dashicons dashicons-plus"></span> Add Comment';
+            html += '<span class="dashicons dashicons-plus"></span> Add Internal Note';
             html += '</button>';
             html += '</div>';
 
@@ -2383,7 +2383,7 @@
             const $commentsList = $(`#comments-list-${entryId}`);
 
             if (!comments || comments.length === 0) {
-                $commentsList.html('<div class="no-comments-msg">No comments yet. Be the first to comment!</div>');
+                $commentsList.html(''); // Empty - no message needed
                 return;
             }
 
