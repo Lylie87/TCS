@@ -119,7 +119,10 @@ class WP_Staff_Diary_Jobs_Repository extends WP_Staff_Diary_Base_Repository {
      * @return bool True on success, false on failure
      */
     public function cancel_entry($entry_id) {
-        return $this->update($entry_id, array('status' => 'cancelled'));
+        return $this->update($entry_id, array(
+            'status' => 'cancelled',
+            'is_cancelled' => 1
+        ));
     }
 
     /**

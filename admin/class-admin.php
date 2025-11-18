@@ -968,6 +968,121 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * AJAX: Add comment
+     */
+    public function add_comment() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $diary_entry_id = intval($_POST['diary_entry_id']);
+        $comment_text = sanitize_textarea_field($_POST['comment_text']);
+        $user_id = get_current_user_id();
+
+        if (empty($comment_text)) {
+            wp_send_json_error(array('message' => 'Comment text is required'));
+        }
+
+        $comment_id = $this->db->add_comment($diary_entry_id, $user_id, $comment_text);
+
+        if ($comment_id) {
+            // Get the comment with user info
+            $comments = $this->db->get_entry_comments($diary_entry_id);
+            $new_comment = null;
+            foreach ($comments as $comment) {
+                if ($comment->id == $comment_id) {
+                    $new_comment = $comment;
+                    break;
+                }
+            }
+
+            wp_send_json_success(array(
+                'message' => 'Comment added successfully',
+                'comment' => $new_comment
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to add comment'));
+        }
+    }
+
+    /**
+     * AJAX: Update comment
+     */
+    public function update_comment() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $comment_id = intval($_POST['comment_id']);
+        $comment_text = sanitize_textarea_field($_POST['comment_text']);
+        $user_id = get_current_user_id();
+
+        if (empty($comment_text)) {
+            wp_send_json_error(array('message' => 'Comment text is required'));
+        }
+
+        // Check if user owns this comment
+        $comment = $this->db->get_comment($comment_id);
+        if (!$comment || ($comment->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $result = $this->db->update_comment($comment_id, $comment_text);
+
+        if ($result !== false) {
+            // Get updated comment with user info
+            $comments = $this->db->get_entry_comments($comment->diary_entry_id);
+            $updated_comment = null;
+            foreach ($comments as $c) {
+                if ($c->id == $comment_id) {
+                    $updated_comment = $c;
+                    break;
+                }
+            }
+
+            wp_send_json_success(array(
+                'message' => 'Comment updated successfully',
+                'comment' => $updated_comment
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update comment'));
+        }
+    }
+
+    /**
+     * AJAX: Delete comment
+     */
+    public function delete_comment() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $comment_id = intval($_POST['comment_id']);
+        $user_id = get_current_user_id();
+
+        // Check if user owns this comment
+        $comment = $this->db->get_comment($comment_id);
+        if (!$comment || ($comment->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $result = $this->db->delete_comment($comment_id);
+
+        if ($result) {
+            wp_send_json_success(array('message' => 'Comment deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to delete comment'));
+        }
+    }
+
+    /**
+     * AJAX: Get comments for entry
+     */
+    public function get_comments() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $diary_entry_id = intval($_POST['diary_entry_id']);
+
+        $comments = $this->db->get_entry_comments($diary_entry_id);
+
+        wp_send_json_success(array('comments' => $comments));
+    }
+
+    /**
      * Get payment with user info
      */
     private function get_payment_with_user_info($payment_id) {

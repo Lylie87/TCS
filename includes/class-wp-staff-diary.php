@@ -134,6 +134,12 @@ class WP_Staff_Diary {
         // $this->loader->add_action('wp_ajax_add_payment', $plugin_admin, 'add_payment');
         // $this->loader->add_action('wp_ajax_delete_payment', $plugin_admin, 'delete_payment');
 
+        // AJAX handlers - Comments
+        $this->loader->add_action('wp_ajax_add_comment', $plugin_admin, 'add_comment');
+        $this->loader->add_action('wp_ajax_update_comment', $plugin_admin, 'update_comment');
+        $this->loader->add_action('wp_ajax_delete_comment', $plugin_admin, 'delete_comment');
+        $this->loader->add_action('wp_ajax_get_comments', $plugin_admin, 'get_comments');
+
         // AJAX handlers - Statuses
         $this->loader->add_action('wp_ajax_wp_staff_diary_add_status', $plugin_admin, 'add_status');
         $this->loader->add_action('wp_ajax_wp_staff_diary_delete_status', $plugin_admin, 'delete_status');

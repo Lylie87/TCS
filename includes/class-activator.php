@@ -239,6 +239,22 @@ class WP_Staff_Diary_Activator {
             KEY sent_at (sent_at)
         ) $charset_collate;";
 
+        // Table for comments (timestamped notes/comments on jobs/quotes/measures)
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        $sql_comments = "CREATE TABLE $table_comments (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) NOT NULL,
+            user_id bigint(20) NOT NULL,
+            comment_text text NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY user_id (user_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_customers);
         dbDelta($sql_diary);
@@ -250,6 +266,7 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_discount_offers);
         dbDelta($sql_email_templates);
         dbDelta($sql_sms_log);
+        dbDelta($sql_comments);
 
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);

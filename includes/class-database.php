@@ -205,6 +205,88 @@ class WP_Staff_Diary_Database {
         ));
     }
 
+    // ==================== COMMENT METHODS ====================
+
+    /**
+     * Add a comment to a diary entry
+     */
+    public function add_comment($diary_entry_id, $user_id, $comment_text) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        $result = $wpdb->insert(
+            $table_comments,
+            array(
+                'diary_entry_id' => $diary_entry_id,
+                'user_id' => $user_id,
+                'comment_text' => $comment_text
+            ),
+            array('%d', '%d', '%s')
+        );
+
+        if ($result) {
+            return $wpdb->insert_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get all comments for a diary entry
+     */
+    public function get_entry_comments($diary_entry_id) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT c.*, u.display_name as user_name
+             FROM $table_comments c
+             LEFT JOIN {$wpdb->users} u ON c.user_id = u.ID
+             WHERE c.diary_entry_id = %d
+             ORDER BY c.created_at ASC",
+            $diary_entry_id
+        ));
+    }
+
+    /**
+     * Update a comment
+     */
+    public function update_comment($comment_id, $comment_text) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->update(
+            $table_comments,
+            array('comment_text' => $comment_text),
+            array('id' => $comment_id),
+            array('%s'),
+            array('%d')
+        );
+    }
+
+    /**
+     * Delete a comment
+     */
+    public function delete_comment($comment_id) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->delete($table_comments, array('id' => $comment_id), array('%d'));
+    }
+
+    /**
+     * Get a single comment (for permission checking)
+     */
+    public function get_comment($comment_id) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table_comments WHERE id = %d",
+            $comment_id
+        ));
+    }
+
     // ==================== CUSTOMER METHODS ====================
 
     /**

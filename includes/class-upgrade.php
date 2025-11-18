@@ -73,6 +73,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_2_6_1();
         }
 
+        // Upgrade to v3.0.0 - Add comments table and fix cancelled entries
+        if (version_compare($from_version, '3.0.0', '<')) {
+            self::upgrade_to_3_0_0();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
@@ -537,5 +542,35 @@ If you have any questions, please don't hesitate to contact us.
 
 Best regards,
 {company_name}";
+    }
+
+    /**
+     * Upgrade to version 3.0.0
+     * Create comments table for timestamped comments on jobs/quotes/measures
+     */
+    private static function upgrade_to_3_0_0() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+
+        // Create comments table
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        $sql_comments = "CREATE TABLE $table_comments (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) NOT NULL,
+            user_id bigint(20) NOT NULL,
+            comment_text text NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY user_id (user_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql_comments);
+
+        error_log('WP Staff Diary: Created comments table for version 3.0.0');
     }
 }
