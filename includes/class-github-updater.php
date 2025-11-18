@@ -163,6 +163,9 @@ class WP_Staff_Diary_GitHub_Updater {
                 require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
                 require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
+                // Check if plugin is currently active
+                $was_active = is_plugin_active($plugin_file);
+
                 // Use Plugin_Upgrader to update the plugin
                 $upgrader = new Plugin_Upgrader(new Automatic_Upgrader_Skin());
                 $result = $upgrader->upgrade($plugin_file);
@@ -172,7 +175,12 @@ class WP_Staff_Diary_GitHub_Updater {
                     wp_redirect(admin_url('plugins.php?update_error=1'));
                     exit;
                 } else {
-                    // Update successful - redirect with success message
+                    // Update successful - reactivate if it was active before
+                    if ($was_active) {
+                        activate_plugin($plugin_file);
+                    }
+
+                    // Redirect with success message
                     wp_redirect(admin_url('plugins.php?update_success=1'));
                     exit;
                 }
