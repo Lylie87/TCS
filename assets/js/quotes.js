@@ -1391,9 +1391,9 @@
         }
 
         // Photos
+        html += '<h3>Photos</h3>';
         if (quote.images && quote.images.length > 0) {
-            html += '<h3>Photos</h3>';
-            html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
+            html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
             quote.images.forEach(function(img) {
                 const categoryLabel = img.category ? ` (${img.category})` : '';
                 const captionLabel = img.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${img.image_caption}</div>` : '';
@@ -1409,7 +1409,15 @@
                 </div>`;
             });
             html += '</div>';
+        } else {
+            html += '<p style="color: #999;">No photos uploaded yet.</p>';
         }
+
+        // Add upload button
+        html += `<button type="button" class="button" id="upload-quote-photo-btn" data-entry-id="${quote.id}">
+            <span class="dashicons dashicons-camera"></span> Upload Photo
+        </button>`;
+        html += `<input type="file" id="photo-upload-input-${quote.id}" accept="image/*" style="display: none;">`;
 
         html += '</div>';
 
@@ -1430,6 +1438,72 @@
             const quoteId = $(this).data('quote-id');
             const customerEmail = $(this).data('customer-email');
             showEmailQuoteModal(quoteId, customerEmail);
+        });
+
+        // Attach photo upload handler
+        $('#upload-quote-photo-btn').off('click').on('click', function() {
+            const entryId = $(this).data('entry-id');
+            $('#photo-upload-input-' + entryId).click();
+        });
+
+        // Handle photo file selection
+        $(`#photo-upload-input-${quote.id}`).off('change').on('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+
+            // Show category modal (reuse from admin.js if available)
+            if (typeof showPhotoCategoryModal === 'function') {
+                showPhotoCategoryModal(file, quote.id, function(result) {
+                    if (!result) {
+                        // User cancelled
+                        $(`#photo-upload-input-${quote.id}`).val('');
+                        return;
+                    }
+
+                    uploadQuoteViewPhoto(file, quote.id, result.category, result.caption);
+                });
+            } else {
+                // Fallback: upload without category
+                uploadQuoteViewPhoto(file, quote.id, 'general', '');
+            }
+        });
+    }
+
+    /**
+     * Upload photo from quote view
+     */
+    function uploadQuoteViewPhoto(file, quoteId, category, caption) {
+        const formData = new FormData();
+        formData.append('action', 'upload_job_image');
+        formData.append('nonce', wpStaffDiary.nonce);
+        formData.append('diary_entry_id', quoteId);
+        formData.append('image', file);
+        formData.append('category', category);
+        if (caption) {
+            formData.append('caption', caption);
+        }
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    alert('Photo uploaded successfully!');
+                    // Reload the quote details to show new photo
+                    viewQuote(quoteId);
+                } else {
+                    alert('Error uploading photo: ' + (response.data.message || 'Unknown error'));
+                }
+                // Clear file input
+                $(`#photo-upload-input-${quoteId}`).val('');
+            },
+            error: function() {
+                alert('Failed to upload photo.');
+                $(`#photo-upload-input-${quoteId}`).val('');
+            }
         });
     }
 
