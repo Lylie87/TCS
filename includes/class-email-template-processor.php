@@ -15,6 +15,11 @@ class WP_Staff_Diary_Email_Template_Processor {
      * @return string Processed email content
      */
     public static function process_template($template, $data) {
+        // Ensure template is not null
+        if ($template === null) {
+            $template = '';
+        }
+
         $merge_tags = array(
             '{customer_name}' => isset($data['customer_name']) ? $data['customer_name'] : '',
             '{quote_date}' => isset($data['quote_date']) ? $data['quote_date'] : '',
