@@ -1794,15 +1794,26 @@
                 success: function(response) {
                     if (response.success && response.data.photos) {
                         let html = '';
-                        response.data.photos.forEach(function(photo) {
-                            const categoryLabel = photo.category ? ` (${photo.category})` : '';
-                            html += `<div class="photo-item" style="display: inline-block; margin: 10px; position: relative;">
-                                <img src="${photo.image_url}" style="max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" onclick="window.open('${photo.image_url}', '_blank')" title="Click to open full size">
-                                <div style="font-size: 11px; color: #666;">${categoryLabel}</div>
-                            </div>`;
-                        });
-                        $('#measure-photos-container').html(html || '<p class="description">No photos uploaded yet.</p>');
+                        if (response.data.photos.length > 0) {
+                            response.data.photos.forEach(function(photo) {
+                                const categoryLabel = photo.image_category ? ` (${photo.image_category})` : '';
+                                const caption = photo.image_caption ? `<div style="font-size: 10px; color: #999; margin-top: 2px;">${photo.image_caption}</div>` : '';
+                                html += `<div class="photo-item" style="display: inline-block; margin: 10px; position: relative;">
+                                    <img src="${photo.image_url}" style="max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" onclick="window.open('${photo.image_url}', '_blank')" title="Click to open full size">
+                                    <div style="font-size: 11px; color: #666; font-weight: 600;">${categoryLabel}</div>
+                                    ${caption}
+                                </div>`;
+                            });
+                        } else {
+                            html = '<p class="description">No photos uploaded yet.</p>';
+                        }
+                        $('#measure-photos-container').html(html);
+                    } else {
+                        $('#measure-photos-container').html('<p class="description">No photos uploaded yet.</p>');
                     }
+                },
+                error: function() {
+                    console.error('Failed to load photos');
                 }
             });
         }

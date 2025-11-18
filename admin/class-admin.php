@@ -877,6 +877,23 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * AJAX: Get entry photos
+     */
+    public function get_entry_photos() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+
+        if (!$entry_id) {
+            wp_send_json_error(array('message' => 'Entry ID is required'));
+        }
+
+        $images = $this->db->get_entry_images($entry_id);
+
+        wp_send_json_success(array('photos' => $images));
+    }
+
+    /**
      * AJAX: Delete diary image
      */
     public function delete_diary_image() {

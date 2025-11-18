@@ -127,6 +127,7 @@ class WP_Staff_Diary {
         // Keeping these for backwards compatibility fallback
         // $this->loader->add_action('wp_ajax_upload_job_image', $plugin_admin, 'upload_job_image');
         // $this->loader->add_action('wp_ajax_delete_diary_image', $plugin_admin, 'delete_diary_image');
+        $this->loader->add_action('wp_ajax_get_entry_photos', $plugin_admin, 'get_entry_photos');
 
         // AJAX handlers - Payments
         // NOTE: Payment handlers now managed by Payments module
