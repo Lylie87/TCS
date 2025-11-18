@@ -1560,6 +1560,11 @@
                 // Open the add quote modal
                 openAddQuoteModal();
 
+                // Preserve order number
+                if (urlParams.get('order_number')) {
+                    $('#quote-order-number').val(urlParams.get('order_number'));
+                }
+
                 // Pre-fill the form with measure data
                 const customerId = urlParams.get('customer_id');
                 if (customerId) {

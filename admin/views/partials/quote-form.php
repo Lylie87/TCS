@@ -22,6 +22,7 @@ $accessories = $db->get_all_accessories();
 <!-- Quote Entry Form -->
 <form id="quote-entry-form">
     <input type="hidden" id="quote-entry-id" name="entry_id" value="">
+    <input type="hidden" id="quote-order-number" name="order_number" value="">
     <input type="hidden" id="quote-status" name="status" value="quotation">
     <input type="hidden" id="quote-job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>">
 

@@ -23,6 +23,7 @@ $accessories = $db->get_all_accessories();
 <!-- Job Entry Form -->
 <form id="diary-entry-form">
     <input type="hidden" id="entry-id" name="entry_id" value="">
+    <input type="hidden" id="order-number" name="order_number" value="">
 
     <div class="form-sections">
         <!-- Order Info Section -->

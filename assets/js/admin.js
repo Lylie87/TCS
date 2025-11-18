@@ -2224,6 +2224,7 @@
                         const params = new URLSearchParams({
                             action: 'new',
                             from_measure: measureId,
+                            order_number: measure.order_number || '',
                             customer_id: measure.customer_id || '',
                             fitting_date: measure.fitting_date || '',
                             fitting_address_line_1: measure.fitting_address_line_1 || '',
@@ -2270,6 +2271,11 @@
                         $('#entry-modal-title').text('Convert Measure to Job');
                         $('#diary-entry-form')[0].reset();
                         $('#entry-id').val('');
+
+                        // Preserve order number
+                        if (measure.order_number) {
+                            $('#order-number').val(measure.order_number);
+                        }
 
                         // Pre-fill form with measure data
                         if (measure.customer_id) {
