@@ -2481,7 +2481,7 @@ class WP_Staff_Diary_Admin {
                 );
 
                 // Track which fitters are booked for each time period
-                $time_period = strtolower($job->fitting_time_period);
+                $time_period = strtolower($job->fitting_time_period ?? '');
                 if ($time_period === 'am' || $time_period === 'all-day') {
                     $availability[$job->fitting_date]['am_booked_fitters'][] = $job->fitter_id;
                 }

@@ -48,7 +48,7 @@ class WP_Staff_Diary_Jobs_Controller extends WP_Staff_Diary_Base_Controller {
 
         $entry_id = isset($_POST['entry_id']) ? intval($_POST['entry_id']) : 0;
         $user_id = get_current_user_id();
-        $status = sanitize_text_field($_POST['status']);
+        $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'pending';
 
         // If status is 'cancelled' and this is an existing entry, delete it
         if ($status === 'cancelled' && $entry_id > 0) {
