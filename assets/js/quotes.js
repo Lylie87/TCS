@@ -1568,7 +1568,7 @@
         html += '<p class="description">This message will be included in the email body along with the quote details.</p>';
         html += '</div>';
         html += '<div class="modal-footer">';
-        html += '<button type="submit" class="button button-primary"><span class="dashicons dashicons-email"></span> Send Email</button>';
+        html += '<button type="submit" class="button button-primary"><span class="dashicons dashicons-email"></span> Email Quote</button>';
         html += '<button type="button" class="button" id="cancel-email-quote">Cancel</button>';
         html += '</div>';
         html += '</form>';

@@ -316,20 +316,39 @@ class WP_Staff_Diary_PDF_Generator {
 
         // Logo cell - only render if image data successfully loaded
         if ($company_logo) {
+            // Try to get the logo image data
+            $image_data = false;
+            $mime_type = 'image/jpeg'; // Default
+
+            // First try: Get attachment file path
             $logo_path = get_attached_file($company_logo);
             if ($logo_path && file_exists($logo_path)) {
-                // Get image type
                 $image_type = wp_check_filetype($logo_path);
                 $mime_type = $image_type['type'];
+                $image_data = @file_get_contents($logo_path);
+            }
 
-                // Convert image to base64 for better TCPDF compatibility
-                $image_data = file_get_contents($logo_path);
-                if ($image_data !== false && !empty($image_data)) {
-                    $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
-                    $html .= '<td style="width: 150px; vertical-align: top; padding-right: 10px;">';
-                    $html .= '<img src="' . $base64_image . '" style="width: 150px; height: auto;" />';
-                    $html .= '</td>';
+            // Second try: If file path doesn't work, try getting URL and fetching
+            if ($image_data === false || empty($image_data)) {
+                $logo_url = wp_get_attachment_url($company_logo);
+                if ($logo_url) {
+                    // Use WordPress HTTP API for better compatibility
+                    $response = wp_remote_get($logo_url, array('timeout' => 10));
+                    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                        $image_data = wp_remote_retrieve_body($response);
+                        // Detect MIME type from URL
+                        $ext = pathinfo($logo_url, PATHINFO_EXTENSION);
+                        $mime_type = 'image/' . strtolower($ext);
+                    }
                 }
+            }
+
+            // Render logo if we successfully loaded image data
+            if ($image_data !== false && !empty($image_data)) {
+                $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
+                $html .= '<td style="width: 150px; vertical-align: top; padding-right: 10px;">';
+                $html .= '<img src="' . $base64_image . '" style="width: 150px; height: auto;" />';
+                $html .= '</td>';
             }
         }
 
@@ -540,13 +559,37 @@ class WP_Staff_Diary_PDF_Generator {
         // Company Header with Logo
         $html .= '<table style="width: 100%; margin-bottom: 20px; border: 0;" cellpadding="0" cellspacing="0"><tr>';
 
-        // Logo cell
+        // Logo cell with dual fallback approach
         if ($company_logo) {
+            $image_data = false;
+            $mime_type = 'image/jpeg';
+
+            // First try: Get attachment file path
             $logo_path = get_attached_file($company_logo);
             if ($logo_path && file_exists($logo_path)) {
+                $image_type = wp_check_filetype($logo_path);
+                $mime_type = $image_type['type'];
+                $image_data = @file_get_contents($logo_path);
+            }
+
+            // Second try: If file path doesn't work, try getting URL and fetching
+            if ($image_data === false || empty($image_data)) {
+                $logo_url = wp_get_attachment_url($company_logo);
+                if ($logo_url) {
+                    $response = wp_remote_get($logo_url, array('timeout' => 10));
+                    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                        $image_data = wp_remote_retrieve_body($response);
+                        $ext = pathinfo($logo_url, PATHINFO_EXTENSION);
+                        $mime_type = 'image/' . strtolower($ext);
+                    }
+                }
+            }
+
+            // Render logo if we successfully loaded image data
+            if ($image_data !== false && !empty($image_data)) {
+                $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
                 $html .= '<td style="width: 100px; vertical-align: top; padding-right: 10px;">';
-                // Use @ prefix for TCPDF to load from filesystem
-                $html .= '<img src="@' . $logo_path . '" style="height: 50px; width: auto;" />';
+                $html .= '<img src="' . $base64_image . '" style="height: 50px; width: auto;" />';
                 $html .= '</td>';
             }
         }

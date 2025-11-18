@@ -1411,7 +1411,7 @@
             html += '<div class="detail-section detail-actions">';
             if (entry.is_cancelled != 1) {
                 html += `<button type="button" class="button" onclick="window.open('${wpStaffDiary.ajaxUrl.replace('admin-ajax.php', '')}admin-post.php?action=wp_staff_diary_download_pdf&entry_id=${entry.id}&nonce=${wpStaffDiary.nonce}')">
-                    <span class="dashicons dashicons-pdf"></span> Download PDF
+                    <span class="dashicons dashicons-pdf"></span> Generate PDF
                 </button>`;
                 html += `<button type="button" class="button edit-entry" data-id="${entry.id}" style="margin-left: 10px;">
                     <span class="dashicons dashicons-edit"></span> Edit Job
