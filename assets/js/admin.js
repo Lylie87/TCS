@@ -289,23 +289,23 @@
                 $('#fitter').val('');
             }
 
-            // Addresses
-            $('#billing-address-line-1').val(entry.billing_address_line_1 || '');
-            $('#billing-address-line-2').val(entry.billing_address_line_2 || '');
-            $('#billing-address-line-3').val(entry.billing_address_line_3 || '');
-            $('#billing-postcode').val(entry.billing_postcode || '');
+            // Address fields - fitting is primary, billing is optional
+            $('#fitting-address-line-1').val(entry.fitting_address_line_1 || '');
+            $('#fitting-address-line-2').val(entry.fitting_address_line_2 || '');
+            $('#fitting-address-line-3').val(entry.fitting_address_line_3 || '');
+            $('#fitting-postcode').val(entry.fitting_postcode || '');
 
-            // Fitting address
+            // Billing address (if different)
             if (entry.fitting_address_different == 1) {
-                $('#fitting-address-different').prop('checked', true);
-                $('#fitting-address-section').show();
-                $('#fitting-address-line-1').val(entry.fitting_address_line_1 || '');
-                $('#fitting-address-line-2').val(entry.fitting_address_line_2 || '');
-                $('#fitting-address-line-3').val(entry.fitting_address_line_3 || '');
-                $('#fitting-postcode').val(entry.fitting_postcode || '');
+                $('#billing-address-different').prop('checked', true);
+                $('#billing-address-section').show();
+                $('#billing-address-line-1').val(entry.billing_address_line_1 || '');
+                $('#billing-address-line-2').val(entry.billing_address_line_2 || '');
+                $('#billing-address-line-3').val(entry.billing_address_line_3 || '');
+                $('#billing-postcode').val(entry.billing_postcode || '');
             } else {
-                $('#fitting-address-different').prop('checked', false);
-                $('#fitting-address-section').hide();
+                $('#billing-address-different').prop('checked', false);
+                $('#billing-address-section').hide();
             }
 
             // Product
@@ -1044,17 +1044,17 @@
         // ADDRESS HANDLING
         // ===========================================
 
-        // Fitting address checkbox toggle
-        $(document).on('change', '#fitting-address-different', function() {
+        // Billing address checkbox toggle
+        $(document).on('change', '#billing-address-different', function() {
             if ($(this).is(':checked')) {
-                $('#fitting-address-section').slideDown();
+                $('#billing-address-section').slideDown();
             } else {
-                $('#fitting-address-section').slideUp();
-                // Clear fitting address fields when unchecked
-                $('#fitting-address-line-1').val('');
-                $('#fitting-address-line-2').val('');
-                $('#fitting-address-line-3').val('');
-                $('#fitting-postcode').val('');
+                $('#billing-address-section').slideUp();
+                // Clear billing address fields when unchecked
+                $('#billing-address-line-1').val('');
+                $('#billing-address-line-2').val('');
+                $('#billing-address-line-3').val('');
+                $('#billing-postcode').val('');
             }
         });
 
@@ -2289,7 +2289,6 @@
 
                         // Pre-fill address
                         if (measure.fitting_address_line_1) {
-                            $('#use-different-address').prop('checked', true).trigger('change');
                             $('#fitting-address-line-1').val(measure.fitting_address_line_1);
                             $('#fitting-address-line-2').val(measure.fitting_address_line_2 || '');
                             $('#fitting-address-line-3').val(measure.fitting_address_line_3 || '');
