@@ -164,6 +164,14 @@
             }
         });
 
+        // Mark job complete button
+        $(document).on('click', '.mark-job-complete', function() {
+            const entryId = $(this).data('id');
+            if (confirm('Mark this job as completed? The job will be highlighted in green on the calendar.')) {
+                markJobComplete(entryId);
+            }
+        });
+
         // Submit entry form
         $('#diary-entry-form').on('submit', function(e) {
             e.preventDefault();
@@ -1416,6 +1424,12 @@
                 html += `<button type="button" class="button edit-entry" data-id="${entry.id}" style="margin-left: 10px;">
                     <span class="dashicons dashicons-edit"></span> Edit Job
                 </button>`;
+                // Show "Mark Complete" button only if status is not already "completed"
+                if (entry.status !== 'completed') {
+                    html += `<button type="button" class="button button-primary mark-job-complete" data-id="${entry.id}" style="margin-left: 10px; background: #00a32a; border-color: #00a32a; color: white;">
+                        <span class="dashicons dashicons-yes-alt"></span> Mark Job Complete
+                    </button>`;
+                }
                 html += `<button type="button" class="button cancel-entry" data-id="${entry.id}" style="margin-left: 10px; background: #d63638; color: white; border-color: #d63638;">
                     <span class="dashicons dashicons-no"></span> Cancel Job
                 </button>`;
@@ -1971,6 +1985,42 @@
                 },
                 error: function() {
                     alert('An error occurred while deleting the entry.');
+                }
+            });
+        }
+
+        // ===========================================
+        // MARK JOB COMPLETE
+        // ===========================================
+
+        /**
+         * Mark job as complete
+         */
+        function markJobComplete(entryId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'mark_job_complete',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Close modal
+                        $('.wp-staff-diary-modal').fadeOut();
+                        // Show success message
+                        alert(response.data.message || 'Job marked as complete!');
+                        // Reload page to update calendar view
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 300);
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to mark job as complete'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while marking the job as complete.');
                 }
             });
         }

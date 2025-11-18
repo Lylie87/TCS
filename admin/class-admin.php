@@ -745,6 +745,46 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * AJAX: Mark job as complete
+     */
+    public function mark_job_complete() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+        $user_id = get_current_user_id();
+
+        // Verify ownership or admin
+        $entry = $this->db->get_entry($entry_id);
+        if (!$entry) {
+            wp_send_json_error(array('message' => 'Entry not found'));
+            return;
+        }
+
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Update status to completed
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        $result = $wpdb->update(
+            $table_diary,
+            array('status' => 'completed'),
+            array('id' => $entry_id),
+            array('%s'),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Job marked as complete!'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to mark job as complete'));
+        }
+    }
+
+    /**
      * AJAX: Upload job image
      */
     public function upload_job_image() {
