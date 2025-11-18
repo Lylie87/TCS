@@ -287,14 +287,16 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 20px; margin-bottom: 20px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
+            h2 { font-size: 16px; color: #333; margin: 0; padding: 0; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
+            .h2-spacer-top { height: 20px; }
+            .h2-spacer-bottom { height: 15px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
-            .info-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .info-table { width: 100%; border-collapse: collapse; margin-top: 0; }
             .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
-            .financial-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 0; }
             .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ccc; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
             .financial-table th.qty-col { text-align: center; }
@@ -364,7 +366,9 @@ class WP_Staff_Diary_PDF_Generator {
 
         // Customer Information
         if ($customer) {
+            $html .= '<div class="h2-spacer-top"></div>';
             $html .= '<h2>Customer Details</h2>';
+            $html .= '<div class="h2-spacer-bottom"></div>';
             $html .= '<table class="info-table">';
             $html .= '<tr><td width="20%"><strong>Name:</strong></td><td>' . htmlspecialchars($customer->customer_name) . '</td></tr>';
 
@@ -378,7 +382,9 @@ class WP_Staff_Diary_PDF_Generator {
         }
 
         // Fitting Address
+        $html .= '<div class="h2-spacer-top"></div>';
         $html .= '<h2>Fitting Address</h2>';
+        $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<div class="address-section">';
         $fitting_address_parts = array_filter(array(
             isset($quote->fitting_address_line_1) ? $quote->fitting_address_line_1 : '',
@@ -395,7 +401,9 @@ class WP_Staff_Diary_PDF_Generator {
 
         // Billing Address (if different)
         if (isset($quote->billing_address_different) && $quote->billing_address_different == 1) {
+            $html .= '<div class="h2-spacer-top"></div>';
             $html .= '<h2>Billing Address</h2>';
+            $html .= '<div class="h2-spacer-bottom"></div>';
             $html .= '<div class="address-section">';
             $billing_address_parts = array_filter(array(
                 isset($quote->billing_address_line_1) ? $quote->billing_address_line_1 : '',
@@ -408,7 +416,9 @@ class WP_Staff_Diary_PDF_Generator {
         }
 
         // Product Details
+        $html .= '<div class="h2-spacer-top"></div>';
         $html .= '<h2>Quote Details</h2>';
+        $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<table class="financial-table">';
         $html .= '<thead><tr><th width="50%">Description</th><th width="15%" class="qty-col">Qty</th><th width="18%">Price</th><th width="17%">Total</th></tr></thead>';
         $html .= '<tbody>';
@@ -450,7 +460,9 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '</tbody></table>';
 
         // Financial Summary
+        $html .= '<div class="h2-spacer-top"></div>';
         $html .= '<h2>Quote Summary</h2>';
+        $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<table class="financial-table">';
         $html .= '<tr><td width="70%"><strong>Subtotal:</strong></td><td width="30%" class="amount">£' . number_format($subtotal, 2) . '</td></tr>';
         if ($vat_enabled == '1') {
@@ -461,7 +473,9 @@ class WP_Staff_Diary_PDF_Generator {
 
         // Additional Notes
         if ($quote->notes) {
+            $html .= '<div class="h2-spacer-top"></div>';
             $html .= '<h2>Additional Notes</h2>';
+            $html .= '<div class="h2-spacer-bottom"></div>';
             $html .= '<div style="font-size: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 4px;">' . nl2br(htmlspecialchars($quote->notes)) . '</div>';
         }
 
@@ -484,6 +498,9 @@ class WP_Staff_Diary_PDF_Generator {
             $html .= strip_tags($terms, '<p><br><strong><em><ul><ol><li>');
             $html .= '</div>';
         }
+
+        // Version footer
+        $html .= '<div style="margin-top: 30px; text-align: center; font-size: 8px; color: #999;">Quote PDF v' . WP_STAFF_DIARY_VERSION . '</div>';
 
         return $html;
     }
