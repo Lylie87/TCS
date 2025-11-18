@@ -3,7 +3,7 @@
  * Plugin Name: Staff Daily Job Planner
  * Plugin URI: https://www.express-websites.co.uk/wp-staff-diary
  * Description: A daily job planning and management system for staff members with image uploads and detailed job tracking.
- * Version: 3.2.1
+ * Version: 3.3.0
  * Author: Alex Lyle
  * Author URI: https://www.express-websites.co.uk
  * License: GPL-2.0+
@@ -18,7 +18,7 @@ if (!defined('WPINC')) {
 }
 
 // Plugin version
-define('WP_STAFF_DIARY_VERSION', '3.2.1');
+define('WP_STAFF_DIARY_VERSION', '3.3.0');
 
 // Plugin paths
 define('WP_STAFF_DIARY_PATH', plugin_dir_path(__FILE__));
