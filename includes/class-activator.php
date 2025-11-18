@@ -255,6 +255,26 @@ class WP_Staff_Diary_Activator {
             KEY created_at (created_at)
         ) $charset_collate;";
 
+        // Table for fitter availability (holidays, sick leave, unavailable periods)
+        $table_fitter_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
+
+        $sql_fitter_availability = "CREATE TABLE $table_fitter_availability (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            fitter_id varchar(50) NOT NULL,
+            start_date date NOT NULL,
+            end_date date NOT NULL,
+            availability_type varchar(50) NOT NULL DEFAULT 'holiday',
+            reason text,
+            added_by_user_id bigint(20) NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY fitter_id (fitter_id),
+            KEY start_date (start_date),
+            KEY end_date (end_date),
+            KEY availability_type (availability_type)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_customers);
         dbDelta($sql_diary);
@@ -267,6 +287,7 @@ class WP_Staff_Diary_Activator {
         dbDelta($sql_email_templates);
         dbDelta($sql_sms_log);
         dbDelta($sql_comments);
+        dbDelta($sql_fitter_availability);
 
         // Set default options
         add_option('wp_staff_diary_version', WP_STAFF_DIARY_VERSION);

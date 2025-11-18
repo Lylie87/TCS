@@ -173,8 +173,16 @@ $accessories = $db->get_all_accessories();
                 </div>
                 <div class="form-field" style="margin-top: 15px;">
                     <label for="quote-fitting-cost">Fitting Cost (£)</label>
-                    <input type="number" id="quote-fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
-                    <p class="description">Customer cost for fitting the product</p>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number" id="quote-fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00" readonly style="background: #f0f0f1;">
+                        <button type="button" id="quote-toggle-manual-fitting-cost" class="button button-secondary">
+                            <span class="dashicons dashicons-edit"></span> Enter Manual Cost
+                        </button>
+                    </div>
+                    <p class="description">
+                        <span id="quote-auto-calc-description">Automatically calculated from size × £<span id="quote-default-rate-display"><?php echo get_option('wp_staff_diary_quote_default_fitting_cost', '15'); ?></span>/m²</span>
+                        <span id="quote-manual-calc-description" style="display: none;">Manual entry mode - click button to return to auto-calculation</span>
+                    </p>
                 </div>
             </div>
 

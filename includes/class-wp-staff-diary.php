@@ -155,6 +155,10 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_wp_staff_diary_add_fitter', $plugin_admin, 'add_fitter');
         $this->loader->add_action('wp_ajax_wp_staff_diary_delete_fitter', $plugin_admin, 'delete_fitter');
 
+        // AJAX handlers - Fitter Availability
+        $this->loader->add_action('wp_ajax_wp_staff_diary_add_availability', $plugin_admin, 'add_availability');
+        $this->loader->add_action('wp_ajax_wp_staff_diary_delete_availability', $plugin_admin, 'delete_availability');
+
         // AJAX handlers - Accessories
         $this->loader->add_action('wp_ajax_add_accessory', $plugin_admin, 'add_accessory');
         $this->loader->add_action('wp_ajax_update_accessory', $plugin_admin, 'update_accessory');

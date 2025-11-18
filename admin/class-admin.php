@@ -1440,6 +1440,129 @@ class WP_Staff_Diary_Admin {
         wp_send_json_success('Fitter deleted successfully');
     }
 
+    // ==================== FITTER AVAILABILITY AJAX HANDLERS ====================
+
+    /**
+     * AJAX: Add fitter availability
+     */
+    public function add_availability() {
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $fitter_id = sanitize_text_field($_POST['fitter_id']);
+        $start_date = sanitize_text_field($_POST['start_date']);
+        $end_date = sanitize_text_field($_POST['end_date']);
+        $availability_type = sanitize_text_field($_POST['availability_type']);
+        $reason = sanitize_textarea_field($_POST['reason']);
+
+        if (empty($fitter_id) || empty($start_date) || empty($end_date) || empty($availability_type)) {
+            wp_send_json_error('All required fields must be filled');
+        }
+
+        // Validate dates
+        if (strtotime($start_date) > strtotime($end_date)) {
+            wp_send_json_error('End date must be after start date');
+        }
+
+        global $wpdb;
+        $table_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
+
+        // Insert availability record
+        $result = $wpdb->insert(
+            $table_availability,
+            array(
+                'fitter_id' => $fitter_id,
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'availability_type' => $availability_type,
+                'reason' => $reason,
+                'added_by_user_id' => get_current_user_id()
+            ),
+            array('%s', '%s', '%s', '%s', '%s', '%d')
+        );
+
+        if ($result === false) {
+            wp_send_json_error('Failed to add availability record');
+        }
+
+        // Send email notification to company email
+        $this->send_availability_notification($fitter_id, $start_date, $end_date, $availability_type, $reason);
+
+        wp_send_json_success('Availability record added successfully');
+    }
+
+    /**
+     * AJAX: Delete fitter availability
+     */
+    public function delete_availability() {
+        check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $id = intval($_POST['id']);
+
+        global $wpdb;
+        $table_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
+
+        $result = $wpdb->delete(
+            $table_availability,
+            array('id' => $id),
+            array('%d')
+        );
+
+        if ($result === false) {
+            wp_send_json_error('Failed to delete availability record');
+        }
+
+        wp_send_json_success('Availability record deleted successfully');
+    }
+
+    /**
+     * Send email notification when fitter availability is added
+     */
+    private function send_availability_notification($fitter_id, $start_date, $end_date, $type, $reason) {
+        // Get company email from settings
+        $company_email = get_option('wp_staff_diary_company_email', get_option('admin_email'));
+
+        // Get fitter name
+        $fitters = get_option('wp_staff_diary_fitters', array());
+        $fitter_name = isset($fitters[$fitter_id]) ? $fitters[$fitter_id]['name'] : 'Unknown Fitter';
+
+        // Get current user
+        $current_user = wp_get_current_user();
+        $added_by = $current_user->display_name;
+
+        // Format dates
+        $start_formatted = date('d/m/Y', strtotime($start_date));
+        $end_formatted = date('d/m/Y', strtotime($end_date));
+
+        // Email subject
+        $subject = sprintf('[%s] New Fitter Availability: %s',
+            get_option('wp_staff_diary_company_name', get_bloginfo('name')),
+            $fitter_name
+        );
+
+        // Email body
+        $message = "A new fitter availability period has been added:\n\n";
+        $message .= "Fitter: " . $fitter_name . "\n";
+        $message .= "Type: " . ucfirst($type) . "\n";
+        $message .= "Start Date: " . $start_formatted . "\n";
+        $message .= "End Date: " . $end_formatted . "\n";
+        if (!empty($reason)) {
+            $message .= "Reason: " . $reason . "\n";
+        }
+        $message .= "\nAdded by: " . $added_by . " (" . $current_user->user_email . ")\n";
+        $message .= "Date Added: " . date('d/m/Y H:i') . "\n";
+
+        // Send email
+        wp_mail($company_email, $subject, $message);
+    }
+
     // ==================== ACCESSORY AJAX HANDLERS ====================
 
     /**
