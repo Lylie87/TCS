@@ -57,6 +57,15 @@ class WP_Staff_Diary_GitHub_Updater {
             return;
         }
 
+        // Show auto-update result messages
+        if (isset($_GET['update_success'])) {
+            echo '<div class="notice notice-success is-dismissible"><p><strong>Plugin updated successfully!</strong> WP Staff Diary has been automatically updated to the latest version.</p></div>';
+        } elseif (isset($_GET['update_error'])) {
+            echo '<div class="notice notice-error is-dismissible"><p><strong>Update failed!</strong> There was an error updating the plugin. Please try updating manually.</p></div>';
+        } elseif (isset($_GET['no_update'])) {
+            echo '<div class="notice notice-info is-dismissible"><p><strong>No update available.</strong> You are already running the latest version of WP Staff Diary.</p></div>';
+        }
+
         // Check if token is configured
         $github_token = get_option('wp_staff_diary_github_token', '');
         $token_status = !empty($github_token) ? '<span style="color: green;">✓ Configured</span>' : '<span style="color: red;">✗ Not configured</span>';
@@ -129,19 +138,49 @@ class WP_Staff_Diary_GitHub_Updater {
             echo '<div class="notice notice-warning inline" style="margin: 15px 0; padding: 10px;"><p><strong>Repository is private:</strong> You need to configure a GitHub Personal Access Token in <a href="' . admin_url('admin.php?page=wp-staff-diary-settings#github') . '">Settings → GitHub Updates</a> to enable auto-updates.</p></div>';
         }
 
-        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Refresh</a> ';
+        echo '<p><a href="' . admin_url('plugins.php?force_update_check=wp_staff_diary') . '" class="button button-primary">Clear Cache & Auto-Update</a> ';
         echo '<a href="' . admin_url('admin.php?page=wp-staff-diary-settings#github') . '" class="button button-secondary">Configure GitHub Token</a></p>';
         echo '</div>';
     }
 
     /**
-     * Clear update cache if requested
+     * Clear update cache if requested and auto-update if available
      */
     public function maybe_clear_update_cache() {
         if (isset($_GET['force_update_check']) && $_GET['force_update_check'] === 'wp_staff_diary') {
+            // Clear the update cache
             delete_site_transient('update_plugins');
-            wp_redirect(admin_url('plugins.php'));
-            exit;
+
+            // Force WordPress to check for updates
+            wp_update_plugins();
+
+            // Check if update is available
+            $update_plugins = get_site_transient('update_plugins');
+            $plugin_file = plugin_basename($this->plugin_file);
+
+            if (isset($update_plugins->response[$plugin_file])) {
+                // Update is available - trigger automatic update
+                require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+                // Use Plugin_Upgrader to update the plugin
+                $upgrader = new Plugin_Upgrader(new Automatic_Upgrader_Skin());
+                $result = $upgrader->upgrade($plugin_file);
+
+                if (is_wp_error($result)) {
+                    // Update failed - redirect with error message
+                    wp_redirect(admin_url('plugins.php?update_error=1'));
+                    exit;
+                } else {
+                    // Update successful - redirect with success message
+                    wp_redirect(admin_url('plugins.php?update_success=1'));
+                    exit;
+                }
+            } else {
+                // No update available - just redirect
+                wp_redirect(admin_url('plugins.php?no_update=1'));
+                exit;
+            }
         }
     }
 
