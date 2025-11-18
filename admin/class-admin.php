@@ -2026,17 +2026,20 @@ class WP_Staff_Diary_Admin {
         $table_payments = $wpdb->prefix . 'staff_diary_payments';
         $table_images = $wpdb->prefix . 'staff_diary_images';
         $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
 
         $jobs_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary");
         $payments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_payments");
         $images_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_images");
         $accessories_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_job_accessories");
+        $comments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_comments");
 
         // Delete all data from job-related tables
         $wpdb->query("TRUNCATE TABLE $table_diary");
         $wpdb->query("TRUNCATE TABLE $table_payments");
         $wpdb->query("TRUNCATE TABLE $table_images");
         $wpdb->query("TRUNCATE TABLE $table_job_accessories");
+        $wpdb->query("TRUNCATE TABLE $table_comments");
 
         // Reset order number to start
         $order_start = get_option('wp_staff_diary_order_start', '01100');
@@ -2048,7 +2051,8 @@ class WP_Staff_Diary_Admin {
                 'jobs' => $jobs_count,
                 'payments' => $payments_count,
                 'images' => $images_count,
-                'accessories' => $accessories_count
+                'accessories' => $accessories_count,
+                'comments' => $comments_count
             ),
             'new_order_start' => $order_start
         ));
