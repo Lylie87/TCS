@@ -265,9 +265,6 @@
         // Notes
         formData.append('notes', $('#quote-notes').val());
 
-        // Job type
-        formData.append('job_type', $('#quote-job-type').val());
-
         $('#save-quote-btn').prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Saving...');
 
         $.ajax({
@@ -958,6 +955,55 @@
     }
 
     /**
+     * Load photos from measure entry (for conversion to quote)
+     */
+    function loadMeasurePhotos(measureId) {
+        if (!measureId) return;
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'get_diary_entry',
+                nonce: wpStaffDiary.nonce,
+                entry_id: measureId
+            },
+            success: function(response) {
+                if (response.success) {
+                    const entry = response.data.entry || response.data;
+
+                    if (entry.images && entry.images.length > 0) {
+                        let photosHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">';
+                        entry.images.forEach(function(image) {
+                            const categoryLabel = image.category ? ` (${image.category})` : '';
+                            const captionLabel = image.image_caption ? `<div style="font-size: 11px; margin-top: 4px; color: #666;">${image.image_caption}</div>` : '';
+
+                            photosHtml += `<div style="position: relative;">
+                                <img src="${image.image_url}"
+                                     alt="Measure photo"
+                                     style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                                     onclick="window.open('${image.image_url}', '_blank')"
+                                     title="Click to open full size">
+                                <div style="font-size: 10px; margin-top: 2px; color: #999; font-weight: 600;">${categoryLabel}</div>
+                                ${captionLabel}
+                                <div style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;">From Measure</div>
+                            </div>`;
+                        });
+                        photosHtml += '</div>';
+                        photosHtml += '<p class="description" style="margin-top: 10px;">These photos will be copied to the quote when you save.</p>';
+                        $('#quote-photos-container').html(photosHtml);
+                    } else {
+                        $('#quote-photos-container').html('<p class="description">No photos uploaded yet.</p>');
+                    }
+                }
+            },
+            error: function() {
+                console.error('Failed to load measure photos');
+            }
+        });
+    }
+
+    /**
      * Initialize price calculations
      */
     function initPriceCalculations() {
@@ -1623,6 +1669,12 @@
                 }
                 if (urlParams.get('notes')) {
                     $('#quote-notes').val(urlParams.get('notes'));
+                }
+
+                // Load photos from the measure
+                const measureId = urlParams.get('from_measure');
+                if (measureId) {
+                    loadMeasurePhotos(measureId);
                 }
 
                 // Clean up URL

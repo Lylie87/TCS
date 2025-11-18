@@ -626,8 +626,12 @@ class WP_Staff_Diary_Admin {
                 wp_send_json_error(array('message' => 'Failed to update entry: ' . $wpdb->last_error));
             }
         } else {
-            // Create new entry - generate order number
-            $order_number = $this->db->generate_order_number();
+            // Create new entry - use provided order number or generate new one
+            if (!empty($_POST['order_number'])) {
+                $order_number = sanitize_text_field($_POST['order_number']);
+            } else {
+                $order_number = $this->db->generate_order_number();
+            }
             $data['order_number'] = $order_number;
 
             $new_id = $this->db->create_entry($data);
