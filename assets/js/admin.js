@@ -1377,6 +1377,9 @@
                 html += '</div>';
             }
 
+            // Comments Section
+            html += generateCommentsSection(entry.id);
+
             // Actions
             html += '<div class="detail-section detail-actions">';
             if (entry.is_cancelled != 1) {
@@ -1393,6 +1396,9 @@
 
             $('#entry-details-content').html(html);
             $('#view-entry-modal').fadeIn();
+
+            // Load comments after modal is displayed
+            loadComments(entry.id);
         }
 
         /**
@@ -1479,6 +1485,9 @@
                 html += '</div>';
             }
 
+            // Comments Section
+            html += generateCommentsSection(entry.id);
+
             // Actions - Convert buttons
             html += '<div class="detail-section detail-actions">';
             html += `<button type="button" class="button button-primary" id="convert-measure-to-quote-btn" data-measure-id="${entry.id}" style="background: #2271b1; border-color: #2271b1;">
@@ -1499,6 +1508,9 @@
 
             $('#entry-details-content').html(html);
             $('#view-entry-modal').fadeIn();
+
+            // Load comments after modal is displayed
+            loadComments(entry.id);
         }
 
         // ===========================================
@@ -2255,6 +2267,279 @@
                 },
                 error: function() {
                     alert('An error occurred while loading measure data');
+                }
+            });
+        });
+
+        // ===========================================
+        // COMMENTS SYSTEM
+        // ===========================================
+
+        /**
+         * Generate comments section HTML
+         */
+        function generateCommentsSection(entryId) {
+            let html = '<div class="detail-section comments-section">';
+            html += '<h3><span class="dashicons dashicons-admin-comments"></span> Comments</h3>';
+            html += `<div class="comments-list" id="comments-list-${entryId}">`;
+            html += `<div class="loading-comments" style="text-align: center; padding: 20px; color: #666;">`;
+            html += `<span class="dashicons dashicons-update" style="animation: rotation 2s infinite linear;"></span> Loading comments...`;
+            html += `</div>`;
+            html += '</div>';
+
+            // Add comment form
+            html += '<div class="add-comment-form">';
+            html += '<textarea placeholder="Add a comment..." id="new-comment-text-' + entryId + '"></textarea>';
+            html += '<button type="button" class="button button-primary add-comment-btn" data-entry-id="' + entryId + '">';
+            html += '<span class="dashicons dashicons-plus"></span> Add Comment';
+            html += '</button>';
+            html += '</div>';
+
+            html += '</div>';
+            return html;
+        }
+
+        /**
+         * Load and display comments for an entry
+         */
+        function loadComments(entryId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_comments',
+                    nonce: wpStaffDiary.nonce,
+                    diary_entry_id: entryId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayComments(entryId, response.data.comments);
+                    } else {
+                        $(`#comments-list-${entryId}`).html('<div class="no-comments-msg">Failed to load comments</div>');
+                    }
+                },
+                error: function() {
+                    $(`#comments-list-${entryId}`).html('<div class="no-comments-msg">Error loading comments</div>');
+                }
+            });
+        }
+
+        /**
+         * Display comments in the list
+         */
+        function displayComments(entryId, comments) {
+            const $commentsList = $(`#comments-list-${entryId}`);
+
+            if (!comments || comments.length === 0) {
+                $commentsList.html('<div class="no-comments-msg">No comments yet. Be the first to comment!</div>');
+                return;
+            }
+
+            let html = '';
+            comments.forEach(function(comment) {
+                html += renderCommentItem(comment);
+            });
+
+            $commentsList.html(html);
+        }
+
+        /**
+         * Render a single comment item
+         */
+        function renderCommentItem(comment) {
+            const createdDate = new Date(comment.created_at);
+            const updatedDate = new Date(comment.updated_at);
+            const wasEdited = updatedDate > createdDate;
+
+            let dateText = formatCommentDate(createdDate);
+            if (wasEdited) {
+                dateText += ' (edited)';
+            }
+
+            let html = `<div class="comment-item" data-comment-id="${comment.id}">`;
+            html += '<div class="comment-header">';
+            html += `<span class="comment-author">${escapeHtml(comment.user_name || 'Unknown User')}</span>`;
+            html += `<span class="comment-date">${dateText}</span>`;
+            html += '</div>';
+            html += `<div class="comment-text">${escapeHtml(comment.comment_text)}</div>`;
+
+            // Edit form (hidden by default)
+            html += '<div class="comment-edit-form">';
+            html += `<textarea class="comment-edit-textarea">${escapeHtml(comment.comment_text)}</textarea>`;
+            html += '<div class="comment-actions">';
+            html += `<button type="button" class="button comment-btn-save" data-comment-id="${comment.id}">Save</button>`;
+            html += `<button type="button" class="button comment-btn-cancel">Cancel</button>`;
+            html += '</div>';
+            html += '</div>';
+
+            // Action buttons
+            html += '<div class="comment-actions">';
+            html += `<button type="button" class="button comment-btn-edit" data-comment-id="${comment.id}">`;
+            html += '<span class="dashicons dashicons-edit"></span> Edit';
+            html += '</button>';
+            html += `<button type="button" class="button comment-btn-delete" data-comment-id="${comment.id}">`;
+            html += '<span class="dashicons dashicons-trash"></span> Delete';
+            html += '</button>';
+            html += '</div>';
+
+            html += '</div>';
+            return html;
+        }
+
+        /**
+         * Format comment date
+         */
+        function formatCommentDate(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return diffMins + ' minute' + (diffMins > 1 ? 's' : '') + ' ago';
+            if (diffHours < 24) return diffHours + ' hour' + (diffHours > 1 ? 's' : '') + ' ago';
+            if (diffDays < 7) return diffDays + ' day' + (diffDays > 1 ? 's' : '') + ' ago';
+
+            // Format as date
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        /**
+         * Escape HTML to prevent XSS
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add comment button click
+        $(document).on('click', '.add-comment-btn', function() {
+            const entryId = $(this).data('entry-id');
+            const $textarea = $(`#new-comment-text-${entryId}`);
+            const commentText = $textarea.val().trim();
+
+            if (!commentText) {
+                alert('Please enter a comment');
+                return;
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'add_comment',
+                    nonce: wpStaffDiary.nonce,
+                    diary_entry_id: entryId,
+                    comment_text: commentText
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $textarea.val(''); // Clear textarea
+                        loadComments(entryId); // Reload comments
+                    } else {
+                        alert('Failed to add comment: ' + (response.data.message || 'Unknown error'));
+                    }
+                },
+                error: function() {
+                    alert('Error adding comment');
+                }
+            });
+        });
+
+        // Edit comment button click
+        $(document).on('click', '.comment-btn-edit', function() {
+            const $commentItem = $(this).closest('.comment-item');
+            $commentItem.find('.comment-text').hide();
+            $commentItem.find('.comment-actions').first().hide();
+            $commentItem.find('.comment-edit-form').addClass('active');
+        });
+
+        // Cancel edit button click
+        $(document).on('click', '.comment-btn-cancel', function() {
+            const $commentItem = $(this).closest('.comment-item');
+            $commentItem.find('.comment-text').show();
+            $commentItem.find('.comment-actions').first().show();
+            $commentItem.find('.comment-edit-form').removeClass('active');
+        });
+
+        // Save edited comment button click
+        $(document).on('click', '.comment-btn-save', function() {
+            const commentId = $(this).data('comment-id');
+            const $commentItem = $(this).closest('.comment-item');
+            const commentText = $commentItem.find('.comment-edit-textarea').val().trim();
+
+            if (!commentText) {
+                alert('Comment cannot be empty');
+                return;
+            }
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'update_comment',
+                    nonce: wpStaffDiary.nonce,
+                    comment_id: commentId,
+                    comment_text: commentText
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Update the comment display
+                        $commentItem.find('.comment-text').text(commentText).show();
+                        $commentItem.find('.comment-actions').first().show();
+                        $commentItem.find('.comment-edit-form').removeClass('active');
+
+                        // Update edited indicator
+                        const dateText = $commentItem.find('.comment-date').text().replace(' (edited)', '') + ' (edited)';
+                        $commentItem.find('.comment-date').text(dateText);
+                    } else {
+                        alert('Failed to update comment: ' + (response.data.message || 'Unknown error'));
+                    }
+                },
+                error: function() {
+                    alert('Error updating comment');
+                }
+            });
+        });
+
+        // Delete comment button click
+        $(document).on('click', '.comment-btn-delete', function() {
+            if (!confirm('Are you sure you want to delete this comment?')) {
+                return;
+            }
+
+            const commentId = $(this).data('comment-id');
+            const $commentItem = $(this).closest('.comment-item');
+            const entryId = $('.add-comment-btn').data('entry-id');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'delete_comment',
+                    nonce: wpStaffDiary.nonce,
+                    comment_id: commentId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $commentItem.fadeOut(300, function() {
+                            $(this).remove();
+                            // Check if there are any comments left
+                            if ($('.comment-item').length === 0) {
+                                loadComments(entryId);
+                            }
+                        });
+                    } else {
+                        alert('Failed to delete comment: ' + (response.data.message || 'Unknown error'));
+                    }
+                },
+                error: function() {
+                    alert('Error deleting comment');
                 }
             });
         });

@@ -1229,6 +1229,11 @@
             html += '<p>' + quote.notes.replace(/\n/g, '<br>') + '</p>';
         }
 
+        // Comments Section (using same function as admin.js)
+        if (typeof generateCommentsSection === 'function') {
+            html += generateCommentsSection(quote.id);
+        }
+
         // Send Discount Offer Section (only for quotes)
         if (quote.customer && quote.customer.customer_email) {
             html += '<div style="background: #f9f9f9; padding: 20px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2271b1;">';
@@ -1293,6 +1298,11 @@
         html += '</div>';
 
         $('#quote-details-content').html(html);
+
+        // Load comments if function is available
+        if (typeof loadComments === 'function') {
+            loadComments(quote.id);
+        }
 
         // Attach PDF generation handler
         $('#generate-quote-pdf-btn').off('click').on('click', function() {
