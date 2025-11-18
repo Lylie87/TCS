@@ -229,7 +229,7 @@ jQuery(document).ready(function($) {
         var quoteId = $(this).data('quote-id');
 
         // Trigger the convert button which will be handled by quotes.js
-        $('<button class="convert-quote-to-job" data-id="' + quoteId + '" style="display:none;"></button>')
+        $('<button class="convert-to-job" data-id="' + quoteId + '" style="display:none;"></button>')
             .appendTo('body')
             .trigger('click')
             .remove();

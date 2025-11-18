@@ -1417,8 +1417,11 @@
                 html += `<button type="button" class="button" onclick="window.open('${wpStaffDiary.ajaxUrl.replace('admin-ajax.php', '')}admin-post.php?action=wp_staff_diary_download_pdf&entry_id=${entry.id}&nonce=${wpStaffDiary.nonce}')">
                     <span class="dashicons dashicons-pdf"></span> Download PDF
                 </button>`;
-                html += `<button type="button" class="button edit-entry" data-id="${entry.id}">
+                html += `<button type="button" class="button edit-entry" data-id="${entry.id}" style="margin-left: 10px;">
                     <span class="dashicons dashicons-edit"></span> Edit Job
+                </button>`;
+                html += `<button type="button" class="button cancel-entry" data-id="${entry.id}" style="margin-left: 10px; background: #d63638; color: white; border-color: #d63638;">
+                    <span class="dashicons dashicons-no"></span> Cancel Job
                 </button>`;
             }
             html += '</div>';

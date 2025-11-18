@@ -1207,6 +1207,8 @@
         html += '<span class="dashicons dashicons-pdf"></span> Generate PDF</button>';
         html += '<button type="button" class="button button-primary" id="email-quote-btn" data-quote-id="' + quote.id + '" data-customer-email="' + (quote.customer && quote.customer.customer_email ? quote.customer.customer_email : '') + '">';
         html += '<span class="dashicons dashicons-email"></span> Email Quote</button>';
+        html += '<button type="button" class="button cancel-entry" data-id="' + quote.id + '" style="margin-left: 10px; background: #d63638; color: white; border-color: #d63638;">';
+        html += '<span class="dashicons dashicons-no"></span> Cancel Quote</button>';
         html += '</div>';
         html += '</div>';
 
