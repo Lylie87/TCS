@@ -247,23 +247,20 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
         </div>
 
         <div class="calendar-actions">
-            <button type="button" class="button" id="toggle-calendar-view">
-                <span class="dashicons dashicons-calendar-alt"></span> <span id="view-toggle-text">Day View</span>
-            </button>
-            <a href="?page=wp-staff-diary&view=list" class="button">
-                <span class="dashicons dashicons-list-view"></span> List View
-            </a>
             <a href="?page=wp-staff-diary-holidays" class="button" style="background: #f0ad4e; color: white; border-color: #ec971f;">
                 <span class="dashicons dashicons-palmtree"></span> Add Holiday
             </a>
             <button type="button" class="button" id="add-new-measure" style="background: #9b59b6; color: white; border-color: #8e44ad;">
-                <span class="dashicons dashicons-location"></span> Add Measure
+                <span class="dashicons dashicons-location"></span> Add New Measure
             </button>
             <a href="?page=wp-staff-diary-quotes&action=new" class="button" style="background: #00a0d2; color: white; border-color: #0085ba;">
                 <span class="dashicons dashicons-plus-alt"></span> Add New Quote
             </a>
             <button type="button" class="button button-primary" id="add-new-entry">
                 <span class="dashicons dashicons-plus-alt"></span> Add New Job
+            </button>
+            <button type="button" class="button" id="toggle-calendar-view">
+                <span class="dashicons dashicons-calendar-alt"></span> <span id="view-toggle-text">Day View</span>
             </button>
         </div>
     </div>
@@ -579,12 +576,14 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
     <!-- Recent Quotes Widget -->
     <div class="recent-quotes-section" style="margin: 20px 0;">
         <div style="background: white; border: 1px solid #c3c4c7; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,0.04);">
-            <div style="padding: 15px 20px; border-bottom: 1px solid #c3c4c7; background: #f6f7f7;">
+            <div id="recent-quotes-header" style="padding: 15px 20px; border-bottom: 1px solid #c3c4c7; background: #f6f7f7; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="margin: 0; font-size: 16px; color: #1d2327;">
                     <span class="dashicons dashicons-portfolio" style="font-size: 18px; vertical-align: middle; margin-right: 5px;"></span>
                     Recent Quotes
                 </h2>
+                <span id="recent-quotes-toggle" class="dashicons dashicons-arrow-up-alt2" style="font-size: 20px; color: #666; transition: transform 0.3s ease;"></span>
             </div>
+            <div id="recent-quotes-content">
             <?php
             // Get recent quotes for the widget (last 10)
             if (current_user_can('manage_options')) {
@@ -630,6 +629,7 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
             // Include the quotes widget view
             include WP_STAFF_DIARY_PATH . 'admin/views/quotes-widget.php';
             ?>
+            </div>
         </div>
     </div>
 
@@ -710,6 +710,18 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
             </div>
         </div>
     <?php endif; ?>
+</div>
+
+<!-- Mobile Bottom Action Bar -->
+<div id="mobile-action-bar" class="mobile-action-bar">
+    <button type="button" class="action-bar-button" id="action-bar-measure">
+        <span class="dashicons dashicons-location"></span>
+        <span class="button-text">Add Measure</span>
+    </button>
+    <button type="button" class="action-bar-button" id="action-bar-quote">
+        <span class="dashicons dashicons-portfolio"></span>
+        <span class="button-text">Add Quote</span>
+    </button>
 </div>
 
 <!-- Reuse modals from my-diary.php -->

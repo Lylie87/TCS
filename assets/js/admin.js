@@ -2952,6 +2952,7 @@
 
         let currentDayViewIndex = 0;
         let isDayViewMode = false;
+        let selectedDayIndex = null; // Track user-selected day in week view
         const isMobile = window.matchMedia('(max-width: 767px)').matches;
 
         /**
@@ -2981,17 +2982,29 @@
             const $container = $('.calendar-container');
             const $days = $('.calendar-day');
 
-            // Find today's index, or default to first day
-            let todayIndex = 0;
-            $days.each(function(index) {
-                if ($(this).hasClass('today')) {
-                    todayIndex = index;
-                }
-            });
-            currentDayViewIndex = todayIndex;
+            // Use selected day if available, otherwise find today's index
+            let startIndex = 0;
+            if (selectedDayIndex !== null) {
+                startIndex = selectedDayIndex;
+            } else {
+                $days.each(function(index) {
+                    if ($(this).hasClass('today')) {
+                        startIndex = index;
+                    }
+                });
+            }
+            currentDayViewIndex = startIndex;
 
             // Add day-view-mode class
             $container.addClass('day-view-mode');
+
+            // Hide week navigation on mobile in day view
+            if (isMobile) {
+                $('.calendar-navigation').addClass('hide-in-day-view');
+                // Clear selection styling when entering day view
+                $('.calendar-day').removeClass('selected-day');
+                $('.weekday-name').removeClass('selected-day');
+            }
 
             // Show only the current day
             showDayAtIndex(currentDayViewIndex);
@@ -3019,6 +3032,9 @@
             // Remove day-view-mode class
             $container.removeClass('day-view-mode');
 
+            // Show week navigation again on mobile
+            $('.calendar-navigation').removeClass('hide-in-day-view');
+
             // Show all days
             $('.calendar-day').removeClass('active-day');
             $('.weekday-name').removeClass('active-day');
@@ -3031,6 +3047,9 @@
 
             // Save preference to localStorage
             localStorage.setItem('calendarViewMode', 'week');
+
+            // Reset selected day index
+            selectedDayIndex = null;
         }
 
         /**
@@ -3106,6 +3125,31 @@
             $('#day-view-prev').on('click', previousDay);
             $('#day-view-next').on('click', nextDay);
 
+            // Click-to-select day in week view (mobile only)
+            if (isMobile) {
+                $('.calendar-day').on('click', function(e) {
+                    // Only allow selection when NOT in day view mode
+                    if (!isDayViewMode) {
+                        const $clickedDay = $(this);
+                        const clickedIndex = $('.calendar-day').index($clickedDay);
+
+                        // Store the selected day
+                        selectedDayIndex = clickedIndex;
+
+                        // Add visual feedback
+                        $('.calendar-day').removeClass('selected-day');
+                        $('.weekday-name').removeClass('selected-day');
+                        $clickedDay.addClass('selected-day');
+                        $('.weekday-name').eq(clickedIndex).addClass('selected-day');
+
+                        // Provide haptic feedback if available
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50);
+                        }
+                    }
+                });
+            }
+
             // Add keyboard navigation
             $(document).on('keydown', function(e) {
                 if (isDayViewMode) {
@@ -3138,16 +3182,91 @@
                     const diff = touchStartX - touchEndX;
 
                     if (Math.abs(diff) > swipeThreshold) {
-                        if (diff > 0) {
-                            // Swiped left - next day
-                            nextDay();
+                        if (isDayViewMode) {
+                            // Day view mode: navigate between days
+                            if (diff > 0) {
+                                // Swiped left - next day
+                                nextDay();
+                            } else {
+                                // Swiped right - previous day
+                                previousDay();
+                            }
                         } else {
-                            // Swiped right - previous day
-                            previousDay();
+                            // Week view mode: navigate between weeks
+                            if (diff > 0) {
+                                // Swiped left - next week
+                                const $nextWeekBtn = $('.calendar-navigation a:contains("Next Week")');
+                                if ($nextWeekBtn.length > 0) {
+                                    window.location.href = $nextWeekBtn.attr('href');
+                                }
+                            } else {
+                                // Swiped right - previous week
+                                const $prevWeekBtn = $('.calendar-navigation a:contains("Previous Week")');
+                                if ($prevWeekBtn.length > 0) {
+                                    window.location.href = $prevWeekBtn.attr('href');
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        // ===========================================
+        // MOBILE BOTTOM ACTION BAR
+        // ===========================================
+
+        if (isMobile) {
+            // Add Measure button
+            $('#action-bar-measure').on('click', function() {
+                $('#add-new-measure').trigger('click');
+                // Provide haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(30);
+                }
+            });
+
+            // Add Quote button
+            $('#action-bar-quote').on('click', function() {
+                // Trigger the existing Add New Quote link
+                window.location.href = '?page=wp-staff-diary-quotes&action=new';
+                // Provide haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(30);
+                }
+            });
+        }
+
+        // ===========================================
+        // COLLAPSIBLE RECENT QUOTES (Mobile Only)
+        // ===========================================
+
+        if (isMobile && $('#recent-quotes-header').length > 0) {
+            // Check saved state (default: expanded)
+            const isCollapsed = localStorage.getItem('recentQuotesCollapsed') === 'true';
+
+            if (isCollapsed) {
+                $('#recent-quotes-content').hide();
+                $('#recent-quotes-toggle').css('transform', 'rotate(180deg)');
+            }
+
+            // Toggle collapse/expand on header click
+            $('#recent-quotes-header').on('click', function() {
+                const $content = $('#recent-quotes-content');
+                const $toggle = $('#recent-quotes-toggle');
+
+                if ($content.is(':visible')) {
+                    // Collapse
+                    $content.slideUp(300);
+                    $toggle.css('transform', 'rotate(180deg)');
+                    localStorage.setItem('recentQuotesCollapsed', 'true');
+                } else {
+                    // Expand
+                    $content.slideDown(300);
+                    $toggle.css('transform', 'rotate(0deg)');
+                    localStorage.setItem('recentQuotesCollapsed', 'false');
+                }
+            });
         }
 
     });

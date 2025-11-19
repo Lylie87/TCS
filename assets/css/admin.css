@@ -1672,14 +1672,21 @@
         min-width: auto;
     }
 
-    /* Hide week view toggle text on very small screens */
-    #toggle-calendar-view span:not(.dashicons) {
-        display: none;
+    /* Hide week navigation when in day view mode on mobile */
+    .calendar-navigation.hide-in-day-view {
+        display: none !important;
     }
 
-    #toggle-calendar-view::after {
-        content: 'Toggle View';
-        margin-left: 5px;
+    /* Selected day in week view (click-to-select feature) */
+    .calendar-day.selected-day {
+        border: 2px solid #2271b1 !important;
+        box-shadow: 0 0 10px rgba(34, 113, 177, 0.3) !important;
+    }
+
+    .weekday-name.selected-day {
+        background: #2271b1 !important;
+        color: white !important;
+        font-weight: 600 !important;
     }
 
     /* Smaller Day View navigation on mobile - Fix button spacing issue */
@@ -1785,6 +1792,76 @@
     .calendar-day:nth-child(7) {
         display: none;
     }
+
+    /* Mobile Bottom Action Bar */
+    .mobile-action-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 2px solid #2271b1;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        gap: 10px;
+        padding: 10px;
+        z-index: 999;
+    }
+
+    .action-bar-button {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 12px 10px;
+        background: linear-gradient(135deg, #2271b1 0%, #135e96 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        touch-action: manipulation;
+    }
+
+    .action-bar-button:active {
+        transform: scale(0.95);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .action-bar-button .dashicons {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+    }
+
+    .action-bar-button .button-text {
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    #action-bar-measure {
+        background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+    }
+
+    #action-bar-quote {
+        background: linear-gradient(135deg, #00a0d2 0%, #0085ba 100%);
+    }
+
+    /* Add bottom padding to main content to prevent action bar overlap */
+    .wp-staff-diary-wrap {
+        padding-bottom: 80px;
+    }
+}
+
+/* Hide mobile action bar on desktop */
+.mobile-action-bar {
+    display: none;
 }
 
 /* Print Styles */
@@ -1796,7 +1873,8 @@
     .modal-footer,
     .button,
     .wp-staff-diary-modal-close,
-    .day-view-navigation {
+    .day-view-navigation,
+    .mobile-action-bar {
         display: none !important;
     }
 
