@@ -315,6 +315,43 @@ $email_templates = $db->get_all_email_templates();
 <div class="wrap wp-staff-diary-wrap">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 
+    <!-- Settings Navigation -->
+    <div class="card" style="margin: 20px 0; padding: 0;">
+        <h2 style="margin: 0; padding: 15px 20px; border-bottom: 1px solid #ddd; background: #f9f9f9;">Settings Sections</h2>
+        <div style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+            <a href="?page=wp-staff-diary-quote-order-settings" class="button button-large" style="height: auto; padding: 15px; text-align: left; display: flex; flex-direction: column; gap: 5px; white-space: normal;">
+                <span style="font-size: 14px; font-weight: 600;">📋 Quote & Order Settings</span>
+                <span style="font-size: 12px; opacity: 0.8;">Order numbers, quotation settings, terms & conditions</span>
+            </a>
+            <a href="?page=wp-staff-diary-payment-settings" class="button button-large" style="height: auto; padding: 15px; text-align: left; display: flex; flex-direction: column; gap: 5px; white-space: normal;">
+                <span style="font-size: 14px; font-weight: 600;">💳 Payment Settings</span>
+                <span style="font-size: 12px; opacity: 0.8;">VAT, payment methods, reminders & policies</span>
+            </a>
+            <a href="?page=wp-staff-diary-company-settings" class="button button-large" style="height: auto; padding: 15px; text-align: left; display: flex; flex-direction: column; gap: 5px; white-space: normal;">
+                <span style="font-size: 14px; font-weight: 600;">🏢 Company Settings</span>
+                <span style="font-size: 12px; opacity: 0.8;">Company details, logo, fitters, job statuses</span>
+            </a>
+            <a href="?page=wp-staff-diary-general-settings" class="button button-large" style="height: auto; padding: 15px; text-align: left; display: flex; flex-direction: column; gap: 5px; white-space: normal;">
+                <span style="font-size: 14px; font-weight: 600;">⚙️ General Settings</span>
+                <span style="font-size: 12px; opacity: 0.8;">Date/time formats, currency, job defaults</span>
+            </a>
+            <a href="?page=wp-staff-diary-advanced-settings" class="button button-large" style="height: auto; padding: 15px; text-align: left; display: flex; flex-direction: column; gap: 5px; white-space: normal;">
+                <span style="font-size: 14px; font-weight: 600;">🔧 Advanced Settings</span>
+                <span style="font-size: 12px; opacity: 0.8;">SMS/Twilio, GitHub updates, system info</span>
+            </a>
+            <a href="?page=wp-staff-diary-email-templates" class="button button-large" style="height: auto; padding: 15px; text-align: left; display: flex; flex-direction: column; gap: 5px; white-space: normal;">
+                <span style="font-size: 14px; font-weight: 600;">📧 Email Templates</span>
+                <span style="font-size: 12px; opacity: 0.8;">Customize email notifications</span>
+            </a>
+        </div>
+    </div>
+
+    <hr style="margin: 30px 0;">
+
+    <div class="notice notice-info inline" style="margin: 20px 0;">
+        <p><strong>Legacy Settings:</strong> The settings below are from the original consolidated settings page. For better organization, use the settings sections above.</p>
+    </div>
+
     <!-- Navigation Tabs -->
     <nav class="nav-tab-wrapper wp-clearfix" style="margin-bottom: 20px;">
         <a href="#general" class="nav-tab nav-tab-active" data-tab="general">General</a>

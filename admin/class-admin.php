@@ -493,51 +493,52 @@ class WP_Staff_Diary_Admin {
             array($this, 'display_settings_page')
         );
 
-        // Submenu - Quote & Order Settings
+        // Hidden submenu pages - accessible via main Settings page tabs, not shown in sidebar
+        // Quote & Order Settings
         add_submenu_page(
-            'wp-staff-diary',
+            null, // Hidden from sidebar menu
             'Quote & Order Settings',
-            '├─ Quote & Orders',
+            'Quote & Orders',
             'manage_options',
             'wp-staff-diary-quote-order-settings',
             array($this, 'display_quote_order_settings_page')
         );
 
-        // Submenu - Payment Settings
+        // Payment Settings
         add_submenu_page(
-            'wp-staff-diary',
+            null, // Hidden from sidebar menu
             'Payment Settings',
-            '├─ Payments',
+            'Payments',
             'manage_options',
             'wp-staff-diary-payment-settings',
             array($this, 'display_payment_settings_page')
         );
 
-        // Submenu - Company Settings
+        // Company Settings
         add_submenu_page(
-            'wp-staff-diary',
+            null, // Hidden from sidebar menu
             'Company Settings',
-            '├─ Company',
+            'Company',
             'manage_options',
             'wp-staff-diary-company-settings',
             array($this, 'display_company_settings_page')
         );
 
-        // Submenu - General Settings
+        // General Settings
         add_submenu_page(
-            'wp-staff-diary',
+            null, // Hidden from sidebar menu
             'General Settings',
-            '├─ General',
+            'General',
             'manage_options',
             'wp-staff-diary-general-settings',
             array($this, 'display_general_settings_page')
         );
 
-        // Submenu - Advanced Settings
+        // Advanced Settings
         add_submenu_page(
-            'wp-staff-diary',
+            null, // Hidden from sidebar menu
             'Advanced Settings',
-            '└─ Advanced',
+            'Advanced',
             'manage_options',
             'wp-staff-diary-advanced-settings',
             array($this, 'display_advanced_settings_page')
