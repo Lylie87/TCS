@@ -439,6 +439,56 @@ class WP_Staff_Diary_Admin {
             array($this, 'display_settings_page')
         );
 
+        // Submenu - Quote & Order Settings
+        add_submenu_page(
+            'wp-staff-diary',
+            'Quote & Order Settings',
+            '├─ Quote & Orders',
+            'manage_options',
+            'wp-staff-diary-quote-order-settings',
+            array($this, 'display_quote_order_settings_page')
+        );
+
+        // Submenu - Payment Settings
+        add_submenu_page(
+            'wp-staff-diary',
+            'Payment Settings',
+            '├─ Payments',
+            'manage_options',
+            'wp-staff-diary-payment-settings',
+            array($this, 'display_payment_settings_page')
+        );
+
+        // Submenu - Company Settings
+        add_submenu_page(
+            'wp-staff-diary',
+            'Company Settings',
+            '├─ Company',
+            'manage_options',
+            'wp-staff-diary-company-settings',
+            array($this, 'display_company_settings_page')
+        );
+
+        // Submenu - General Settings
+        add_submenu_page(
+            'wp-staff-diary',
+            'General Settings',
+            '├─ General',
+            'manage_options',
+            'wp-staff-diary-general-settings',
+            array($this, 'display_general_settings_page')
+        );
+
+        // Submenu - Advanced Settings
+        add_submenu_page(
+            'wp-staff-diary',
+            'Advanced Settings',
+            '└─ Advanced',
+            'manage_options',
+            'wp-staff-diary-advanced-settings',
+            array($this, 'display_advanced_settings_page')
+        );
+
         // Hidden submenu - Email Templates (only accessible via Settings tab)
         add_submenu_page(
             null, // No parent = hidden from menu
@@ -489,6 +539,41 @@ class WP_Staff_Diary_Admin {
      */
     public function display_email_templates_page() {
         require_once WP_STAFF_DIARY_PATH . 'admin/views/email-templates.php';
+    }
+
+    /**
+     * Display Quote & Order Settings page
+     */
+    public function display_quote_order_settings_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/settings/quote-order-settings.php';
+    }
+
+    /**
+     * Display Payment Settings page
+     */
+    public function display_payment_settings_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/settings/payment-settings.php';
+    }
+
+    /**
+     * Display Company Settings page
+     */
+    public function display_company_settings_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/settings/company-settings.php';
+    }
+
+    /**
+     * Display General Settings page
+     */
+    public function display_general_settings_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/settings/general-settings.php';
+    }
+
+    /**
+     * Display Advanced Settings page
+     */
+    public function display_advanced_settings_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/settings/advanced-settings.php';
     }
 
     /**
