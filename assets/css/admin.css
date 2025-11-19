@@ -1682,6 +1682,35 @@
         margin-left: 5px;
     }
 
+    /* Smaller Day View navigation on mobile */
+    .day-view-navigation {
+        padding: 10px 15px;
+    }
+
+    .day-view-navigation .button {
+        font-size: 11px;
+        padding: 4px 8px;
+        height: auto;
+        min-width: 70px;
+    }
+
+    .day-view-navigation .button .dashicons {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Hide "Day" text on mobile, show only "Previous"/"Next" */
+    .day-view-navigation .nav-text {
+        font-size: 11px;
+    }
+
+    .day-view-date {
+        font-size: 12px;
+        text-align: center;
+        line-height: 1.3;
+    }
+
     /* Better mobile calendar day cards */
     .calendar-day {
         min-height: auto;

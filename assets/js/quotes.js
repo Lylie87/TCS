@@ -150,8 +150,7 @@
                         $('#quote-modal-title').text('Convert Measure to Quote');
                         $('#save-quote-btn').html('<span class="dashicons dashicons-yes"></span> Save Quote');
 
-                        // Clear notes field (notes history is preserved in comments table)
-                        $('#quote-notes').val('');
+                        // Notes are preserved when converting from measure to quote
 
                         // Uncheck billing address different by default
                         $('#quote-billing-address-different').prop('checked', false);

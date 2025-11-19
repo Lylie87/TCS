@@ -221,13 +221,13 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
     <!-- Day View Navigation (shown only in day view mode) -->
     <div class="day-view-navigation">
         <button type="button" class="button" id="day-view-prev">
-            <span class="dashicons dashicons-arrow-left-alt2"></span> Previous Day
+            <span class="dashicons dashicons-arrow-left-alt2"></span> <span class="nav-text">Previous</span>
         </button>
         <span class="day-view-date" id="day-view-current-date">
             <!-- Will be populated by JavaScript -->
         </span>
         <button type="button" class="button" id="day-view-next">
-            Next Day <span class="dashicons dashicons-arrow-right-alt2"></span>
+            <span class="nav-text">Next</span> <span class="dashicons dashicons-arrow-right-alt2"></span>
         </button>
     </div>
 

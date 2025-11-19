@@ -1520,7 +1520,7 @@ class WP_Staff_Diary_Admin {
             wp_send_json_error('Permission denied');
         }
 
-        $id = intval($_POST['id']);
+        $id = isset($_POST['availability_id']) ? intval($_POST['availability_id']) : intval($_POST['id']);
 
         global $wpdb;
         $table_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
@@ -2249,6 +2249,7 @@ class WP_Staff_Diary_Admin {
         $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
         $table_comments = $wpdb->prefix . 'staff_diary_comments';
         $table_customers = $wpdb->prefix . 'staff_diary_customers';
+        $table_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
 
         $jobs_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary");
         $payments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_payments");
@@ -2256,14 +2257,16 @@ class WP_Staff_Diary_Admin {
         $accessories_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_job_accessories");
         $comments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_comments");
         $customers_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_customers");
+        $availability_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_availability");
 
-        // Delete all data from job-related tables (includes jobs, quotes, and measures)
+        // Delete all data from job-related tables (includes jobs, quotes, measures, and all notes)
         $wpdb->query("TRUNCATE TABLE $table_diary");
         $wpdb->query("TRUNCATE TABLE $table_payments");
         $wpdb->query("TRUNCATE TABLE $table_images");
         $wpdb->query("TRUNCATE TABLE $table_job_accessories");
         $wpdb->query("TRUNCATE TABLE $table_comments");
         $wpdb->query("TRUNCATE TABLE $table_customers");
+        $wpdb->query("TRUNCATE TABLE $table_availability");
 
         // Reset order number to start
         $order_start = get_option('wp_staff_diary_order_start', '01100');
@@ -2272,12 +2275,13 @@ class WP_Staff_Diary_Admin {
         wp_send_json_success(array(
             'message' => 'All data deleted successfully!',
             'deleted' => array(
-                'entries' => $jobs_count,  // jobs, quotes, and measures
+                'entries' => $jobs_count,  // jobs, quotes, measures (includes internal notes)
                 'customers' => $customers_count,
                 'payments' => $payments_count,
                 'images' => $images_count,
                 'accessories' => $accessories_count,
-                'comments' => $comments_count
+                'comments' => $comments_count,
+                'holidays' => $availability_count  // holidays, sick days, unavailable periods
             ),
             'new_order_start' => $order_start
         ));

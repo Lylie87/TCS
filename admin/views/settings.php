@@ -2092,12 +2092,15 @@ jQuery(document).ready(function($) {
 
         var confirmation = confirm(
             '⚠️ FINAL WARNING ⚠️\n\n' +
-            'Are you ABSOLUTELY SURE you want to delete ALL jobs?\n\n' +
+            'Are you ABSOLUTELY SURE you want to delete ALL data?\n\n' +
             'This will permanently delete:\n' +
-            '• All job entries\n' +
+            '• All jobs, quotes, and measures (including internal notes)\n' +
+            '• All customers\n' +
             '• All payments\n' +
-            '• All job images\n' +
-            '• All job accessories\n' +
+            '• All images\n' +
+            '• All accessories\n' +
+            '• All holidays/sick/unavailable periods\n' +
+            '• All comments\n' +
             '• Reset order numbers\n\n' +
             'This action CANNOT be undone!\n\n' +
             'Type "DELETE ALL JOBS" in the next prompt to confirm.'
@@ -2126,14 +2129,17 @@ jQuery(document).ready(function($) {
                 success: function(response) {
                     if (response.success) {
                         alert('✅ ' + response.data.message + '\n\nDeleted:\n' +
-                              '• ' + response.data.deleted.jobs + ' jobs\n' +
+                              '• ' + response.data.deleted.entries + ' entries (jobs/quotes/measures)\n' +
+                              '• ' + response.data.deleted.customers + ' customers\n' +
                               '• ' + response.data.deleted.payments + ' payments\n' +
                               '• ' + response.data.deleted.images + ' images\n' +
-                              '• ' + response.data.deleted.accessories + ' job accessories\n\n' +
+                              '• ' + response.data.deleted.accessories + ' accessories\n' +
+                              '• ' + response.data.deleted.comments + ' comments\n' +
+                              '• ' + response.data.deleted.holidays + ' holidays/unavailable periods\n\n' +
                               'Order number reset to: ' + response.data.new_order_start);
                         location.reload();
                     } else {
-                        alert('❌ Error: ' + (response.data || 'Failed to delete jobs'));
+                        alert('❌ Error: ' + (response.data || 'Failed to delete data'));
                     }
                 },
                 error: function() {
