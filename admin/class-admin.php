@@ -1456,7 +1456,7 @@ class WP_Staff_Diary_Admin {
         check_ajax_referer('wp_staff_diary_settings_nonce', 'nonce');
 
         if (!current_user_can('edit_posts')) {
-            wp_send_json_error('Permission denied');
+            wp_send_json_error(array('message' => 'Permission denied'));
         }
 
         $fitter_id = sanitize_text_field($_POST['fitter_id']);
@@ -1466,12 +1466,12 @@ class WP_Staff_Diary_Admin {
         $reason = sanitize_textarea_field($_POST['reason']);
 
         if (empty($fitter_id) || empty($start_date) || empty($end_date) || empty($availability_type)) {
-            wp_send_json_error('All required fields must be filled');
+            wp_send_json_error(array('message' => 'All required fields must be filled'));
         }
 
         // Validate dates
         if (strtotime($start_date) > strtotime($end_date)) {
-            wp_send_json_error('End date must be after start date');
+            wp_send_json_error(array('message' => 'End date must be after start date'));
         }
 
         global $wpdb;
@@ -1492,13 +1492,13 @@ class WP_Staff_Diary_Admin {
         );
 
         if ($result === false) {
-            wp_send_json_error('Failed to add availability record');
+            wp_send_json_error(array('message' => 'Failed to add availability record: ' . $wpdb->last_error));
         }
 
         // Send email notification to company email
         $this->send_availability_notification($fitter_id, $start_date, $end_date, $availability_type, $reason);
 
-        wp_send_json_success('Availability record added successfully');
+        wp_send_json_success(array('message' => 'Availability record added successfully'));
     }
 
     /**
