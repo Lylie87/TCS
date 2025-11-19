@@ -78,6 +78,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_3_0_0();
         }
 
+        // Upgrade to v3.5.1 - Migrate 'residential' to 'domestic' job type
+        if (version_compare($from_version, '3.5.1', '<')) {
+            self::upgrade_to_3_5_1();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
@@ -572,5 +577,32 @@ Best regards,
         dbDelta($sql_comments);
 
         error_log('WP Staff Diary: Created comments table for version 3.0.0');
+    }
+
+    /**
+     * Upgrade to version 3.5.1
+     * Migrate 'residential' job type to 'domestic' and update payment policy
+     */
+    private static function upgrade_to_3_5_1() {
+        global $wpdb;
+        $table_diary = $wpdb->prefix . 'staff_diary_entries';
+
+        // Update all 'residential' job types to 'domestic'
+        $updated = $wpdb->query(
+            "UPDATE $table_diary SET job_type = 'domestic' WHERE job_type = 'residential'"
+        );
+
+        if ($updated !== false) {
+            error_log("WP Staff Diary: Migrated $updated entries from 'residential' to 'domestic' job type");
+        }
+
+        // Update payment policy setting if set to 'residential'
+        $payment_policy = get_option('wp_staff_diary_payment_policy', '');
+        if ($payment_policy === 'residential') {
+            update_option('wp_staff_diary_payment_policy', 'domestic');
+            error_log("WP Staff Diary: Updated payment policy from 'residential' to 'domestic'");
+        }
+
+        error_log('WP Staff Diary: Completed upgrade to version 3.5.1');
     }
 }

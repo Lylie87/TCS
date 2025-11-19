@@ -41,10 +41,10 @@ $accessories = $db->get_all_accessories();
                 <div class="form-field">
                     <label for="job-type">Job Type <span class="required">*</span></label>
                     <select id="job-type" name="job_type" required>
-                        <option value="residential">Residential</option>
+                        <option value="domestic">Domestic</option>
                         <option value="commercial">Commercial</option>
                     </select>
-                    <p class="description">Select whether this is a residential or commercial job.</p>
+                    <p class="description">Select whether this is a domestic or commercial job.</p>
                 </div>
             </div>
             <div class="form-field">

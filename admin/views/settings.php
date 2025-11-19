@@ -824,9 +824,9 @@ $email_templates = $db->get_all_email_templates();
                         </th>
                         <td>
                             <select name="payment_policy" id="payment_policy" class="regular-text">
-                                <option value="both" <?php selected($payment_policy, 'both'); ?>>Both Residential & Commercial can work before full payment</option>
+                                <option value="both" <?php selected($payment_policy, 'both'); ?>>Both Domestic & Commercial can work before full payment</option>
                                 <option value="commercial" <?php selected($payment_policy, 'commercial'); ?>>Only Commercial jobs can work before full payment</option>
-                                <option value="residential" <?php selected($payment_policy, 'residential'); ?>>Only Residential jobs can work before full payment</option>
+                                <option value="domestic" <?php selected($payment_policy, 'domestic'); ?>>Only Domestic jobs can work before full payment</option>
                                 <option value="none" <?php selected($payment_policy, 'none'); ?>>No jobs can work before full payment</option>
                             </select>
                             <p class="description">Control which types of jobs can proceed to completion before receiving full payment.</p>

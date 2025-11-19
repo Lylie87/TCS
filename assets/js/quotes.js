@@ -1292,7 +1292,7 @@
         $('#quote-number-display').show();
 
         // Job type
-        $('#quote-job-type').val(quote.job_type || 'residential');
+        $('#quote-job-type').val(quote.job_type || 'domestic');
 
         // Customer
         if (quote.customer_id && quote.customer) {
