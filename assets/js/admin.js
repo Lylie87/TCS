@@ -3015,11 +3015,6 @@
             // Show day navigation
             $('.day-view-navigation').addClass('active');
             updateDayNavigationDate();
-
-            // Save preference to localStorage
-            if (!isMobile) {
-                localStorage.setItem('calendarViewMode', 'day');
-            }
         }
 
         /**
@@ -3044,9 +3039,6 @@
 
             // Hide day navigation
             $('.day-view-navigation').removeClass('active');
-
-            // Save preference to localStorage
-            localStorage.setItem('calendarViewMode', 'week');
 
             // Reset selected day index
             selectedDayIndex = null;
@@ -3113,13 +3105,8 @@
         if ($('.calendar-container').length > 0) {
             initDayView();
 
-            // Restore user preference (but not on mobile - always day view)
-            if (!isMobile) {
-                const savedMode = localStorage.getItem('calendarViewMode');
-                if (savedMode === 'day') {
-                    enableDayView();
-                }
-            }
+            // Mobile always starts in day view (handled in initDayView)
+            // Desktop always starts in week view (no preference restoration)
 
             // Day navigation button handlers
             $('#day-view-prev').on('click', previousDay);
