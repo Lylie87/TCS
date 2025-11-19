@@ -16,6 +16,10 @@ if (!defined('ABSPATH')) {
 $job_time_type = get_option('wp_staff_diary_job_time_type', 'ampm');
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+$currency_symbol = get_option('wp_staff_diary_currency_symbol', '£');
+$date_format = get_option('wp_staff_diary_date_format', 'Y-m-d');
+$statuses = get_option('wp_staff_diary_statuses', array());
+$default_status = get_option('wp_staff_diary_default_status', 'pending');
 $db = new WP_Staff_Diary_Database();
 $accessories = $db->get_all_accessories();
 ?>
@@ -42,6 +46,18 @@ $accessories = $db->get_all_accessories();
                     </select>
                     <p class="description">Select whether this is a residential or commercial job.</p>
                 </div>
+            </div>
+            <div class="form-field">
+                <label for="status">Status <span class="required">*</span></label>
+                <select id="status" name="status" required>
+                    <?php foreach ($statuses as $status_key => $status_label): ?>
+                        <option value="<?php echo esc_attr($status_key); ?>"
+                            <?php echo ($status_key === $default_status) ? 'selected' : ''; ?>>
+                            <?php echo esc_html($status_label); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description">Current status of this job.</p>
             </div>
         </div>
 
@@ -135,7 +151,7 @@ $accessories = $db->get_all_accessories();
             <div class="form-grid">
                 <div class="form-field">
                     <label for="job-date">Order Date <span class="required">*</span></label>
-                    <input type="date" id="job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>" required>
+                    <input type="date" id="job-date" name="job_date" value="<?php echo date($date_format); ?>" required>
                 </div>
                 <?php if ($job_time_type === 'time'): ?>
                 <div class="form-field">
@@ -227,19 +243,19 @@ $accessories = $db->get_all_accessories();
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
-                        <label for="price-per-sq-mtr">Price per Sq.Mtr (£)</label>
+                        <label for="price-per-sq-mtr">Price per Sq.Mtr (<?php echo esc_html($currency_symbol); ?>)</label>
                         <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
                     </div>
                 </div>
                 <div class="form-field" style="margin-top: 15px;">
-                    <label for="fitting-cost">Fitting Cost (£)</label>
+                    <label for="fitting-cost">Fitting Cost (<?php echo esc_html($currency_symbol); ?>)</label>
                     <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
                     <p class="description">Customer cost for fitting the product</p>
                 </div>
             </div>
 
             <div class="calculation-display">
-                <strong>Product Total:</strong> £<span id="product-total-display">0.00</span>
+                <strong>Product Total:</strong> <?php echo esc_html($currency_symbol); ?><span id="product-total-display">0.00</span>
             </div>
         </div>
 
@@ -255,7 +271,7 @@ $accessories = $db->get_all_accessories();
                                    data-accessory-name="<?php echo esc_attr($accessory->accessory_name); ?>"
                                    data-price="<?php echo esc_attr($accessory->price); ?>">
                             <?php echo esc_html($accessory->accessory_name); ?>
-                            (£<?php echo number_format($accessory->price, 2); ?>)
+                            (<?php echo esc_html($currency_symbol); ?><?php echo number_format($accessory->price, 2); ?>)
                         </label>
                         <input type="number" class="accessory-quantity"
                                data-accessory-id="<?php echo esc_attr($accessory->id); ?>"
@@ -266,7 +282,7 @@ $accessories = $db->get_all_accessories();
                 <?php endforeach; ?>
             </div>
             <div class="calculation-display">
-                <strong>Accessories Total:</strong> £<span id="accessories-total-display">0.00</span>
+                <strong>Accessories Total:</strong> <?php echo esc_html($currency_symbol); ?><span id="accessories-total-display">0.00</span>
             </div>
         </div>
 
@@ -276,25 +292,25 @@ $accessories = $db->get_all_accessories();
             <table class="calculation-table">
                 <tr>
                     <td>Subtotal:</td>
-                    <td class="amount">£<span id="subtotal-display">0.00</span></td>
+                    <td class="amount"><?php echo esc_html($currency_symbol); ?><span id="subtotal-display">0.00</span></td>
                 </tr>
                 <?php if ($vat_enabled == '1'): ?>
                 <tr>
                     <td>VAT (<?php echo $vat_rate; ?>%):</td>
-                    <td class="amount">£<span id="vat-display">0.00</span></td>
+                    <td class="amount"><?php echo esc_html($currency_symbol); ?><span id="vat-display">0.00</span></td>
                 </tr>
                 <?php endif; ?>
                 <tr id="original-total-row" style="display: none;">
                     <td>Original Total:</td>
-                    <td class="amount">£<span id="original-total-display">0.00</span></td>
+                    <td class="amount"><?php echo esc_html($currency_symbol); ?><span id="original-total-display">0.00</span></td>
                 </tr>
                 <tr id="discount-row" style="display: none;">
                     <td>Discount (<span id="discount-label-display"></span>):</td>
-                    <td class="amount" style="color: #2271b1;">-£<span id="discount-amount-display">0.00</span></td>
+                    <td class="amount" style="color: #2271b1;">-<?php echo esc_html($currency_symbol); ?><span id="discount-amount-display">0.00</span></td>
                 </tr>
                 <tr class="total-row">
                     <td><strong><span id="total-label">Total:</span></strong></td>
-                    <td class="amount"><strong>£<span id="total-display">0.00</span></strong></td>
+                    <td class="amount"><strong><?php echo esc_html($currency_symbol); ?><span id="total-display">0.00</span></strong></td>
                 </tr>
             </table>
         </div>
@@ -325,7 +341,7 @@ $accessories = $db->get_all_accessories();
                 <h4 style="margin-top: 0; margin-bottom: 15px;">Record New Payment</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                     <div>
-                        <label style="display: block; margin-bottom: 5px;"><strong>Amount (£):</strong></label>
+                        <label style="display: block; margin-bottom: 5px;"><strong>Amount (<?php echo esc_html($currency_symbol); ?>):</strong></label>
                         <input type="number" id="payment-amount-form" step="0.01" min="0.01" style="width: 100%;">
                     </div>
                     <div>

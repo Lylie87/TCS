@@ -15,6 +15,8 @@ if (!defined('ABSPATH')) {
 // Get settings for form configuration
 $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
 $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
+$currency_symbol = get_option('wp_staff_diary_currency_symbol', '£');
+$date_format = get_option('wp_staff_diary_date_format', 'Y-m-d');
 $db = new WP_Staff_Diary_Database();
 $accessories = $db->get_all_accessories();
 ?>
@@ -24,7 +26,7 @@ $accessories = $db->get_all_accessories();
     <input type="hidden" id="quote-entry-id" name="entry_id" value="">
     <input type="hidden" id="quote-order-number" name="order_number" value="">
     <input type="hidden" id="quote-status" name="status" value="quotation">
-    <input type="hidden" id="quote-job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>">
+    <input type="hidden" id="quote-job-date" name="job_date" value="<?php echo date($date_format); ?>">
 
     <div class="form-sections">
         <!-- Quote Info Section -->
@@ -169,12 +171,12 @@ $accessories = $db->get_all_accessories();
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
-                        <label for="quote-price-per-sq-mtr">Price per Sq.Mtr (£)</label>
+                        <label for="quote-price-per-sq-mtr">Price per Sq.Mtr (<?php echo esc_html($currency_symbol); ?>)</label>
                         <input type="number" id="quote-price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
                     </div>
                 </div>
                 <div class="form-field" style="margin-top: 15px;">
-                    <label for="quote-fitting-cost">Fitting Cost (£)</label>
+                    <label for="quote-fitting-cost">Fitting Cost (<?php echo esc_html($currency_symbol); ?>)</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="number" id="quote-fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00" readonly style="background: #f0f0f1;">
                         <button type="button" id="quote-toggle-manual-fitting-cost" class="button button-secondary">
@@ -182,14 +184,14 @@ $accessories = $db->get_all_accessories();
                         </button>
                     </div>
                     <p class="description">
-                        <span id="quote-auto-calc-description">Automatically calculated from size × £<span id="quote-default-rate-display"><?php echo get_option('wp_staff_diary_quote_default_fitting_cost', '15'); ?></span>/m²</span>
+                        <span id="quote-auto-calc-description">Automatically calculated from size × <?php echo esc_html($currency_symbol); ?><span id="quote-default-rate-display"><?php echo get_option('wp_staff_diary_quote_default_fitting_cost', '15'); ?></span>/m²</span>
                         <span id="quote-manual-calc-description" style="display: none;">Manual entry mode - click button to return to auto-calculation</span>
                     </p>
                 </div>
             </div>
 
             <div class="calculation-display">
-                <strong>Product Total:</strong> £<span id="quote-product-total-display">0.00</span>
+                <strong>Product Total:</strong> <?php echo esc_html($currency_symbol); ?><span id="quote-product-total-display">0.00</span>
             </div>
         </div>
 
@@ -205,7 +207,7 @@ $accessories = $db->get_all_accessories();
                                    data-accessory-name="<?php echo esc_attr($accessory->accessory_name); ?>"
                                    data-price="<?php echo esc_attr($accessory->price); ?>">
                             <?php echo esc_html($accessory->accessory_name); ?>
-                            (£<?php echo number_format($accessory->price, 2); ?>)
+                            (<?php echo esc_html($currency_symbol); ?><?php echo number_format($accessory->price, 2); ?>)
                         </label>
                         <input type="number" class="quote-accessory-quantity"
                                data-accessory-id="<?php echo esc_attr($accessory->id); ?>"
@@ -216,7 +218,7 @@ $accessories = $db->get_all_accessories();
                 <?php endforeach; ?>
             </div>
             <div class="calculation-display">
-                <strong>Accessories Total:</strong> £<span id="quote-accessories-total-display">0.00</span>
+                <strong>Accessories Total:</strong> <?php echo esc_html($currency_symbol); ?><span id="quote-accessories-total-display">0.00</span>
             </div>
         </div>
 
@@ -226,17 +228,17 @@ $accessories = $db->get_all_accessories();
             <table class="calculation-table">
                 <tr>
                     <td>Subtotal:</td>
-                    <td class="amount">£<span id="quote-subtotal-display">0.00</span></td>
+                    <td class="amount"><?php echo esc_html($currency_symbol); ?><span id="quote-subtotal-display">0.00</span></td>
                 </tr>
                 <?php if ($vat_enabled == '1'): ?>
                 <tr>
                     <td>VAT (<?php echo $vat_rate; ?>%):</td>
-                    <td class="amount">£<span id="quote-vat-display">0.00</span></td>
+                    <td class="amount"><?php echo esc_html($currency_symbol); ?><span id="quote-vat-display">0.00</span></td>
                 </tr>
                 <?php endif; ?>
                 <tr class="total-row">
                     <td><strong>Total:</strong></td>
-                    <td class="amount"><strong>£<span id="quote-total-display">0.00</span></strong></td>
+                    <td class="amount"><strong><?php echo esc_html($currency_symbol); ?><span id="quote-total-display">0.00</span></strong></td>
                 </tr>
             </table>
         </div>

@@ -1446,7 +1446,7 @@
 
             // Show existing discount if applied
             if (quote.discount_type && quote.discount_value) {
-                const discountDisplay = quote.discount_type === 'percentage' ? quote.discount_value + '%' : '£' + parseFloat(quote.discount_value).toFixed(2);
+                const discountDisplay = quote.discount_type === 'percentage' ? quote.discount_value + '%' : wpStaffDiary.currencySymbol + parseFloat(quote.discount_value).toFixed(2);
                 html += '<div class="notice notice-info inline" style="margin-bottom: 15px; padding: 10px; background: #fff;">';
                 html += '<strong>Current Discount:</strong> ' + discountDisplay + ' (' + quote.discount_type + ')';
                 if (quote.discount_applied_date) {
@@ -1765,7 +1765,7 @@
         }
 
         // Confirmation
-        const discountDisplay = discountType === 'percentage' ? discountValue + '%' : '£' + discountValue.toFixed(2);
+        const discountDisplay = discountType === 'percentage' ? discountValue + '%' : wpStaffDiary.currencySymbol + discountValue.toFixed(2);
         if (!confirm('Are you sure you want to send a ' + discountDisplay + ' discount offer to the customer?')) {
             return;
         }

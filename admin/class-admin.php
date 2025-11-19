@@ -79,7 +79,8 @@ class WP_Staff_Diary_Admin {
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('wp_staff_diary_nonce'),
             'statuses' => $statuses,
-            'paymentMethods' => $payment_methods
+            'paymentMethods' => $payment_methods,
+            'currencySymbol' => get_option('wp_staff_diary_currency_symbol', '£')
         ));
 
         // Enqueue WordPress media uploader

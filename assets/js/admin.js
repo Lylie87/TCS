@@ -1211,7 +1211,7 @@
                 // Update discount label and amount
                 const discountLabel = currentDiscountType === 'percentage'
                     ? currentDiscountValue.toFixed(2) + '%'
-                    : '£' + currentDiscountValue.toFixed(2);
+                    : wpStaffDiary.currencySymbol + currentDiscountValue.toFixed(2);
                 $('#discount-label-display').text(discountLabel);
                 $('#discount-amount-display').text(discountAmount.toFixed(2));
 
@@ -2103,7 +2103,7 @@
 
             // Reset inputs to original values
             $row.find('.accessory-name-edit').val($row.find('.accessory-name-display').text());
-            $row.find('.accessory-price-edit').val($row.find('.accessory-price-display').text().replace('£', '').replace(',', ''));
+            $row.find('.accessory-price-edit').val($row.find('.accessory-price-display').text().replace(wpStaffDiary.currencySymbol, '').replace(',', ''));
         });
 
         /**
@@ -2147,7 +2147,7 @@
                     if (response.success) {
                         // Update display values
                         $row.find('.accessory-name-display').text(accessoryName);
-                        $row.find('.accessory-price-display').text('£' + price.toFixed(2));
+                        $row.find('.accessory-price-display').text(wpStaffDiary.currencySymbol + price.toFixed(2));
                         $row.find('.accessory-active-display').text(isActive ? 'Yes' : 'No');
 
                         // Switch back to display mode
