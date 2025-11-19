@@ -157,6 +157,7 @@ if (isset($_POST['wp_staff_diary_save_quotation'])) {
     update_option('wp_staff_diary_quote_validity_days', absint($_POST['quote_validity_days']));
     update_option('wp_staff_diary_quote_default_fitting_cost', floatval($_POST['quote_default_fitting_cost']));
     update_option('wp_staff_diary_quote_email_template', wp_kses_post($_POST['quote_email_template']));
+    update_option('wp_staff_diary_quote_show_discount_button', isset($_POST['quote_show_discount_button']) ? '1' : '0');
 
     echo '<div class="notice notice-success is-dismissible"><p>Quotation settings saved successfully!</p></div>';
 }
@@ -275,6 +276,7 @@ $quote_auto_discount_value = get_option('wp_staff_diary_quote_auto_discount_valu
 $quote_validity_days = get_option('wp_staff_diary_quote_validity_days', '30');
 $quote_default_fitting_cost = get_option('wp_staff_diary_quote_default_fitting_cost', '15');
 $quote_email_template = get_option('wp_staff_diary_quote_email_template', '');
+$quote_show_discount_button = get_option('wp_staff_diary_quote_show_discount_button', '1'); // Default to showing
 
 // If no template set, use default
 if (empty($quote_email_template)) {
@@ -1257,6 +1259,19 @@ $email_templates = $db->get_all_email_templates();
                         <td>
                             <?php echo WP_Staff_Diary_Currency_Helper::get_symbol(); ?><input type="number" name="quote_default_fitting_cost" id="quote_default_fitting_cost" value="<?php echo esc_attr($quote_default_fitting_cost); ?>" step="0.01" min="0" class="small-text">
                             <p class="description">Default cost per square metre for fitting (used for automatic calculation in quotes). You can override this manually on individual quotes.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="quote_show_discount_button">Show Discount Button on Quotes Dashboard</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="quote_show_discount_button" id="quote_show_discount_button" value="1" <?php checked($quote_show_discount_button, '1'); ?>>
+                                Display the discount button on the Quotes dashboard
+                            </label>
+                            <p class="description">When unchecked, the "💰 Discount" button will be hidden from the quotes list. This helps keep the interface cleaner if you don't use the discount feature.</p>
                         </td>
                     </tr>
                 </tbody>

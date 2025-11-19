@@ -171,12 +171,14 @@
                             data-quote-id="<?php echo $quote->id; ?>">
                         Convert
                     </button>
-                    <button type="button"
-                            class="button button-small quote-widget-btn send-discount-dashboard"
-                            data-quote-id="<?php echo $quote->id; ?>"
-                            title="Send Discount Offer">
-                        💰 Discount
-                    </button>
+                    <?php if (get_option('wp_staff_diary_quote_show_discount_button', '1') == '1'): ?>
+                        <button type="button"
+                                class="button button-small quote-widget-btn send-discount-dashboard"
+                                data-quote-id="<?php echo $quote->id; ?>"
+                                title="Send Discount Offer">
+                            💰 Discount
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>
