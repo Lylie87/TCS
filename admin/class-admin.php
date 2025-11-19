@@ -1459,14 +1459,22 @@ class WP_Staff_Diary_Admin {
             wp_send_json_error(array('message' => 'Permission denied'));
         }
 
-        $fitter_id = sanitize_text_field($_POST['fitter_id']);
-        $start_date = sanitize_text_field($_POST['start_date']);
-        $end_date = sanitize_text_field($_POST['end_date']);
-        $availability_type = sanitize_text_field($_POST['availability_type']);
-        $reason = sanitize_textarea_field($_POST['reason']);
+        $fitter_id = isset($_POST['fitter_id']) ? sanitize_text_field($_POST['fitter_id']) : '';
+        $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
+        $end_date = isset($_POST['end_date']) ? sanitize_text_field($_POST['end_date']) : '';
+        $availability_type = isset($_POST['availability_type']) ? sanitize_text_field($_POST['availability_type']) : '';
+        $reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
+
+        // Debug logging
+        error_log('Add Availability Debug:');
+        error_log('fitter_id: ' . $fitter_id);
+        error_log('start_date: ' . $start_date);
+        error_log('end_date: ' . $end_date);
+        error_log('availability_type: ' . $availability_type);
+        error_log('reason: ' . $reason);
 
         if (empty($fitter_id) || empty($start_date) || empty($end_date) || empty($availability_type)) {
-            wp_send_json_error(array('message' => 'All required fields must be filled'));
+            wp_send_json_error(array('message' => 'All required fields must be filled. Fitter: ' . ($fitter_id ? 'OK' : 'EMPTY') . ', Start: ' . ($start_date ? 'OK' : 'EMPTY') . ', End: ' . ($end_date ? 'OK' : 'EMPTY') . ', Type: ' . ($availability_type ? 'OK' : 'EMPTY')));
         }
 
         // Validate dates
