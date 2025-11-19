@@ -108,7 +108,7 @@
         });
 
         // Modal close handlers
-        $('.wp-staff-diary-modal-close, #cancel-entry-btn, #cancel-customer-btn, #cancel-quick-customer').on('click', function() {
+        $('.wp-staff-diary-modal-close, #cancel-entry-btn, #cancel-customer-btn, #cancel-quick-customer, .cancel-modal').on('click', function() {
             $(this).closest('.wp-staff-diary-modal').fadeOut();
         });
 

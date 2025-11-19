@@ -20,7 +20,7 @@ $date_format = get_option('wp_staff_diary_date_format', 'Y-m-d');
 <form id="measure-entry-form">
     <input type="hidden" id="measure-entry-id" name="entry_id" value="">
     <input type="hidden" id="measure-status" name="status" value="measure">
-    <input type="hidden" id="measure-job-date" name="job_date" value="<?php echo date($date_format); ?>">
+    <input type="hidden" id="measure-job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>">
 
     <div class="form-sections">
         <!-- Measure Info Section -->
@@ -85,7 +85,8 @@ $date_format = get_option('wp_staff_diary_date_format', 'Y-m-d');
             <div class="form-grid">
                 <div class="form-field">
                     <label for="measure-date">Measure Date <span class="required">*</span></label>
-                    <input type="date" id="measure-date" name="fitting_date" value="<?php echo date($date_format); ?>" required>
+                    <input type="date" id="measure-date" name="fitting_date" value="<?php echo date('Y-m-d'); ?>" required>
+                    <p class="description">HTML5 date input - browser will display in your locale</p>
                 </div>
                 <div class="form-field">
                     <label for="measure-time">Measure Time <span class="required">*</span></label>

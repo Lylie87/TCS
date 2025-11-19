@@ -177,13 +177,6 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <?php endif; ?>
             </tbody>
         </table>
-
-        <!-- Bottom action button -->
-        <div style="margin-top: 20px; text-align: center;">
-            <button type="button" class="button button-primary button-large" id="add-new-quote-bottom">
-                <span class="dashicons dashicons-plus-alt"></span> Create New Quote
-            </button>
-        </div>
     </div>
 </div>
 

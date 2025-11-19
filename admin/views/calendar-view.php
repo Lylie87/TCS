@@ -259,7 +259,7 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
             <button type="button" class="button" id="add-new-measure" style="background: #9b59b6; color: white; border-color: #8e44ad;">
                 <span class="dashicons dashicons-location"></span> Add Measure
             </button>
-            <a href="?page=wp-staff-diary-quotes" class="button" style="background: #00a0d2; color: white; border-color: #0085ba;">
+            <a href="?page=wp-staff-diary-quotes&action=new" class="button" style="background: #00a0d2; color: white; border-color: #0085ba;">
                 <span class="dashicons dashicons-plus-alt"></span> Add New Quote
             </a>
             <button type="button" class="button button-primary" id="add-new-entry">

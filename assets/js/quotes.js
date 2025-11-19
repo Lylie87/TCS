@@ -24,7 +24,7 @@
         initModals();
 
         // Button click handlers (top and bottom buttons)
-        $('#add-new-quote, #add-new-quote-bottom').on('click', openAddQuoteModal);
+        $('#add-new-quote').on('click', openAddQuoteModal);
         $('.edit-quote').on('click', function() {
             editQuote($(this).data('id'));
         });
@@ -1872,6 +1872,13 @@
                 if (measureId) {
                     loadMeasurePhotos(measureId);
                 }
+
+                // Clean up URL
+                const cleanUrl = window.location.pathname + '?page=wp-staff-diary-quotes';
+                window.history.replaceState({}, document.title, cleanUrl);
+            } else if (urlParams.get('action') === 'new') {
+                // Simple case: Open add quote modal without pre-filling
+                openAddQuoteModal();
 
                 // Clean up URL
                 const cleanUrl = window.location.pathname + '?page=wp-staff-diary-quotes';

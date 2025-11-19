@@ -151,7 +151,7 @@ $accessories = $db->get_all_accessories();
             <div class="form-grid">
                 <div class="form-field">
                     <label for="job-date">Order Date <span class="required">*</span></label>
-                    <input type="date" id="job-date" name="job_date" value="<?php echo date($date_format); ?>" required>
+                    <input type="date" id="job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>" required>
                 </div>
                 <?php if ($job_time_type === 'time'): ?>
                 <div class="form-field">
