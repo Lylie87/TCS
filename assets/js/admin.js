@@ -1115,6 +1115,48 @@
             updateCalculations();
         });
 
+        // Size field auto-calculation
+        $('#size').on('input', function() {
+            parseSizeAndCalculateSqMtr();
+        });
+
+        /**
+         * Parse size field and auto-calculate sq.mtr for jobs
+         */
+        function parseSizeAndCalculateSqMtr() {
+            const sizeInput = $('#size').val().trim();
+
+            if (!sizeInput) {
+                $('#sq-mtr-qty').val('');
+                return;
+            }
+
+            // Remove common units and normalize input
+            let normalized = sizeInput.toLowerCase()
+                .replace(/metres?|meters?|m/gi, '')  // Remove unit indicators
+                .replace(/\s+/g, ' ')                 // Normalize whitespace
+                .trim();
+
+            // Match patterns like: "4 x 3", "4x3", "4 * 3", "4.5 x 6.2"
+            const pattern = /^(\d+\.?\d*)\s*[x*×]\s*(\d+\.?\d*)$/i;
+            const match = normalized.match(pattern);
+
+            if (match) {
+                const length = parseFloat(match[1]);
+                const width = parseFloat(match[2]);
+
+                if (!isNaN(length) && !isNaN(width) && length > 0 && width > 0) {
+                    const sqMeters = length * width;
+                    $('#sq-mtr-qty').val(sqMeters.toFixed(2));
+                    updateCalculations();
+                    return;
+                }
+            }
+
+            // If we get here, the format is invalid - show a subtle warning
+            console.warn('Invalid size format. Expected format: "length x width" (e.g. 4 x 3)');
+        }
+
         /**
          * Update all calculations
          */

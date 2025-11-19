@@ -158,11 +158,13 @@ $accessories = $db->get_all_accessories();
                 <div class="form-grid">
                     <div class="form-field">
                         <label for="quote-size">Size</label>
-                        <input type="text" id="quote-size" name="size">
+                        <input type="text" id="quote-size" name="size" placeholder="e.g. 4 x 3">
+                        <p class="description">Enter as length x width (e.g. 4 x 3 or 2.5 x 6). Will auto-calculate m².</p>
                     </div>
                     <div class="form-field">
                         <label for="quote-sq-mtr-qty">Sq.Mtr / Quantity</label>
-                        <input type="number" id="quote-sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0">
+                        <input type="number" id="quote-sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0" readonly style="background: #f0f0f1;">
+                        <p class="description">Auto-calculated from Size field</p>
                     </div>
                 </div>
                 <div class="form-grid">

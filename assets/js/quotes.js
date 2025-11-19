@@ -1024,9 +1024,55 @@
     }
 
     /**
+     * Parse size field and auto-calculate sq.mtr
+     */
+    function parseSizeAndCalculate() {
+        const sizeInput = $('#quote-size').val().trim();
+
+        if (!sizeInput) {
+            $('#quote-sq-mtr-qty').val('');
+            return;
+        }
+
+        // Remove common units and normalize input
+        let normalized = sizeInput.toLowerCase()
+            .replace(/metres?|meters?|m/gi, '')  // Remove unit indicators
+            .replace(/\s+/g, ' ')                 // Normalize whitespace
+            .trim();
+
+        // Match patterns like: "4 x 3", "4x3", "4 * 3", "4.5 x 6.2"
+        const pattern = /^(\d+\.?\d*)\s*[x*×]\s*(\d+\.?\d*)$/i;
+        const match = normalized.match(pattern);
+
+        if (match) {
+            const length = parseFloat(match[1]);
+            const width = parseFloat(match[2]);
+
+            if (!isNaN(length) && !isNaN(width) && length > 0 && width > 0) {
+                const sqMeters = length * width;
+                $('#quote-sq-mtr-qty').val(sqMeters.toFixed(2));
+
+                // Trigger fitting cost calculation if in auto mode
+                if (!fittingCostManualMode) {
+                    autoCalculateFittingCost();
+                } else {
+                    calculateQuoteTotal();
+                }
+                return;
+            }
+        }
+
+        // If we get here, the format is invalid - show a subtle warning
+        console.warn('Invalid size format. Expected format: "length x width" (e.g. 4 x 3)');
+    }
+
+    /**
      * Initialize price calculations
      */
     function initPriceCalculations() {
+        // Size field auto-calculation
+        $('#quote-size').on('input', parseSizeAndCalculate);
+
         // Product price calculation
         $('#quote-sq-mtr-qty, #quote-price-per-sq-mtr, #quote-fitting-cost').on('input', calculateQuoteTotal);
 
