@@ -1473,8 +1473,9 @@ class WP_Staff_Diary_Admin {
         error_log('availability_type: ' . $availability_type);
         error_log('reason: ' . $reason);
 
-        if (empty($fitter_id) || empty($start_date) || empty($end_date) || empty($availability_type)) {
-            wp_send_json_error(array('message' => 'All required fields must be filled. Fitter: ' . ($fitter_id ? 'OK' : 'EMPTY') . ', Start: ' . ($start_date ? 'OK' : 'EMPTY') . ', End: ' . ($end_date ? 'OK' : 'EMPTY') . ', Type: ' . ($availability_type ? 'OK' : 'EMPTY')));
+        // Use === '' instead of empty() to allow "0" as valid fitter_id
+        if ($fitter_id === '' || $start_date === '' || $end_date === '' || $availability_type === '') {
+            wp_send_json_error(array('message' => 'All required fields must be filled. Fitter: ' . ($fitter_id !== '' ? 'OK' : 'EMPTY') . ', Start: ' . ($start_date !== '' ? 'OK' : 'EMPTY') . ', End: ' . ($end_date !== '' ? 'OK' : 'EMPTY') . ', Type: ' . ($availability_type !== '' ? 'OK' : 'EMPTY')));
         }
 
         // Validate dates
