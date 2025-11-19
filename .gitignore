@@ -12,8 +12,10 @@ Thumbs.db
 
 # Local development
 .config/
+.claude/
 node_modules/
 vendor/
+libs/README.md
 
 # Environment files
 .env

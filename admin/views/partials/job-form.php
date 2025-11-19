@@ -23,6 +23,7 @@ $accessories = $db->get_all_accessories();
 <!-- Job Entry Form -->
 <form id="diary-entry-form">
     <input type="hidden" id="entry-id" name="entry_id" value="">
+    <input type="hidden" id="order-number" name="order_number" value="">
 
     <div class="form-sections">
         <!-- Order Info Section -->
@@ -32,25 +33,6 @@ $accessories = $db->get_all_accessories();
                 <div class="form-field" id="order-number-display" style="display: none;">
                     <label>Order Number</label>
                     <div><strong id="order-number-value" style="font-size: 18px; color: #2271b1;"></strong></div>
-                </div>
-                <div class="form-field">
-                    <label for="status">Status <span class="required">*</span></label>
-                    <select id="status" name="status" required>
-                        <?php
-                        $statuses = get_option('wp_staff_diary_statuses', array(
-                            'pending' => 'Pending',
-                            'in-progress' => 'In Progress',
-                            'completed' => 'Completed',
-                            'cancelled' => 'Cancelled'
-                        ));
-                        foreach ($statuses as $key => $label):
-                        ?>
-                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description" style="color: #d63638; margin-top: 5px;">
-                        <strong>Note:</strong> Setting status to "Cancelled" will remove this job from your diary.
-                    </p>
                 </div>
                 <div class="form-field">
                     <label for="job-type">Job Type <span class="required">*</span></label>
@@ -101,48 +83,48 @@ $accessories = $db->get_all_accessories();
 
         <!-- Address Section -->
         <div class="form-section">
-            <h3>Billing Address</h3>
+            <h3>Fitting Address</h3>
             <div class="form-field">
-                <label for="billing-address-line-1">Address Line 1</label>
-                <input type="text" id="billing-address-line-1" name="billing_address_line_1">
+                <label for="fitting-address-line-1">Address Line 1</label>
+                <input type="text" id="fitting-address-line-1" name="fitting_address_line_1">
             </div>
             <div class="form-field">
-                <label for="billing-address-line-2">Address Line 2</label>
-                <input type="text" id="billing-address-line-2" name="billing_address_line_2">
+                <label for="fitting-address-line-2">Address Line 2</label>
+                <input type="text" id="fitting-address-line-2" name="fitting_address_line_2">
             </div>
             <div class="form-field">
-                <label for="billing-address-line-3">City/Town</label>
-                <input type="text" id="billing-address-line-3" name="billing_address_line_3">
+                <label for="fitting-address-line-3">City/Town</label>
+                <input type="text" id="fitting-address-line-3" name="fitting_address_line_3">
             </div>
             <div class="form-field">
-                <label for="billing-postcode">Postcode</label>
-                <input type="text" id="billing-postcode" name="billing_postcode">
+                <label for="fitting-postcode">Postcode</label>
+                <input type="text" id="fitting-postcode" name="fitting_postcode">
             </div>
 
             <div class="form-field" style="margin-top: 15px;">
                 <label>
-                    <input type="checkbox" id="fitting-address-different" name="fitting_address_different" value="1">
-                    <strong>Fitting address is different from billing address</strong>
+                    <input type="checkbox" id="billing-address-different" name="billing_address_different" value="1">
+                    <strong>Billing address is different from fitting address</strong>
                 </label>
             </div>
 
-            <div id="fitting-address-section" style="display: none; margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px;">
-                <h4 style="margin-top: 0;">Fitting Address</h4>
+            <div id="billing-address-section" style="display: none; margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px;">
+                <h4 style="margin-top: 0;">Billing Address</h4>
                 <div class="form-field">
-                    <label for="fitting-address-line-1">Address Line 1</label>
-                    <input type="text" id="fitting-address-line-1" name="fitting_address_line_1">
+                    <label for="billing-address-line-1">Address Line 1</label>
+                    <input type="text" id="billing-address-line-1" name="billing_address_line_1">
                 </div>
                 <div class="form-field">
-                    <label for="fitting-address-line-2">Address Line 2</label>
-                    <input type="text" id="fitting-address-line-2" name="fitting_address_line_2">
+                    <label for="billing-address-line-2">Address Line 2</label>
+                    <input type="text" id="billing-address-line-2" name="billing_address_line_2">
                 </div>
                 <div class="form-field">
-                    <label for="fitting-address-line-3">City/Town</label>
-                    <input type="text" id="fitting-address-line-3" name="fitting_address_line_3">
+                    <label for="billing-address-line-3">City/Town</label>
+                    <input type="text" id="billing-address-line-3" name="billing_address_line_3">
                 </div>
                 <div class="form-field">
-                    <label for="fitting-postcode">Postcode</label>
-                    <input type="text" id="fitting-postcode" name="fitting_postcode">
+                    <label for="billing-postcode">Postcode</label>
+                    <input type="text" id="billing-postcode" name="billing_postcode">
                 </div>
             </div>
         </div>
@@ -154,11 +136,6 @@ $accessories = $db->get_all_accessories();
                 <div class="form-field">
                     <label for="job-date">Order Date <span class="required">*</span></label>
                     <input type="date" id="job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>" required>
-                </div>
-                <div class="form-field">
-                    <label for="quote-date">Quote Date</label>
-                    <input type="date" id="quote-date" name="quote_date">
-                    <p class="description">Date the quote was provided to the customer</p>
                 </div>
                 <?php if ($job_time_type === 'time'): ?>
                 <div class="form-field">
@@ -184,14 +161,6 @@ $accessories = $db->get_all_accessories();
                     </select>
                 </div>
                 <?php endif; ?>
-                <div class="form-field">
-                    <label for="area">Area</label>
-                    <input type="text" id="area" name="area">
-                </div>
-                <div class="form-field">
-                    <label for="size">Size</label>
-                    <input type="text" id="size" name="size">
-                </div>
             </div>
         </div>
 
@@ -246,9 +215,15 @@ $accessories = $db->get_all_accessories();
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
+                        <label for="size">Size</label>
+                        <input type="text" id="size" name="size">
+                    </div>
+                    <div class="form-field">
                         <label for="sq-mtr-qty">Sq.Mtr / Quantity</label>
                         <input type="number" id="sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0">
                     </div>
+                </div>
+                <div class="form-grid">
                     <div class="form-field">
                         <label for="price-per-sq-mtr">Price per Sq.Mtr (£)</label>
                         <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
@@ -382,11 +357,11 @@ $accessories = $db->get_all_accessories();
             </div>
         </div>
 
-        <!-- Notes Section -->
+        <!-- Internal Notes Section -->
         <div class="form-section">
-            <h3>Additional Notes</h3>
+            <h3>Internal Notes</h3>
             <div class="form-field">
-                <textarea id="notes" name="notes" rows="4" placeholder="Add any additional notes or special instructions..."></textarea>
+                <textarea id="notes" name="notes" rows="4" placeholder="Add any internal notes or special instructions..."></textarea>
             </div>
         </div>
     </div>

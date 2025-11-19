@@ -22,6 +22,7 @@ $accessories = $db->get_all_accessories();
 <!-- Quote Entry Form -->
 <form id="quote-entry-form">
     <input type="hidden" id="quote-entry-id" name="entry_id" value="">
+    <input type="hidden" id="quote-order-number" name="order_number" value="">
     <input type="hidden" id="quote-status" name="status" value="quotation">
     <input type="hidden" id="quote-job-date" name="job_date" value="<?php echo date('Y-m-d'); ?>">
 
@@ -156,9 +157,15 @@ $accessories = $db->get_all_accessories();
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
+                        <label for="quote-size">Size</label>
+                        <input type="text" id="quote-size" name="size">
+                    </div>
+                    <div class="form-field">
                         <label for="quote-sq-mtr-qty">Sq.Mtr / Quantity</label>
                         <input type="number" id="quote-sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0">
                     </div>
+                </div>
+                <div class="form-grid">
                     <div class="form-field">
                         <label for="quote-price-per-sq-mtr">Price per Sq.Mtr (£)</label>
                         <input type="number" id="quote-price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
@@ -237,11 +244,11 @@ $accessories = $db->get_all_accessories();
             <input type="file" id="quote-photo-upload-input" accept="image/*" style="display: none;">
         </div>
 
-        <!-- Notes Section -->
+        <!-- Internal Notes Section -->
         <div class="form-section">
-            <h3>Additional Notes</h3>
+            <h3>Internal Notes</h3>
             <div class="form-field">
-                <textarea id="quote-notes" name="notes" rows="4" placeholder="Add any additional notes, customer preferences, or special requirements..."></textarea>
+                <textarea id="quote-notes" name="notes" rows="4" placeholder="Add any internal notes, customer preferences, or special requirements..."></textarea>
             </div>
         </div>
     </div>

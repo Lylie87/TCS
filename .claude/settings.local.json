@@ -4,9 +4,16 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(gh release:*)"
+      "Bash(gh release:*)",
+      "Bash(python add_discount.py:*)",
+      "Bash(python3:*)",
+      "Bash(git restore:*)",
+      "Bash(node -c:*)",
+      "WebFetch(domain:tcs-cfs.co.uk)",
+      "WebFetch(domain:ibb.co)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "spinnerTipsEnabled": false
 }

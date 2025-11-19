@@ -510,6 +510,11 @@ class WP_Staff_Diary_Admin {
         $user_id = get_current_user_id();
         $status = sanitize_text_field($_POST['status']);
 
+        // Decode accessories if sent as JSON string
+        if (isset($_POST['accessories']) && is_string($_POST['accessories'])) {
+            $_POST['accessories'] = json_decode(stripslashes($_POST['accessories']), true);
+        }
+
         // If status is 'cancelled' and this is an existing entry, delete it
         if ($status === 'cancelled' && $entry_id > 0) {
             $result = $this->db->delete_entry($entry_id);
@@ -529,10 +534,35 @@ class WP_Staff_Diary_Admin {
             return;
         }
 
+        // Handle measure-specific customer creation
+        $customer_id = !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null;
+
+        // If this is a measure and we have inline customer data, create/update customer
+        if ($status === 'measure' && !empty($_POST['measure_customer_name'])) {
+            $customer_name = sanitize_text_field($_POST['measure_customer_name']);
+            $customer_phone = !empty($_POST['measure_customer_phone']) ? sanitize_text_field($_POST['measure_customer_phone']) : '';
+
+            // Create a simple customer record for the measure
+            $customer_data = array(
+                'customer_name' => $customer_name,
+                'customer_phone' => $customer_phone
+            );
+
+            $customer_id = $this->db->create_customer($customer_data);
+
+            // Log for debugging
+            error_log('Measure customer created: ID=' . $customer_id . ', Name=' . $customer_name);
+
+            if (!$customer_id) {
+                wp_send_json_error(array('message' => 'Failed to create customer for measure'));
+                return;
+            }
+        }
+
         // Prepare data for main entry
         $data = array(
             'user_id' => $user_id,
-            'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+            'customer_id' => $customer_id,
             'fitter_id' => isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null,
             'job_date' => !empty($_POST['job_date']) ? sanitize_text_field($_POST['job_date']) : null,
             'quote_date' => !empty($_POST['quote_date']) ? sanitize_text_field($_POST['quote_date']) : null,
@@ -596,8 +626,12 @@ class WP_Staff_Diary_Admin {
                 wp_send_json_error(array('message' => 'Failed to update entry: ' . $wpdb->last_error));
             }
         } else {
-            // Create new entry - generate order number
-            $order_number = $this->db->generate_order_number();
+            // Create new entry - use provided order number or generate new one
+            if (!empty($_POST['order_number'])) {
+                $order_number = sanitize_text_field($_POST['order_number']);
+            } else {
+                $order_number = $this->db->generate_order_number();
+            }
             $data['order_number'] = $order_number;
 
             $new_id = $this->db->create_entry($data);
@@ -663,13 +697,46 @@ class WP_Staff_Diary_Admin {
         $entry_id = intval($_POST['entry_id']);
         $user_id = get_current_user_id();
 
+        error_log('===== CANCEL ENTRY START =====');
+        error_log('Cancel entry called for ID: ' . $entry_id);
+        error_log('Current user ID: ' . $user_id);
+
         // Verify ownership or admin
         $entry = $this->db->get_entry($entry_id);
-        if (!$entry || ($entry->user_id != $user_id && !current_user_can('edit_users'))) {
-            wp_send_json_error(array('message' => 'Permission denied'));
+        if (!$entry) {
+            error_log('Entry not found for ID: ' . $entry_id);
+            wp_send_json_error(array('message' => 'Entry not found'));
+            return;
         }
 
+        error_log('Entry owner user_id: ' . $entry->user_id);
+        error_log('Entry current status: ' . $entry->status);
+        error_log('Entry current is_cancelled: ' . $entry->is_cancelled);
+
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            error_log('Permission denied for entry ID: ' . $entry_id);
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        error_log('Calling cancel_entry on database...');
+
+        // Log the last query to see exactly what SQL is being executed
+        global $wpdb;
+        $wpdb->show_errors();
+
         $result = $this->db->cancel_entry($entry_id);
+
+        error_log('Last SQL query: ' . $wpdb->last_query);
+        error_log('Last SQL error: ' . $wpdb->last_error);
+        error_log('Cancel result (rows affected): ' . var_export($result, true));
+
+        // Verify the update
+        $updated_entry = $this->db->get_entry($entry_id);
+        error_log('After cancel - status: ' . ($updated_entry ? $updated_entry->status : 'NULL'));
+        error_log('After cancel - is_cancelled: ' . ($updated_entry ? $updated_entry->is_cancelled : 'NULL'));
+        error_log('===== CANCEL ENTRY END =====');
+
         if ($result !== false) {
             wp_send_json_success(array('message' => 'Entry cancelled successfully'));
         } else {
@@ -819,6 +886,23 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * AJAX: Get entry photos
+     */
+    public function get_entry_photos() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+
+        if (!$entry_id) {
+            wp_send_json_error(array('message' => 'Entry ID is required'));
+        }
+
+        $images = $this->db->get_entry_images($entry_id);
+
+        wp_send_json_success(array('photos' => $images));
+    }
+
+    /**
      * AJAX: Delete diary image
      */
     public function delete_diary_image() {
@@ -907,6 +991,143 @@ class WP_Staff_Diary_Admin {
         } else {
             wp_send_json_error(array('message' => 'Failed to delete payment'));
         }
+    }
+
+    /**
+     * AJAX: Add comment
+     */
+    public function add_comment() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $diary_entry_id = intval($_POST['diary_entry_id']);
+        $comment_text = sanitize_textarea_field($_POST['comment_text']);
+        $user_id = get_current_user_id();
+
+        if (empty($comment_text)) {
+            wp_send_json_error(array('message' => 'Comment text is required'));
+        }
+
+        $comment_id = $this->db->add_comment($diary_entry_id, $user_id, $comment_text);
+
+        if ($comment_id) {
+            // Get the comment with user info
+            $comments = $this->db->get_entry_comments($diary_entry_id);
+            $new_comment = null;
+            foreach ($comments as $comment) {
+                if ($comment->id == $comment_id) {
+                    $new_comment = $comment;
+                    break;
+                }
+            }
+
+            wp_send_json_success(array(
+                'message' => 'Comment added successfully',
+                'comment' => $new_comment
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to add comment'));
+        }
+    }
+
+    /**
+     * AJAX: Update comment
+     */
+    public function update_comment() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $comment_id = intval($_POST['comment_id']);
+        $comment_text = sanitize_textarea_field($_POST['comment_text']);
+        $user_id = get_current_user_id();
+
+        if (empty($comment_text)) {
+            wp_send_json_error(array('message' => 'Comment text is required'));
+        }
+
+        // Check if user owns this comment
+        $comment = $this->db->get_comment($comment_id);
+        if (!$comment || ($comment->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $result = $this->db->update_comment($comment_id, $comment_text);
+
+        if ($result !== false) {
+            // Get updated comment with user info
+            $comments = $this->db->get_entry_comments($comment->diary_entry_id);
+            $updated_comment = null;
+            foreach ($comments as $c) {
+                if ($c->id == $comment_id) {
+                    $updated_comment = $c;
+                    break;
+                }
+            }
+
+            wp_send_json_success(array(
+                'message' => 'Comment updated successfully',
+                'comment' => $updated_comment
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update comment'));
+        }
+    }
+
+    /**
+     * AJAX: Delete comment
+     */
+    public function delete_comment() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $comment_id = intval($_POST['comment_id']);
+        $user_id = get_current_user_id();
+
+        // Check if user owns this comment
+        $comment = $this->db->get_comment($comment_id);
+        if (!$comment || ($comment->user_id != $user_id && !current_user_can('edit_users'))) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+        }
+
+        $result = $this->db->delete_comment($comment_id);
+
+        if ($result) {
+            wp_send_json_success(array('message' => 'Comment deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to delete comment'));
+        }
+    }
+
+    /**
+     * AJAX: Get comments for entry
+     */
+    public function get_comments() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $diary_entry_id = intval($_POST['diary_entry_id']);
+
+        $comments = $this->db->get_entry_comments($diary_entry_id);
+
+        wp_send_json_success(array('comments' => $comments));
+    }
+
+    /**
+     * AJAX: Copy images from one entry to another
+     */
+    public function copy_images() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $source_entry_id = intval($_POST['source_entry_id']);
+        $target_entry_id = intval($_POST['target_entry_id']);
+
+        if (empty($source_entry_id) || empty($target_entry_id)) {
+            wp_send_json_error(array('message' => 'Source and target entry IDs are required'));
+            return;
+        }
+
+        $copied_count = $this->db->copy_images($source_entry_id, $target_entry_id);
+
+        wp_send_json_success(array(
+            'message' => $copied_count . ' image(s) copied successfully',
+            'copied_count' => $copied_count
+        ));
     }
 
     /**
@@ -1625,6 +1846,17 @@ class WP_Staff_Diary_Admin {
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
         $customers = $this->db->get_all_customers($search);
 
+        // Add formatted address to each customer
+        foreach ($customers as $customer) {
+            $address_parts = array_filter([
+                $customer->address_line_1 ?? '',
+                $customer->address_line_2 ?? '',
+                $customer->address_line_3 ?? '',
+                $customer->postcode ?? ''
+            ]);
+            $customer->customer_address = implode("\n", $address_parts);
+        }
+
         wp_send_json_success(array('customers' => $customers));
     }
 
@@ -1836,29 +2068,37 @@ class WP_Staff_Diary_Admin {
         $table_payments = $wpdb->prefix . 'staff_diary_payments';
         $table_images = $wpdb->prefix . 'staff_diary_images';
         $table_job_accessories = $wpdb->prefix . 'staff_diary_job_accessories';
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+        $table_customers = $wpdb->prefix . 'staff_diary_customers';
 
         $jobs_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_diary");
         $payments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_payments");
         $images_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_images");
         $accessories_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_job_accessories");
+        $comments_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_comments");
+        $customers_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_customers");
 
-        // Delete all data from job-related tables
+        // Delete all data from job-related tables (includes jobs, quotes, and measures)
         $wpdb->query("TRUNCATE TABLE $table_diary");
         $wpdb->query("TRUNCATE TABLE $table_payments");
         $wpdb->query("TRUNCATE TABLE $table_images");
         $wpdb->query("TRUNCATE TABLE $table_job_accessories");
+        $wpdb->query("TRUNCATE TABLE $table_comments");
+        $wpdb->query("TRUNCATE TABLE $table_customers");
 
         // Reset order number to start
         $order_start = get_option('wp_staff_diary_order_start', '01100');
         update_option('wp_staff_diary_order_current', $order_start);
 
         wp_send_json_success(array(
-            'message' => 'All jobs deleted successfully!',
+            'message' => 'All data deleted successfully!',
             'deleted' => array(
-                'jobs' => $jobs_count,
+                'entries' => $jobs_count,  // jobs, quotes, and measures
+                'customers' => $customers_count,
                 'payments' => $payments_count,
                 'images' => $images_count,
-                'accessories' => $accessories_count
+                'accessories' => $accessories_count,
+                'comments' => $comments_count
             ),
             'new_order_start' => $order_start
         ));
@@ -2120,11 +2360,7 @@ class WP_Staff_Diary_Admin {
         $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
         $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : date('Y-m-d');
         $days = isset($_POST['days']) ? intval($_POST['days']) : 14; // Default 2 weeks
-
-        if ($fitter_id === null) {
-            wp_send_json_error(array('message' => 'Fitter ID is required'));
-            return;
-        }
+        $time_period = isset($_POST['time_period']) ? strtolower(sanitize_text_field($_POST['time_period'])) : null;
 
         global $wpdb;
         $table_diary = $wpdb->prefix . 'staff_diary_entries';
@@ -2132,25 +2368,82 @@ class WP_Staff_Diary_Admin {
         // Calculate date range
         $end_date = date('Y-m-d', strtotime($start_date . ' + ' . $days . ' days'));
 
-        // Get all jobs for this fitter in the date range (excluding cancelled and quotations)
-        $jobs = $wpdb->get_results($wpdb->prepare(
-            "SELECT fitting_date, fitting_time_period, order_number, status
-             FROM $table_diary
-             WHERE fitter_id = %d
-             AND is_cancelled = 0
-             AND status != 'quotation'
-             AND fitting_date_unknown = 0
-             AND fitting_date BETWEEN %s AND %s
-             ORDER BY fitting_date ASC",
-            $fitter_id,
-            $start_date,
-            $end_date
-        ));
+        // If no fitter specified, check availability across ALL fitters
+        if ($fitter_id === null) {
+            // Get all fitters from settings
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+
+            // Debug logging
+            error_log('Fitters config: ' . print_r($fitters_config, true));
+
+            if (empty($fitters_config) || !is_array($fitters_config)) {
+                wp_send_json_error(array(
+                    'message' => 'No fitters configured in settings. Please add fitters in Settings > Fitters.',
+                    'debug' => array(
+                        'fitters_config_type' => gettype($fitters_config),
+                        'fitters_config_value' => $fitters_config
+                    )
+                ));
+                return;
+            }
+
+            $fitter_ids = array_keys($fitters_config);
+
+            if (empty($fitter_ids)) {
+                wp_send_json_error(array(
+                    'message' => 'No valid fitter IDs found.',
+                    'debug' => array(
+                        'fitters_config' => $fitters_config,
+                        'fitter_ids' => $fitter_ids
+                    )
+                ));
+                return;
+            }
+
+            $fitter_ids = array_map('intval', $fitter_ids);
+            $placeholders = implode(',', array_fill(0, count($fitter_ids), '%d'));
+
+            // Get all jobs for ALL fitters in the date range
+            $query = "SELECT fitter_id, fitting_date, fitting_time_period, order_number, status
+                     FROM $table_diary
+                     WHERE fitter_id IN ($placeholders)
+                     AND is_cancelled = 0
+                     AND status != 'quotation'
+                     AND fitting_date_unknown = 0
+                     AND fitting_date BETWEEN %s AND %s
+                     ORDER BY fitting_date ASC";
+
+            $params = array_merge($fitter_ids, array($start_date, $end_date));
+            $jobs = $wpdb->get_results($wpdb->prepare($query, $params));
+        } else{
+            // Get all jobs for this specific fitter in the date range
+            $jobs = $wpdb->get_results($wpdb->prepare(
+                "SELECT fitter_id, fitting_date, fitting_time_period, order_number, status
+                 FROM $table_diary
+                 WHERE fitter_id = %d
+                 AND is_cancelled = 0
+                 AND status != 'quotation'
+                 AND fitting_date_unknown = 0
+                 AND fitting_date BETWEEN %s AND %s
+                 ORDER BY fitting_date ASC",
+                $fitter_id,
+                $start_date,
+                $end_date
+            ));
+        }
 
         // Organize jobs by date
         $availability = array();
         $current = new DateTime($start_date);
         $end = new DateTime($end_date);
+
+        // Get all fitter IDs for counting
+        if ($fitter_id === null) {
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+            $total_fitters = count($fitters_config);
+        } else {
+            $total_fitters = 1;
+        }
 
         while ($current <= $end) {
             $date_str = $current->format('Y-m-d');
@@ -2168,31 +2461,64 @@ class WP_Staff_Diary_Admin {
                 'jobs' => array(),
                 'am_available' => true,
                 'pm_available' => true,
-                'all_day_booked' => false
+                'all_day_booked' => false,
+                'am_booked_fitters' => array(),
+                'pm_booked_fitters' => array(),
+                'available_fitter_id' => null
             );
 
             $current->modify('+1 day');
         }
 
-        // Mark booked slots
+        // Mark booked slots - track which fitters are booked per time slot
         foreach ($jobs as $job) {
             if (isset($availability[$job->fitting_date])) {
                 $availability[$job->fitting_date]['jobs'][] = array(
                     'order_number' => $job->order_number,
                     'time_period' => $job->fitting_time_period,
-                    'status' => $job->status
+                    'status' => $job->status,
+                    'fitter_id' => $job->fitter_id
                 );
 
-                // Update availability based on time period
-                $time_period = strtolower($job->fitting_time_period);
-                if ($time_period === 'am') {
-                    $availability[$job->fitting_date]['am_available'] = false;
-                } elseif ($time_period === 'pm') {
-                    $availability[$job->fitting_date]['pm_available'] = false;
-                } elseif ($time_period === 'all-day') {
-                    $availability[$job->fitting_date]['am_available'] = false;
-                    $availability[$job->fitting_date]['pm_available'] = false;
-                    $availability[$job->fitting_date]['all_day_booked'] = true;
+                // Track which fitters are booked for each time period
+                $time_period = strtolower($job->fitting_time_period ?? '');
+                if ($time_period === 'am' || $time_period === 'all-day') {
+                    $availability[$job->fitting_date]['am_booked_fitters'][] = $job->fitter_id;
+                }
+                if ($time_period === 'pm' || $time_period === 'all-day') {
+                    $availability[$job->fitting_date]['pm_booked_fitters'][] = $job->fitter_id;
+                }
+            }
+        }
+
+        // Get fitter list for auto-assignment if needed
+        $fitter_list = null;
+        if ($fitter_id === null && $time_period !== null) {
+            $fitters_config = get_option('wp_staff_diary_fitters', array());
+            if (!empty($fitters_config)) {
+                $fitter_list = array_keys($fitters_config);
+                $fitter_list = array_map('intval', $fitter_list);
+            }
+        }
+
+        // Determine availability based on how many fitters are booked
+        foreach ($availability as $date_str => &$day) {
+            $am_booked_count = count(array_unique($day['am_booked_fitters']));
+            $pm_booked_count = count(array_unique($day['pm_booked_fitters']));
+
+            // If ALL fitters are booked for a time period, mark as unavailable
+            $day['am_available'] = $am_booked_count < $total_fitters;
+            $day['pm_available'] = $pm_booked_count < $total_fitters;
+            $day['all_day_booked'] = !$day['am_available'] && !$day['pm_available'];
+
+            // Find an available fitter for this date/time if checking specific period
+            if ($time_period !== null && $fitter_id === null && $fitter_list !== null) {
+                $booked_fitters = ($time_period === 'am') ? $day['am_booked_fitters'] : $day['pm_booked_fitters'];
+                foreach ($fitter_list as $fitter) {
+                    if (!in_array($fitter, $booked_fitters)) {
+                        $day['available_fitter_id'] = $fitter;
+                        break;
+                    }
                 }
             }
         }
@@ -2260,6 +2586,64 @@ class WP_Staff_Diary_Admin {
             ));
         } else {
             wp_send_json_error(array('message' => 'Failed to convert quote to job'));
+        }
+    }
+
+    /**
+     * AJAX: Convert measure to job
+     * Updates the measure entry with fitting details and changes status to pending
+     */
+    public function convert_measure_to_job() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $measure_id = intval($_POST['measure_id']);
+        $fitting_date = isset($_POST['fitting_date']) ? sanitize_text_field($_POST['fitting_date']) : null;
+        $fitting_time_period = isset($_POST['fitting_time_period']) ? sanitize_text_field($_POST['fitting_time_period']) : null;
+        $fitter_id = isset($_POST['fitter_id']) && $_POST['fitter_id'] !== '' ? intval($_POST['fitter_id']) : null;
+        $fitting_date_unknown = isset($_POST['fitting_date_unknown']) ? intval($_POST['fitting_date_unknown']) : 0;
+
+        if (empty($measure_id)) {
+            wp_send_json_error(array('message' => 'Measure ID is required'));
+            return;
+        }
+
+        // Verify the entry exists and is a measure
+        $entry = $this->db->get_entry($measure_id);
+        if (!$entry) {
+            wp_send_json_error(array('message' => 'Measure not found'));
+            return;
+        }
+
+        if ($entry->status !== 'measure') {
+            wp_send_json_error(array('message' => 'This entry is not a measure'));
+            return;
+        }
+
+        // Verify ownership or admin
+        $user_id = get_current_user_id();
+        if ($entry->user_id != $user_id && !current_user_can('edit_users')) {
+            wp_send_json_error(array('message' => 'Permission denied'));
+            return;
+        }
+
+        // Update the entry with fitting details and change status to pending
+        $update_data = array(
+            'status' => 'pending',
+            'fitter_id' => $fitter_id,
+            'fitting_date' => $fitting_date,
+            'fitting_time_period' => $fitting_time_period,
+            'fitting_date_unknown' => $fitting_date_unknown
+        );
+
+        $result = $this->db->update_entry($measure_id, $update_data);
+
+        if ($result !== false) {
+            wp_send_json_success(array(
+                'message' => 'Measure successfully converted to job',
+                'entry_id' => $measure_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to convert measure to job'));
         }
     }
 

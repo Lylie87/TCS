@@ -37,6 +37,10 @@ class WP_Staff_Diary_Template_Service {
 
         // Replace each variable in the template
         foreach ($all_data as $key => $value) {
+            // Ensure value is not null to prevent PHP 8.1+ deprecation warnings
+            if ($value === null) {
+                $value = '';
+            }
             // Handle both {{key}} and {key} formats for compatibility
             $template = str_replace('{{' . $key . '}}', $value, $template);
             $template = str_replace('{' . $key . '}', $value, $template);

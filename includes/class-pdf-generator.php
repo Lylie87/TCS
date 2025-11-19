@@ -287,30 +287,73 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 10px; margin-bottom: 5px; border-bottom: 2px solid #2271b1; padding-bottom: 3px; }
+            h2 { font-size: 16px; color: #333; margin: 0; padding: 0; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
+            .h2-spacer-top { height: 20px; }
+            .h2-spacer-bottom { height: 15px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
-            .info-table { width: 100%; border-collapse: collapse; }
-            .info-table td { padding: 5px; font-size: 10px; }
+            .info-table { width: 100%; border-collapse: collapse; margin-top: 0; }
+            .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
-            .financial-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 0; }
+            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ccc; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
+            .financial-table th.qty-col { text-align: center; }
+            .financial-table td.qty { text-align: center; }
             .financial-table td.amount { text-align: right; }
             .total-row { background-color: #d1e7f7; font-weight: bold; font-size: 11px; }
-            .terms { font-size: 9px; color: #666; margin-top: 15px; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; }
+            .terms { font-size: 9px; color: #666; margin-top: 15px; padding: 10px; border: 1px solid #ccc; background-color: #f9f9f9; }
             .order-number { font-size: 20px; color: #2271b1; font-weight: bold; }
             .quote-validity { font-size: 10px; color: #666; margin-top: 5px; font-style: italic; }
             .quote-banner { background-color: #2271b1; color: white; padding: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 15px; }
             .address-section { background-color: #f9f9f9; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+            .next-steps-section { margin-top: 20px; padding: 10px; background-color: #e8f5e9; border-left: 4px solid #4caf50; font-size: 10px; }
         </style>';
 
-        // Company Header
-        $html .= '<div class="company-header">';
-        if ($company_logo && file_exists(get_attached_file($company_logo))) {
-            $html .= '<img src="' . get_attached_file($company_logo) . '" height="60" /><br>';
+        // Company Header with Logo
+        $html .= '<table style="width: 100%; margin-bottom: 20px; border: 0;" cellpadding="0" cellspacing="0"><tr>';
+
+        // Logo cell - only render if image data successfully loaded
+        if ($company_logo) {
+            // Try to get the logo image data
+            $image_data = false;
+            $mime_type = 'image/jpeg'; // Default
+
+            // First try: Get attachment file path
+            $logo_path = get_attached_file($company_logo);
+            if ($logo_path && file_exists($logo_path)) {
+                $image_type = wp_check_filetype($logo_path);
+                $mime_type = $image_type['type'];
+                $image_data = @file_get_contents($logo_path);
+            }
+
+            // Second try: If file path doesn't work, try getting URL and fetching
+            if ($image_data === false || empty($image_data)) {
+                $logo_url = wp_get_attachment_url($company_logo);
+                if ($logo_url) {
+                    // Use WordPress HTTP API for better compatibility
+                    $response = wp_remote_get($logo_url, array('timeout' => 10));
+                    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                        $image_data = wp_remote_retrieve_body($response);
+                        // Detect MIME type from URL
+                        $ext = pathinfo($logo_url, PATHINFO_EXTENSION);
+                        $mime_type = 'image/' . strtolower($ext);
+                    }
+                }
+            }
+
+            // Render logo if we successfully loaded image data
+            if ($image_data !== false && !empty($image_data)) {
+                $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
+                $html .= '<td style="width: 150px; vertical-align: top; padding-right: 10px;">';
+                $html .= '<img src="' . $base64_image . '" style="width: 150px; height: auto;" />';
+                $html .= '</td>';
+            }
         }
+
+        // Company info cell
+        $html .= '<td style="vertical-align: top;">';
         $html .= '<h1>' . htmlspecialchars($company_name) . '</h1>';
         if ($company_address) {
             $html .= '<div style="font-size: 10px;">' . nl2br(htmlspecialchars($company_address)) . '</div>';
@@ -327,7 +370,7 @@ class WP_Staff_Diary_PDF_Generator {
             if ($company_reg) $html .= 'Reg: ' . htmlspecialchars($company_reg);
             $html .= '</div>';
         }
-        $html .= '</div>';
+        $html .= '</td></tr></table>';
 
         // Quote Banner
         $html .= '<div class="quote-banner">QUOTATION</div>';
@@ -342,7 +385,9 @@ class WP_Staff_Diary_PDF_Generator {
 
         // Customer Information
         if ($customer) {
+            $html .= '<div class="h2-spacer-top"></div>';
             $html .= '<h2>Customer Details</h2>';
+            $html .= '<div class="h2-spacer-bottom"></div>';
             $html .= '<table class="info-table">';
             $html .= '<tr><td width="20%"><strong>Name:</strong></td><td>' . htmlspecialchars($customer->customer_name) . '</td></tr>';
 
@@ -356,7 +401,9 @@ class WP_Staff_Diary_PDF_Generator {
         }
 
         // Fitting Address
+        $html .= '<div class="h2-spacer-top"></div>';
         $html .= '<h2>Fitting Address</h2>';
+        $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<div class="address-section">';
         $fitting_address_parts = array_filter(array(
             isset($quote->fitting_address_line_1) ? $quote->fitting_address_line_1 : '',
@@ -373,7 +420,9 @@ class WP_Staff_Diary_PDF_Generator {
 
         // Billing Address (if different)
         if (isset($quote->billing_address_different) && $quote->billing_address_different == 1) {
+            $html .= '<div class="h2-spacer-top"></div>';
             $html .= '<h2>Billing Address</h2>';
+            $html .= '<div class="h2-spacer-bottom"></div>';
             $html .= '<div class="address-section">';
             $billing_address_parts = array_filter(array(
                 isset($quote->billing_address_line_1) ? $quote->billing_address_line_1 : '',
@@ -386,9 +435,11 @@ class WP_Staff_Diary_PDF_Generator {
         }
 
         // Product Details
+        $html .= '<div class="h2-spacer-top"></div>';
         $html .= '<h2>Quote Details</h2>';
+        $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<table class="financial-table">';
-        $html .= '<thead><tr><th width="50%">Description</th><th width="15%">Qty</th><th width="18%">Price</th><th width="17%">Total</th></tr></thead>';
+        $html .= '<thead><tr><th width="52%">Description</th><th width="12%" class="qty-col">Qty</th><th width="18%">Price</th><th width="18%">Total</th></tr></thead>';
         $html .= '<tbody>';
 
         // Main product
@@ -397,7 +448,7 @@ class WP_Staff_Diary_PDF_Generator {
                              ($quote->sq_mtr_qty * $quote->price_per_sq_mtr) : 0;
             $html .= '<tr>';
             $html .= '<td>' . nl2br(htmlspecialchars($quote->product_description)) . '</td>';
-            $html .= '<td>' . ($quote->sq_mtr_qty ? number_format($quote->sq_mtr_qty, 2) . ' m²' : '-') . '</td>';
+            $html .= '<td class="qty">' . ($quote->sq_mtr_qty ? number_format($quote->sq_mtr_qty, 2) . ' m²' : '-') . '</td>';
             $html .= '<td class="amount">£' . ($quote->price_per_sq_mtr ? number_format($quote->price_per_sq_mtr, 2) : '-') . '</td>';
             $html .= '<td class="amount">£' . number_format($product_total, 2) . '</td>';
             $html .= '</tr>';
@@ -407,7 +458,7 @@ class WP_Staff_Diary_PDF_Generator {
         if (isset($quote->fitting_cost) && $quote->fitting_cost > 0) {
             $html .= '<tr>';
             $html .= '<td>Fitting</td>';
-            $html .= '<td>-</td>';
+            $html .= '<td class="qty">-</td>';
             $html .= '<td class="amount">-</td>';
             $html .= '<td class="amount">£' . number_format($quote->fitting_cost, 2) . '</td>';
             $html .= '</tr>';
@@ -418,7 +469,7 @@ class WP_Staff_Diary_PDF_Generator {
             foreach ($accessories as $acc) {
                 $html .= '<tr>';
                 $html .= '<td>' . htmlspecialchars($acc->accessory_name) . '</td>';
-                $html .= '<td>' . number_format($acc->quantity, 2) . '</td>';
+                $html .= '<td class="qty">' . number_format($acc->quantity, 2) . '</td>';
                 $html .= '<td class="amount">£' . number_format($acc->price_per_unit, 2) . '</td>';
                 $html .= '<td class="amount">£' . number_format($acc->total_price, 2) . '</td>';
                 $html .= '</tr>';
@@ -428,7 +479,9 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '</tbody></table>';
 
         // Financial Summary
+        $html .= '<div class="h2-spacer-top"></div>';
         $html .= '<h2>Quote Summary</h2>';
+        $html .= '<div class="h2-spacer-bottom"></div>';
         $html .= '<table class="financial-table">';
         $html .= '<tr><td width="70%"><strong>Subtotal:</strong></td><td width="30%" class="amount">£' . number_format($subtotal, 2) . '</td></tr>';
         if ($vat_enabled == '1') {
@@ -437,9 +490,14 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '<tr class="total-row"><td><strong>TOTAL QUOTED PRICE:</strong></td><td class="amount"><strong>£' . number_format($total, 2) . '</strong></td></tr>';
         $html .= '</table>';
 
+        // Spacer after Quote Summary
+        $html .= '<div style="height: 20px;"></div>';
+
         // Additional Notes
         if ($quote->notes) {
+            $html .= '<div class="h2-spacer-top"></div>';
             $html .= '<h2>Additional Notes</h2>';
+            $html .= '<div class="h2-spacer-bottom"></div>';
             $html .= '<div style="font-size: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 4px;">' . nl2br(htmlspecialchars($quote->notes)) . '</div>';
         }
 
@@ -450,7 +508,7 @@ class WP_Staff_Diary_PDF_Generator {
         }
 
         // Quote-specific message
-        $html .= '<div style="margin-top: 15px; padding: 10px; background-color: #e8f5e9; border-left: 4px solid #4caf50; font-size: 10px;">';
+        $html .= '<div class="next-steps-section">';
         $html .= '<strong>Next Steps:</strong><br>';
         $html .= 'If you would like to proceed with this quotation, please contact us to arrange a fitting date and confirm your booking.';
         $html .= '</div>';
@@ -462,6 +520,9 @@ class WP_Staff_Diary_PDF_Generator {
             $html .= strip_tags($terms, '<p><br><strong><em><ul><ol><li>');
             $html .= '</div>';
         }
+
+        // Version footer
+        $html .= '<div style="margin-top: 30px; text-align: center; font-size: 8px; color: #999;">Quote PDF v' . WP_STAFF_DIARY_VERSION . '</div>';
 
         return $html;
     }
@@ -477,15 +538,15 @@ class WP_Staff_Diary_PDF_Generator {
 
         $html = '<style>
             h1 { font-size: 24px; color: #2271b1; margin-bottom: 5px; }
-            h2 { font-size: 16px; color: #333; margin-top: 10px; margin-bottom: 5px; border-bottom: 2px solid #2271b1; padding-bottom: 3px; }
+            h2 { font-size: 16px; color: #333; margin-top: 15px; margin-bottom: 8px; border-bottom: 2px solid #2271b1; padding-bottom: 5px; }
             h3 { font-size: 14px; color: #555; margin-top: 8px; margin-bottom: 5px; }
             .company-header { margin-bottom: 20px; }
             .section { margin-bottom: 15px; }
-            .info-table { width: 100%; border-collapse: collapse; }
-            .info-table td { padding: 5px; font-size: 10px; }
+            .info-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .info-table td { padding: 5px; font-size: 10px; vertical-align: middle; }
             .info-table strong { color: #333; }
-            .financial-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            .financial-table th, .financial-table td { padding: 6px; border: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
             .financial-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
             .financial-table td.amount { text-align: right; }
             .total-row { background-color: #f9f9f9; font-weight: bold; }
@@ -495,11 +556,46 @@ class WP_Staff_Diary_PDF_Generator {
             .order-number { font-size: 20px; color: #2271b1; font-weight: bold; }
         </style>';
 
-        // Company Header
-        $html .= '<div class="company-header">';
-        if ($company_logo && file_exists(get_attached_file($company_logo))) {
-            $html .= '<img src="' . get_attached_file($company_logo) . '" height="60" /><br>';
+        // Company Header with Logo
+        $html .= '<table style="width: 100%; margin-bottom: 20px; border: 0;" cellpadding="0" cellspacing="0"><tr>';
+
+        // Logo cell with dual fallback approach
+        if ($company_logo) {
+            $image_data = false;
+            $mime_type = 'image/jpeg';
+
+            // First try: Get attachment file path
+            $logo_path = get_attached_file($company_logo);
+            if ($logo_path && file_exists($logo_path)) {
+                $image_type = wp_check_filetype($logo_path);
+                $mime_type = $image_type['type'];
+                $image_data = @file_get_contents($logo_path);
+            }
+
+            // Second try: If file path doesn't work, try getting URL and fetching
+            if ($image_data === false || empty($image_data)) {
+                $logo_url = wp_get_attachment_url($company_logo);
+                if ($logo_url) {
+                    $response = wp_remote_get($logo_url, array('timeout' => 10));
+                    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                        $image_data = wp_remote_retrieve_body($response);
+                        $ext = pathinfo($logo_url, PATHINFO_EXTENSION);
+                        $mime_type = 'image/' . strtolower($ext);
+                    }
+                }
+            }
+
+            // Render logo if we successfully loaded image data
+            if ($image_data !== false && !empty($image_data)) {
+                $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
+                $html .= '<td style="width: 100px; vertical-align: top; padding-right: 10px;">';
+                $html .= '<img src="' . $base64_image . '" style="height: 50px; width: auto;" />';
+                $html .= '</td>';
+            }
         }
+
+        // Company info cell
+        $html .= '<td style="vertical-align: top;">';
         $html .= '<h1>' . htmlspecialchars($company_name) . '</h1>';
         if ($company_address) {
             $html .= '<div style="font-size: 10px;">' . nl2br(htmlspecialchars($company_address)) . '</div>';
@@ -516,7 +612,7 @@ class WP_Staff_Diary_PDF_Generator {
             if ($company_reg) $html .= 'Reg: ' . htmlspecialchars($company_reg);
             $html .= '</div>';
         }
-        $html .= '</div>';
+        $html .= '</td></tr></table>';
 
         // Job Sheet Title
         $html .= '<h1>JOB SHEET</h1>';
@@ -553,7 +649,7 @@ class WP_Staff_Diary_PDF_Generator {
         $html .= '<h2>Job Details</h2>';
         $html .= '<table class="info-table">';
         if ($entry->job_date) {
-            $html .= '<tr><td width="25%"><strong>Job Date:</strong></td><td>' . date('d/m/Y', strtotime($entry->job_date));
+            $html .= '<tr><td width="25%"><strong>Order Date:</strong></td><td>' . date('d/m/Y', strtotime($entry->job_date));
             if ($entry->job_time) $html .= ' at ' . date('H:i', strtotime($entry->job_time));
             $html .= '</td></tr>';
         }
@@ -650,8 +746,9 @@ class WP_Staff_Diary_PDF_Generator {
             $html .= '<div style="font-size: 10px;">' . nl2br(htmlspecialchars($company_bank)) . '</div>';
         }
 
-        // Terms and Conditions
+        // Separator before Terms & Conditions
         if ($terms) {
+            $html .= '<hr style="margin-top: 20px; margin-bottom: 15px; border: 0; border-top: 1px solid #ddd;" />';
             $html .= '<div class="terms">';
             $html .= '<strong>Terms & Conditions:</strong><br>';
             $html .= strip_tags($terms, '<p><br><strong><em><ul><ol><li>');

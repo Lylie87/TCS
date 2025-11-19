@@ -205,6 +205,128 @@ class WP_Staff_Diary_Database {
         ));
     }
 
+    // ==================== COMMENT METHODS ====================
+
+    /**
+     * Add a comment to a diary entry
+     */
+    public function add_comment($diary_entry_id, $user_id, $comment_text) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        $result = $wpdb->insert(
+            $table_comments,
+            array(
+                'diary_entry_id' => $diary_entry_id,
+                'user_id' => $user_id,
+                'comment_text' => $comment_text
+            ),
+            array('%d', '%d', '%s')
+        );
+
+        if ($result) {
+            return $wpdb->insert_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get all comments for a diary entry
+     */
+    public function get_entry_comments($diary_entry_id) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT c.*, u.display_name as user_name
+             FROM $table_comments c
+             LEFT JOIN {$wpdb->users} u ON c.user_id = u.ID
+             WHERE c.diary_entry_id = %d
+             ORDER BY c.created_at ASC",
+            $diary_entry_id
+        ));
+    }
+
+    /**
+     * Update a comment
+     */
+    public function update_comment($comment_id, $comment_text) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->update(
+            $table_comments,
+            array('comment_text' => $comment_text),
+            array('id' => $comment_id),
+            array('%s'),
+            array('%d')
+        );
+    }
+
+    /**
+     * Delete a comment
+     */
+    public function delete_comment($comment_id) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->delete($table_comments, array('id' => $comment_id), array('%d'));
+    }
+
+    /**
+     * Get a single comment (for permission checking)
+     */
+    public function get_comment($comment_id) {
+        global $wpdb;
+        $table_comments = $wpdb->prefix . 'staff_diary_comments';
+
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table_comments WHERE id = %d",
+            $comment_id
+        ));
+    }
+
+    /**
+     * Copy images from one entry to another
+     *
+     * @param int $source_entry_id Source entry ID
+     * @param int $target_entry_id Target entry ID
+     * @return int Number of images copied
+     */
+    public function copy_images($source_entry_id, $target_entry_id) {
+        global $wpdb;
+        $table_images = $wpdb->prefix . 'staff_diary_images';
+
+        // Get all images from source entry
+        $source_images = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_images WHERE diary_entry_id = %d",
+            $source_entry_id
+        ));
+
+        $copied_count = 0;
+        foreach ($source_images as $image) {
+            // Copy image record to new entry
+            $result = $wpdb->insert(
+                $table_images,
+                array(
+                    'diary_entry_id' => $target_entry_id,
+                    'image_url' => $image->image_url,
+                    'attachment_id' => $image->attachment_id,
+                    'image_caption' => $image->image_caption,
+                    'image_category' => $image->image_category
+                ),
+                array('%d', '%s', '%d', '%s', '%s')
+            );
+
+            if ($result) {
+                $copied_count++;
+            }
+        }
+
+        return $copied_count;
+    }
+
     // ==================== CUSTOMER METHODS ====================
 
     /**
@@ -512,7 +634,9 @@ class WP_Staff_Diary_Database {
                 'is_cancelled' => 1,
                 'status' => 'cancelled'
             ),
-            array('id' => $entry_id)
+            array('id' => $entry_id),
+            array('%d', '%s'),  // Data format
+            array('%d')         // Where format
         );
     }
 

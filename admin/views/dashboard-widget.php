@@ -38,12 +38,16 @@ if (!defined('WPINC')) {
                         <div class="no-jobs-dashboard">No jobs</div>
                     <?php else: ?>
                         <?php foreach ($day_entries as $entry): ?>
-                            <div class="dashboard-entry status-<?php echo esc_attr($entry->status); ?>">
+                            <?php
+                            $customer = isset($entry->customer_id) && $entry->customer_id ? $db->get_customer($entry->customer_id) : null;
+                            $client_name = $customer && isset($customer->customer_name) ? $customer->customer_name : 'No client';
+                            ?>
+                            <div class="dashboard-entry status-<?php echo esc_attr($entry->status ?? 'pending'); ?>">
                                 <div class="dashboard-entry-time">
                                     <?php echo $entry->job_time ? esc_html(date('H:i', strtotime($entry->job_time))) : '--:--'; ?>
                                 </div>
                                 <div class="dashboard-entry-client">
-                                    <?php echo esc_html(wp_trim_words($entry->client_name ?: 'No client', 3)); ?>
+                                    <?php echo esc_html(wp_trim_words($client_name, 3)); ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>

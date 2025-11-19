@@ -1,24 +1,25 @@
 # Session Restoration Protocol
 **Staff Daily Job Planner WordPress Plugin**
-**Last Updated:** 2025-11-16
-**Current Version:** 2.2.7 (tags through v2.4.9)
-**Active Branch:** `claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe`
+**Last Updated:** 2025-11-17
+**Current Version:** 2.7.0
+**Active Branch:** `claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM`
 
 ---
 
 ## Quick Context Restoration
 
 ### 1. Project Identity
-This is **Staff Daily Job Planner** - a WordPress plugin for service-based business management (specifically flooring/fitting companies). It's a complete digital replacement for paper job sheets, payment tracking, and customer management.
+This is **Staff Daily Job Planner** - a WordPress plugin for service-based business management (specifically flooring/fitting companies). It's a complete digital replacement for paper job sheets, payment tracking, customer management, quotes, and communications.
 
-**Core Purpose:** Give staff tools to track daily jobs and managers oversight of all operations through dashboards.
+**Core Purpose:** Give staff tools to track daily jobs and managers oversight of all operations through dashboards with integrated payment tracking, quote generation, SMS/email communications.
 
 **Key Stats:**
 - Main plugin file: `wp-staff-diary.php`
-- 41 PHP files in `/includes/`
-- 7 custom database tables
-- 1,523-line legacy admin class being migrated
-- Active modular architecture migration (since v2.1.0)
+- 50+ PHP files in `/includes/`
+- 9 custom database tables
+- Active modular architecture (since v2.1.0)
+- Email template system (v2.7.0)
+- SMS integration with Twilio (v2.7.0)
 
 ---
 
@@ -33,17 +34,20 @@ git log --oneline -10
 # View recent changes
 git log -3 --stat
 
+# Check version
+grep "Version:" wp-staff-diary.php
+
 # Understand project structure
-ls -la
-tree -L 2 -I 'node_modules|vendor'
+ls -la includes/
 ```
 
 ### Quick File Review (Priority Order)
-1. `wp-staff-diary.php` - Main plugin file (197 lines) - version, hooks, initialization
-2. `includes/class-wp-staff-diary.php` - Core orchestrator
-3. `includes/class-module-registry.php` - Module management
-4. `admin/class-admin.php` - Legacy admin (1,523 lines) - being phased out
-5. `includes/modules/*/` - New modular architecture
+1. **`DEVELOPMENT_LOG.md`** - CRITICAL! 1,841 lines of detailed implementation docs
+2. `wp-staff-diary.php` - Main plugin file (version, initialization, class loading order)
+3. `includes/class-wp-staff-diary.php` - Core orchestrator
+4. `includes/class-module-registry.php` - Module management
+5. `admin/class-admin.php` - Admin functionality
+6. `includes/modules/*/` - Modular architecture
 
 ### Key Architecture Files
 ```
@@ -56,12 +60,15 @@ includes/
 │   ├── abstract-class-base-module.php
 │   ├── abstract-class-base-controller.php
 │   └── abstract-class-base-repository.php
-└── modules/
-    ├── payments/
-    ├── customers/
-    ├── jobs/
-    ├── images/
-    └── notifications/
+├── modules/
+│   ├── payments/
+│   ├── customers/
+│   ├── jobs/
+│   ├── images/
+│   └── notifications/
+└── services/
+    ├── class-sms-service.php
+    └── class-template-service.php
 ```
 
 ---
@@ -73,75 +80,148 @@ includes/
 2. **Controller Layer** - HTTP/AJAX handling, nonces, validation
 3. **Repository Layer** - Pure database operations (CRUD)
 
-### Modules Migration Status
-✅ **Fully Migrated:**
-- Payments (v2.1.0)
-- Customers (v2.1.2)
-- Jobs (v2.1.2)
-- Images (v2.1.2)
-- Notifications (v2.2.0)
+### Services Layer (v2.7.0)
+- **SMS Service** - Twilio integration with test mode
+- **Template Service** - Variable replacement for emails/SMS
 
-⚠️ **Legacy (being phased out):**
-- `admin/class-admin.php` - Menu, assets, settings, legacy AJAX
-- `includes/class-database.php` - Some complex queries still here
-
-### Database Schema (7 Tables)
-- `wp_staff_diary_customers` - Customer info
-- `wp_staff_diary_entries` - Main jobs table
-- `wp_staff_diary_images` - Job photos
-- `wp_staff_diary_payments` - Payment records
+### Database Schema (9 Tables)
+- `wp_staff_diary_customers` - Customer info with SMS opt-in
+- `wp_staff_diary_entries` - Main jobs table (with job_type: residential/commercial)
+- `wp_staff_diary_images` - Job photos (with image_category: before/during/after/general)
+- `wp_staff_diary_payments` - Payment records (with payment_type tracking)
 - `wp_staff_diary_accessories` - Master accessories list
 - `wp_staff_diary_job_accessories` - Job-accessory junction
 - `wp_staff_diary_notification_logs` - Notification tracking
+- `wp_staff_diary_email_templates` - Email template storage (v2.7.0)
+- `wp_staff_diary_sms_logs` - SMS delivery tracking (v2.7.0)
 
 ---
 
-## 4. Recent Development History
+## 4. Version History & Features
 
-### Latest Work (Last 16-17 hours)
-- **v2.2.7:** Force cache refresh - `wp-staff-diary.php` updated
-- **v2.2.6:** Critical job display and data saving fixes
-  - Modified: `admin/class-admin.php`, `assets/js/admin.js`, `includes/modules/jobs/class-jobs-repository.php`
-- **v2.2.5:** WooCommerce product search dropdown scroll fix
+### v2.7.0 (Phase 2) - Current Version
+**Major Features:**
+- Email template editor with visual builder
+- Template variable replacement system ({customer_name}, {job_number}, etc.)
+- SMS integration with Twilio
+- SMS test mode (no actual sending during development)
+- Customer SMS opt-in/opt-out tracking
+- Communications settings tab
+- Auto-discount scheduler for quotes
+- Public quote acceptance pages with secure tokens
 
-### Recent Features
-- Database diagnostics and repair tool (v2.2.4)
-- WooCommerce customer integration (v2.2.3)
-- Job form refactoring to shared partial
+**Files Added/Modified:**
+- `includes/services/class-sms-service.php` - NEW
+- `includes/services/class-template-service.php` - NEW
+- `includes/class-email-template-processor.php` - NEW
+- `includes/class-quote-acceptance.php` - NEW
+- `includes/class-auto-discount-scheduler.php` - NEW
+- `admin/views/email-templates.php` - NEW
+- Database: Added 2 new tables
 
-### Development Patterns Observed
-1. Strong focus on **data integrity**
-2. **Progressive enhancement** (backwards compatibility maintained)
-3. **Modularization** (reducing coupling)
-4. **User experience improvements**
-5. **Integration capabilities** (WooCommerce, notifications)
+**Critical Fix:**
+- Fixed fatal error: Database class loading order (must load before Quote Acceptance)
+
+### v2.6.0 (Phase 1)
+**Major Features:**
+- Before/After Photo Gallery with categorization
+- Photo comparison view (side-by-side before/after)
+- Payment progress visualization
+- Deposit/partial payment tracking with visual progress bars
+- Payment breakdown by type (Deposit, Partial, Final, Full)
+
+**Security Fixes:**
+- XSS protection via `escapeHtml()` utility
+- Escaped all user-controlled photo captions and URLs
+- Modal duplicate prevention
+- Event handler memory leak fixes
+
+**Files Modified:**
+- `includes/modules/images/class-images-repository.php` - Category methods
+- `includes/modules/images/class-images-controller.php` - Category validation
+- `assets/js/admin.js` - Photo gallery, comparison view, payment progress
+- `assets/js/quotes.js` - Category selection for quotes
+
+### v2.5.0
+**Features:**
+- Job type selection (Residential/Commercial)
+- Payment terms settings (days/weeks/months/years)
+- Payment policy (which job types require payment first)
+- Enhanced bank details (structured fields)
+- Overdue payment notifications
+- Overdue payments dashboard widget
+
+**Files Modified:**
+- `includes/class-activator.php` - Added job_type column, settings
+- `admin/views/settings.php` - Payment terms UI, bank details
+- `admin/views/partials/job-form.php` - Job type dropdown
+- `admin/views/partials/quote-form.php` - Job type dropdown
+- `assets/js/admin.js` - Job type handling
+- `assets/js/quotes.js` - Job type handling
+- `admin/class-admin.php` - Overdue widget, bank details in emails
+- `admin/views/overdue-widget.php` - NEW
+
+### Earlier Versions (v2.1.0 - v2.4.9)
+- Modular architecture migration
+- WooCommerce integration
+- Customer management improvements
+- Payment reminder system
+- Job templates
+- Activity log timeline
+- Bulk actions system
+- Quote generation
+- PDF generation
 
 ---
 
 ## 5. Git Workflow
 
 ### Branch Strategy
-**Active Branch:** `claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe`
-**Main Branch:** (check with `git remote show origin`)
+**Active Branch:** `claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM`
+**Main Branch:** `master`
 
-### Git Push Protocol
+### Git Protocol
 ```bash
-# CRITICAL: Branch must start with 'claude/' and end with session ID
-# Always use -u flag for first push
-git push -u origin claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe
+# First push to new branch requires -u flag
+git push -u origin claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM
 
-# If network failure: Retry up to 4 times with exponential backoff
-# (2s, 4s, 8s, 16s)
+# Subsequent pushes
+git push
+
+# Check branch status
+git status
+git log --oneline -10
 ```
 
 ### Current Git State
-- Status: Clean (as of session start)
-- HEAD: 070a6c5 (Merge PR #38)
-- Recent commits all from last 16-17 hours
+- Branch: `claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM`
+- Latest commit: a026ad4 (Database class loading fix)
+- Recent work: v2.7.0 features + critical bug fixes
 
 ---
 
-## 6. Key Features Reference
+## 6. Critical Class Loading Order
+
+**IMPORTANT:** The order classes are loaded in `wp-staff-diary.php` matters!
+
+```php
+// CORRECT ORDER (as of v2.7.0):
+1. Core plugin class
+2. Database class (MUST be early - other classes depend on it)
+3. Currency helper
+4. Email template processor
+5. Quote acceptance (depends on Database)
+6. Auto discount scheduler
+7. Upgrade check
+8. GitHub updater
+9. Main plugin initialization
+```
+
+**Fatal Error Fixed:** Quote Acceptance was instantiated before Database class was loaded. Fixed by moving Database class loading earlier in the sequence.
+
+---
+
+## 7. Key Features Reference
 
 ### User Roles
 - **Staff** (`edit_posts`) - View/edit own jobs
@@ -149,101 +229,111 @@ git push -u origin claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe
 - **Admins** (`manage_options`) - Full settings access
 
 ### Main Features
+
 📅 **Job Management**
 - Calendar + list views
 - Sequential order numbering (customizable prefix)
 - Status tracking (Pending, In Progress, Completed, Cancelled)
 - Fitter assignment with color coding
+- Job types: Residential/Commercial
+- Before/During/After photo gallery
 
 👥 **Customer Management**
 - UK address format (3 lines + postcode)
 - Separate billing/fitting addresses
 - Auto-complete search
 - Customer history
+- SMS opt-in/opt-out tracking
 
 💰 **Financial**
 - Payment types: Deposit, Partial, Final, Full
-- Methods: Cash, Bank Transfer, Card
+- Payment methods: Cash, Bank Transfer, Card
 - VAT calculations (configurable, default 20%)
+- Payment progress visualization
+- Payment terms (configurable: days/weeks/months/years)
+- Overdue payment tracking
 - "PAID IN FULL" indicators
 
-📄 **Documentation**
+📄 **Quotes & Documents**
+- Quote generation with line items
+- Public quote acceptance pages (secure tokens)
+- Automatic discount scheduling
 - PDF generation via TCPDF
 - Professional branding
-- Company logo, bank details, T&Cs
+
+💬 **Communications** (v2.7.0)
+- Email template editor with visual builder
+- Template variables: {customer_name}, {job_number}, {total}, etc.
+- SMS integration with Twilio
+- SMS test mode for development
+- Notification logs
 
 🛒 **Integrations**
 - WooCommerce products
-- Email/SMS notifications
+- Twilio SMS
+- GitHub auto-updater
 
 ---
 
-## 7. Common Tasks & Workflows
+## 8. Common Tasks & Workflows
 
 ### Bug Fix Workflow
-1. Read relevant files to understand issue
-2. Check recent git history for related changes
-3. Test locally if possible
+1. Check debug.log for error details
+2. Read relevant files to understand issue
+3. Check git history for related changes
 4. Make fix with clear comments
 5. Commit with descriptive message
-6. Push to active branch
+6. Test in WordPress
+7. Push to active branch
 
 ### Adding New Feature
-1. Determine if it fits existing module or needs new one
-2. Follow modular pattern: Interface → Base Class → Concrete Implementation
-3. Create Repository (data operations)
-4. Create Controller (AJAX/HTTP handling)
-5. Create Module (hook registration)
-6. Register in Module Registry
-7. Test with backwards compatibility in mind
+1. Check if fits existing module or needs new one
+2. Update database schema in `includes/class-activator.php` if needed
+3. Add migration code in `includes/class-upgrade.php`
+4. Follow modular pattern if applicable
+5. Update DEVELOPMENT_LOG.md with detailed implementation notes
+6. Test thoroughly
+7. Commit and push
 
 ### Code Review Checklist
-- [ ] Follows modular architecture pattern
+- [ ] Follows modular architecture pattern (if applicable)
 - [ ] Nonce verification on AJAX requests
 - [ ] Data sanitization on input
-- [ ] Escaping on output
+- [ ] Escaping on output (use `escapeHtml()` for user content)
 - [ ] Backwards compatibility maintained
 - [ ] No breaking changes to database schema
 - [ ] Comments for complex logic
+- [ ] Updated DEVELOPMENT_LOG.md if significant feature
 
 ---
 
-## 8. Critical File Locations
+## 9. Critical File Locations
 
 ### Configuration
-- Main plugin: `wp-staff-diary.php` (version, hooks)
-- Activation: `includes/class-activator.php` (DB creation)
+- Main plugin: `wp-staff-diary.php` (version, hooks, class loading)
+- Activation: `includes/class-activator.php` (DB creation, settings)
 - Upgrades: `includes/class-upgrade.php` (migrations)
+
+### Services (v2.7.0)
+- SMS: `includes/services/class-sms-service.php`
+- Templates: `includes/services/class-template-service.php`
 
 ### Views (Admin UI)
 - Calendar: `admin/views/calendar-view.php`
 - List: `admin/views/my-diary.php`
 - Staff Overview: `admin/views/staff-overview.php`
 - Customers: `admin/views/customers.php`
-- Settings: `admin/views/settings.php` (68,101 lines!)
+- Quotes: `admin/views/quotes.php`
+- Email Templates: `admin/views/email-templates.php`
+- Settings: `admin/views/settings.php` (massive - 68K+ lines)
 
 ### Assets
-- CSS: `assets/css/admin.css` (1,051+ lines)
-- JS: `assets/js/admin.js` (1,265 lines)
+- CSS: `assets/css/admin.css`
+- JS: `assets/js/admin.js` (1,500+ lines)
+- JS: `assets/js/quotes.js`
 
 ### External Dependencies
-- TCPDF: `libs/tcpdf/` (optional, for PDFs)
-
----
-
-## 9. Development Environment
-
-### Requirements
-- WordPress 5.0+
-- PHP 7.4+
-- MySQL 5.6+
-- TCPDF library (optional)
-
-### Testing Considerations
-- Role-based access must be tested for Staff vs Manager vs Admin
-- Payment calculations must be accurate (VAT, accessories, totals)
-- Database operations should maintain referential integrity
-- AJAX calls require nonce verification
+- TCPDF: `libs/tcpdf/` (for PDFs)
 
 ---
 
@@ -252,94 +342,126 @@ git push -u origin claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe
 ### For New Session
 ```bash
 # 1. Verify you're on correct branch
-git checkout claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe
+git checkout claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM
 
 # 2. Check for any uncommitted changes
 git status
 
 # 3. Pull latest from remote
-git pull origin claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe
+git pull origin claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM
 
 # 4. Review recent work
-git log --oneline -5
+git log --oneline -10
 git diff HEAD~1
 
-# 5. Quick structure check
-ls -la includes/modules/
+# 5. Check version
+grep "Version:" wp-staff-diary.php
 ```
 
 ### Essential Reads for Full Context
 ```bash
-# Read this restoration protocol
+# 1. READ THIS FIRST - Most important!
+cat DEVELOPMENT_LOG.md
+
+# 2. Read this restoration protocol
 cat .claude/RESTORATION_PROTOCOL.md
 
-# Check version and recent changelog
-head -50 wp-staff-diary.php
+# 3. Check version and initialization
+head -100 wp-staff-diary.php
 
-# View module registry to see what's active
-cat includes/class-module-registry.php
+# 4. View database schema
+grep -A 20 "CREATE TABLE" includes/class-activator.php
 
-# Check latest work in key files
-git log -p -1 includes/modules/jobs/class-jobs-repository.php
+# 5. Check latest work
+git log -p -1
 ```
 
 ---
 
 ## 11. Known Issues & Gotchas
 
+### Recent Fixes (v2.7.0)
+✅ **Fixed:** Fatal error with Database class loading order
+✅ **Fixed:** XSS vulnerabilities in photo captions
+✅ **Fixed:** Modal duplicate prevention
+✅ **Fixed:** Event handler memory leaks
+✅ **Fixed:** Payment progress calculation edge cases
+
 ### Current State
-- **Job display issues** were just fixed in v2.2.6 (check if any edge cases remain)
-- **Cache refresh** was needed in v2.2.7 (monitor for cache-related bugs)
-- **WooCommerce dropdown** had scroll-follow issue (fixed in v2.2.5)
+- All v2.7.0 features deployed and active
+- Plugin activates without errors
+- SMS is in test mode (won't send real messages until configured)
+- Email templates functional
 
-### Architecture Transition
-- Some code still in `admin/class-admin.php` - eventual migration target
-- `class-database.php` has legacy complex queries - handle with care
+### Architecture Notes
+- Class loading order is CRITICAL (see section 6)
+- Database class must load early
+- Some legacy code remains in `admin/class-admin.php`
 - Backwards compatibility is CRITICAL - don't break existing installations
-
-### Testing Gaps
-- No automated test suite visible
-- Manual testing required for AJAX operations
-- Role-based access needs careful verification
 
 ---
 
-## 12. Communication Style
+## 12. Testing Considerations
+
+### Manual Testing Required
+- AJAX operations (quote acceptance, photo uploads)
+- Role-based access (Staff vs Manager vs Admin)
+- Payment calculations (VAT, accessories, totals)
+- Email template variable replacement
+- SMS opt-in/opt-out functionality
+- Photo category filtering and comparison view
+- Payment progress visualization
+
+### WordPress Environment
+- WordPress 5.0+
+- PHP 7.4+
+- MySQL 5.6+
+- Twilio account (for SMS - optional)
+
+---
+
+## 13. Communication Style
 
 ### Project Owner: Alex Lyle (TCS Flooring Solutions)
 - Real business use case (flooring company)
 - Values data integrity and stability
-- Active development (commits within last day)
+- Active development (daily commits)
+- Production environment - changes affect real business
 
-### My Identity in This Session
-**Dex** - Short for "index," navigator and organizer of code
+### Agent Identity
+**Previous Agents:**
+- Dex (Session 01J9bsuNvaZyRMXidTfRhpGe)
+- Chip (Session 01NamkLhSA2hUnsVz57p5SaM)
+
+**For New Session:** Feel free to pick your own name!
 
 ### Tone Preferences
 - Professional and technical
 - Direct and objective (no excessive praise)
 - Focus on facts and problem-solving
-- Concise communication (CLI context)
+- Concise communication
+- Clear explanations for complex concepts
 
 ---
 
-## 13. Agent Instructions Template
+## 14. Template for New Session
 
-**For New Session - Paste This:**
+**Paste This When Starting New Session:**
 
 ```
 I'm continuing work on the Staff Daily Job Planner WordPress plugin.
 
 Quick context:
-- This is a business management system for service-based companies
+- Business management system for service companies
 - WordPress plugin (PHP 7.4+, MySQL)
-- Currently on branch: claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe
-- Version 2.2.7 (latest fixes for job display and caching)
-- Mid-migration to modular architecture (Module → Controller → Repository)
+- Branch: claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM
+- Version: 2.7.0 (SMS, email templates, photo gallery, payment tracking)
+- Production environment - real business use
 
-Please read the restoration protocol:
-.claude/RESTORATION_PROTOCOL.md
+CRITICAL: Please read DEVELOPMENT_LOG.md first (1,841 lines)
+Then review this protocol: .claude/RESTORATION_PROTOCOL.md
 
-Then review recent git history to see what was done:
+Recent work:
 git log --oneline -10
 
 I need help with: [STATE YOUR TASK HERE]
@@ -347,7 +469,7 @@ I need help with: [STATE YOUR TASK HERE]
 
 ---
 
-## 14. Emergency Recovery
+## 15. Emergency Recovery
 
 ### If Git State Is Unclear
 ```bash
@@ -361,56 +483,74 @@ git remote -v
 git status -v
 
 # See unpushed commits
-git log origin/claude/clarify-request-01J9bsuNvaZyRMXidTfRhpGe..HEAD
+git log origin/claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM..HEAD
 ```
 
 ### If Code State Is Unclear
 ```bash
-# Find all modified files in last 24 hours
+# Find recently modified files
 find . -type f -name "*.php" -mtime -1
-
-# Search for recent TODO/FIXME comments
-grep -r "TODO\|FIXME\|XXX\|HACK" --include="*.php" .
 
 # Check for syntax errors
 find . -name "*.php" -exec php -l {} \;
+
+# Search for TODO comments
+grep -r "TODO\|FIXME\|XXX" --include="*.php" includes/ admin/
 ```
 
 ### If Database State Is Unclear
 - Check `includes/class-activator.php` for table schemas
 - Review `includes/class-upgrade.php` for migration history
-- Look at module repositories for current query patterns
+- Check DEVELOPMENT_LOG.md for recent schema changes
+
+### If Feature State Is Unclear
+- Read DEVELOPMENT_LOG.md (MOST IMPORTANT)
+- Check git log for recent commits
+- Review settings page in WordPress admin
 
 ---
 
-## 15. Success Metrics
+## 16. Development Patterns
+
+### Security
+- Always use nonce verification: `check_ajax_referer()`
+- Sanitize input: `sanitize_text_field()`, `sanitize_email()`, etc.
+- Escape output: `esc_html()`, `esc_attr()`, or custom `escapeHtml()`
+- Prepared statements: `$wpdb->prepare()`
+
+### JavaScript
+- Use namespaced events for cleanup: `keydown.modalName`
+- Prevent duplicate modals: `if ($('#modal-id').length > 0) return;`
+- Always cleanup event handlers to prevent memory leaks
+- Use callbacks for async operations
+
+### PHP
+- Follow WordPress coding standards
+- Use type hints where appropriate
+- Document complex logic with comments
+- Maintain backwards compatibility
+
+---
+
+## 17. Success Metrics
 
 ### How to Know You're On Track
 ✅ All commits pushed to correct branch
 ✅ No PHP syntax errors
-✅ Follows modular architecture pattern
-✅ Backwards compatible (don't break existing installs)
+✅ Plugin activates without fatal errors
+✅ Follows established patterns
+✅ Backwards compatible
 ✅ Clear commit messages
-✅ Code comments for complex logic
-✅ Git history is clean and reviewable
+✅ DEVELOPMENT_LOG.md updated for significant changes
+✅ Security best practices followed
 
 ---
 
-## End of Restoration Protocol
-
-**Last Session Agent:** Dex
-**Session Date:** 2025-11-16
-**Session ID:** 01J9bsuNvaZyRMXidTfRhpGe
-
-**Next Agent:** Feel free to pick your own name, but know that Chip and Dex are taken! 😄
-
----
-
-## Appendix: Quick Reference Commands
+## 18. Quick Reference Commands
 
 ```bash
 # Project structure overview
-tree -L 3 -I 'node_modules|vendor|.git'
+tree -L 3 -I 'node_modules|vendor|.git|libs'
 
 # Find all modules
 ls -la includes/modules/
@@ -418,18 +558,58 @@ ls -la includes/modules/
 # Check plugin version
 grep "Version:" wp-staff-diary.php
 
-# See all database tables (in code)
-grep "CREATE TABLE" includes/class-activator.php
+# See all database tables
+grep "CREATE TABLE" includes/class-activator.php | grep -v "^--"
 
 # Find all AJAX handlers
-grep -r "wp_ajax_" includes/ admin/
+grep -r "wp_ajax_" includes/ admin/ | grep "add_action"
 
-# Check for security (nonce verification)
-grep -r "check_ajax_referer\|wp_verify_nonce" .
+# Check security (nonce verification)
+grep -r "check_ajax_referer\|wp_verify_nonce" includes/ admin/
 
-# Find all interfaces
-ls -la includes/interfaces/
+# Find service classes
+ls -la includes/services/
 
 # See registered hooks
 grep -r "add_action\|add_filter" includes/class-loader.php
+
+# Check for recent errors
+tail -50 wp-content/debug.log
 ```
+
+---
+
+## End of Restoration Protocol
+
+**Last Updated By:** Chip
+**Session Date:** 2025-11-17
+**Session ID:** 01NamkLhSA2hUnsVz57p5SaM
+**Version:** 2.7.0
+
+**Critical Reminder:** ALWAYS read `DEVELOPMENT_LOG.md` first - it contains detailed implementation notes that this protocol references!
+
+---
+
+## Appendix: Phase Implementation Summary
+
+### Phase 1 (v2.6.0) - Photo Gallery & Payment Progress
+- Before/After photo categorization
+- Photo comparison view
+- Payment progress visualization
+- Security fixes (XSS protection)
+
+### Phase 2 (v2.7.0) - Communications
+- Email template editor
+- Template variable system
+- SMS integration with Twilio
+- Customer SMS opt-in tracking
+- Auto-discount scheduler
+- Public quote acceptance
+
+### Future Phases (Not Yet Implemented)
+- Customer portal
+- Accounting software integration
+- Additional reporting features
+- Mobile app integration
+
+---

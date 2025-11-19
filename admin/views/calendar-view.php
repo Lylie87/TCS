@@ -54,15 +54,26 @@ $entries = $wpdb->get_results($wpdb->prepare(
     $end_date_str
 ));
 
+error_log('===== CALENDAR VIEW QUERY =====');
+error_log('User ID: ' . $current_user->ID);
+error_log('Date range: ' . $start_date . ' to ' . $end_date_str);
+error_log('Entries found: ' . count($entries));
+foreach ($entries as $entry) {
+    error_log('Entry ID: ' . $entry->id . ', Order: ' . $entry->order_number . ', Status: ' . $entry->status . ', is_cancelled: ' . $entry->is_cancelled);
+}
+error_log('===== END CALENDAR VIEW QUERY =====');
+
 // Get ALL jobs with unknown fitting dates (not limited to current week)
 // Exclude quotes from this section as well
+// Order by fitting_date if available, otherwise job_date (soonest first)
 $unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
     "SELECT * FROM $table_diary
      WHERE user_id = %d
      AND fitting_date_unknown = 1
      AND is_cancelled = 0
      AND status != 'quotation'
-     ORDER BY job_date DESC",
+     ORDER BY
+        CASE WHEN fitting_date IS NOT NULL THEN fitting_date ELSE job_date END ASC",
     $current_user->ID
 ));
 
@@ -95,11 +106,34 @@ foreach ($entries as $entry) {
 }
 
 // Sort entries by time within each day
+// Order: Measures with specific times first (by time), then AM jobs, then PM jobs
 foreach ($entries_by_date as $date => $day_entries) {
     usort($day_entries, function($a, $b) {
-        if ($a->job_time === null) return 1;
-        if ($b->job_time === null) return -1;
-        return strcmp($a->job_time, $b->job_time);
+        // Both have specific times - sort by time
+        if ($a->job_time !== null && $b->job_time !== null) {
+            return strcmp($a->job_time, $b->job_time);
+        }
+
+        // A has time, B doesn't - A comes first
+        if ($a->job_time !== null && $b->job_time === null) {
+            return -1;
+        }
+
+        // B has time, A doesn't - B comes first
+        if ($a->job_time === null && $b->job_time !== null) {
+            return 1;
+        }
+
+        // Neither has specific time - sort by fitting_time_period (AM before PM)
+        $a_period = strtolower($a->fitting_time_period ?? '');
+        $b_period = strtolower($b->fitting_time_period ?? '');
+
+        if ($a_period === 'am' && $b_period !== 'am') return -1;
+        if ($b_period === 'am' && $a_period !== 'am') return 1;
+        if ($a_period === 'pm' && $b_period !== 'pm') return -1;
+        if ($b_period === 'pm' && $a_period !== 'pm') return 1;
+
+        return 0;
     });
     $entries_by_date[$date] = $day_entries;
 }
@@ -143,6 +177,9 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
             <a href="?page=wp-staff-diary&view=list" class="button">
                 <span class="dashicons dashicons-list-view"></span> List View
             </a>
+            <button type="button" class="button" id="add-new-measure" style="background: #9b59b6; color: white; border-color: #8e44ad;">
+                <span class="dashicons dashicons-location"></span> Add Measure
+            </button>
             <button type="button" class="button button-primary" id="add-new-entry">
                 <span class="dashicons dashicons-plus-alt"></span> Add New Job
             </button>
@@ -194,12 +231,18 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                         ?>
                         <tr>
                             <td><strong><?php echo esc_html($order_number); ?></strong></td>
-                            <td><?php echo esc_html(date('d/m/Y', strtotime($entry->job_date))); ?></td>
+                            <td>
+                                <?php
+                                // Show fitting/measure date if available, otherwise show job date
+                                $display_date = !empty($entry->fitting_date) ? $entry->fitting_date : $entry->job_date;
+                                echo esc_html(date('d/m/Y', strtotime($display_date)));
+                                ?>
+                            </td>
                             <td>
                                 <?php if ($customer): ?>
-                                    <strong><?php echo esc_html($customer->customer_name); ?></strong>
+                                    <strong><?php echo esc_html($customer->customer_name ?? ''); ?></strong>
                                     <?php if ($customer->customer_phone): ?>
-                                        <br><small><?php echo esc_html($customer->customer_phone); ?></small>
+                                        <br><small><?php echo esc_html($customer->customer_phone ?? ''); ?></small>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #999;">No customer</span>
@@ -207,8 +250,8 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             </td>
                             <td>
                                 <?php if ($fitter): ?>
-                                    <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color']); ?>; color: white; font-size: 11px; font-weight: 600;">
-                                        <?php echo esc_html($fitter['name']); ?>
+                                    <span class="fitter-badge" style="display: inline-block; padding: 3px 8px; border-radius: 3px; background-color: <?php echo esc_attr($fitter['color'] ?? '#ddd'); ?>; color: white; font-size: 11px; font-weight: 600;">
+                                        <?php echo esc_html($fitter['name'] ?? ''); ?>
                                     </span>
                                 <?php else: ?>
                                     <span style="color: #999;">Unassigned</span>
@@ -269,11 +312,15 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             $customer_id = isset($entry->customer_id) ? $entry->customer_id : null;
                             $customer = $customer_id ? $db->get_customer($customer_id) : null;
 
-                            // Get fitter info
+                            // Get fitter info and set color
                             $fitter_id = isset($entry->fitter_id) ? $entry->fitter_id : null;
                             $fitter = null;
                             $fitter_color = '#ddd';
-                            if ($fitter_id !== null && isset($fitters[$fitter_id])) {
+
+                            // Purple color for measures
+                            if ($entry->status === 'measure') {
+                                $fitter_color = '#9b59b6';
+                            } elseif ($fitter_id !== null && isset($fitters[$fitter_id])) {
                                 $fitter = $fitters[$fitter_id];
                                 $fitter_color = $fitter['color'];
                             }
@@ -283,32 +330,42 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                             $order_number = isset($entry->order_number) ? $entry->order_number : 'Job #' . $entry->id;
                             $product_desc = isset($entry->product_description) ? $entry->product_description : '';
                             ?>
-                            <div class="calendar-entry status-<?php echo esc_attr($status_class); ?>"
+                            <div class="calendar-entry status-<?php echo esc_attr($status_class); ?> <?php echo $entry->status === 'measure' ? 'measure-entry' : ''; ?>"
                                  data-entry-id="<?php echo esc_attr($entry->id); ?>"
-                                 style="border-left: 4px solid <?php echo esc_attr($fitter_color); ?>;<?php echo $is_cancelled ? ' opacity: 0.6;' : ''; ?>">
+                                 style="border-left: 4px solid <?php echo esc_attr($fitter_color); ?>;<?php echo $is_cancelled ? ' opacity: 0.6;' : ''; ?><?php echo $entry->status === 'measure' ? ' background: #f3e5f5; padding: 6px 10px;' : ''; ?>">
                                 <div class="entry-order">
                                     <strong><?php echo esc_html($order_number); ?></strong>
                                 </div>
                                 <div class="entry-time">
-                                    <?php echo $entry->job_time ? esc_html(date('H:i', strtotime($entry->job_time))) : '<span style="color: #999;">No time</span>'; ?>
+                                    <?php
+                                    if ($entry->job_time) {
+                                        echo esc_html(date('H:i', strtotime($entry->job_time)));
+                                    } elseif (!empty($entry->fitting_time_period)) {
+                                        echo '<span style="font-weight: 600;">' . esc_html(strtoupper($entry->fitting_time_period)) . '</span>';
+                                    } else {
+                                        echo '<span style="color: #999;">No time</span>';
+                                    }
+                                    ?>
                                 </div>
                                 <div class="entry-customer">
                                     <?php if ($customer): ?>
-                                        <?php echo esc_html($customer->customer_name); ?>
+                                        <?php echo esc_html($customer->customer_name ?? ''); ?>
                                     <?php else: ?>
                                         <span style="color: #999;">No customer</span>
                                     <?php endif; ?>
                                 </div>
-                                <?php if ($fitter): ?>
+                                <?php if ($entry->status !== 'measure' && $fitter): ?>
                                     <div class="entry-fitter" style="font-size: 11px; color: #666; margin-top: 2px;">
-                                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($fitter_color); ?>; margin-right: 4px;"></span>
-                                        <?php echo esc_html($fitter['name']); ?>
+                                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($fitter_color ?? '#ddd'); ?>; margin-right: 4px;"></span>
+                                        <?php echo esc_html($fitter['name'] ?? ''); ?>
                                     </div>
                                 <?php endif; ?>
-                                <div class="entry-product">
-                                    <?php echo $product_desc ? esc_html(wp_trim_words($product_desc, 5)) : '<span style="color: #999;">—</span>'; ?>
-                                </div>
-                                <div class="entry-status-badge">
+                                <?php if ($entry->status !== 'measure'): ?>
+                                    <div class="entry-product">
+                                        <?php echo $product_desc ? esc_html(wp_trim_words($product_desc, 5)) : '<span style="color: #999;">—</span>'; ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="entry-status-badge" style="<?php echo $entry->status === 'measure' ? 'display: none;' : ''; ?>">
                                     <span class="status-badge-mini status-<?php echo esc_attr($status_class); ?>"></span>
                                 </div>
                                 <div class="entry-actions">
@@ -327,6 +384,51 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 </div>
             </div>
         <?php } ?>
+        </div>
+    </div>
+
+    <!-- Recent Quotes Widget -->
+    <div class="recent-quotes-section" style="margin: 20px 0;">
+        <div style="background: white; border: 1px solid #c3c4c7; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,0.04);">
+            <div style="padding: 15px 20px; border-bottom: 1px solid #c3c4c7; background: #f6f7f7;">
+                <h2 style="margin: 0; font-size: 16px; color: #1d2327;">
+                    <span class="dashicons dashicons-portfolio" style="font-size: 18px; vertical-align: middle; margin-right: 5px;"></span>
+                    Recent Quotes
+                </h2>
+            </div>
+            <?php
+            // Get recent quotes for the widget (last 10)
+            $recent_quotes = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_diary
+                 WHERE user_id = %d
+                 AND status = 'quotation'
+                 AND is_cancelled = 0
+                 ORDER BY created_at DESC
+                 LIMIT 10",
+                $current_user->ID
+            ));
+
+            // Enrich quotes with customer data and totals
+            foreach ($recent_quotes as $quote) {
+                if ($quote->customer_id) {
+                    $quote->customer = $db->get_customer($quote->customer_id);
+                }
+
+                // Calculate quote total
+                $subtotal = $db->calculate_job_subtotal($quote->id);
+                if ($vat_enabled == '1') {
+                    $quote->total = $subtotal * (1 + ($vat_rate / 100));
+                } else {
+                    $quote->total = $subtotal;
+                }
+            }
+
+            // Set $quotes for the widget
+            $quotes = $recent_quotes;
+
+            // Include the quotes widget view
+            include WP_STAFF_DIARY_PATH . 'admin/views/quotes-widget.php';
+            ?>
         </div>
     </div>
 
@@ -365,10 +467,10 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <div class="quote-card" style="background: white; border-left: 4px solid <?php echo $urgency_color; ?>; padding: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer;" onclick="viewEntryDetails(<?php echo $quote->id; ?>)">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                         <div>
-                            <strong style="font-size: 14px; color: #2271b1;"><?php echo esc_html($quote->order_number); ?></strong>
+                            <strong style="font-size: 14px; color: #2271b1;"><?php echo esc_html($quote->order_number ?? ''); ?></strong>
                             <?php if ($customer): ?>
                                 <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                                    <?php echo esc_html($customer->customer_name); ?>
+                                    <?php echo esc_html($customer->customer_name ?? ''); ?>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -386,7 +488,7 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 
                     <?php if ($quote->product_description): ?>
                         <div style="font-size: 12px; color: #444; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            <?php echo esc_html($quote->product_description); ?>
+                            <?php echo esc_html($quote->product_description ?? ''); ?>
                         </div>
                     <?php endif; ?>
 
@@ -428,8 +530,170 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
     </div>
 </div>
 
+<!-- Convert to Job Modal -->
+<div id="convert-to-job-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 500px;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2>Convert Quote to Job</h2>
+        <p style="margin: 15px 0; color: #666;">Please provide the fitting details to convert this quote into a job.</p>
+
+        <form id="convert-to-job-form">
+            <input type="hidden" id="convert-quote-id">
+
+            <div class="form-field">
+                <label for="convert-fitting-date">Fitting Date <span class="required">*</span></label>
+                <input type="date" id="convert-fitting-date" required>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-fitting-time-period">Time Period <span class="required">*</span></label>
+                <select id="convert-fitting-time-period" required>
+                    <option value="">Select time period...</option>
+                    <option value="am">Morning (AM)</option>
+                    <option value="pm">Afternoon (PM)</option>
+                    <option value="all-day">All Day</option>
+                </select>
+                <p class="description">Select AM or PM to view availability across all fitters</p>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-fitter">Fitter <span class="required">*</span></label>
+                <select id="convert-fitter" required>
+                    <option value="">Select a fitter...</option>
+                    <?php foreach ($fitters as $fitter_id => $fitter): ?>
+                        <option value="<?php echo esc_attr($fitter_id); ?>">
+                            <?php echo esc_html($fitter['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description">Available fitter will be auto-assigned when you select a date</p>
+            </div>
+
+            <!-- Availability Display -->
+            <div id="fitter-availability-display" style="display: none; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 4px;">
+                <h4 style="margin-top: 0;">Fitter Availability (Next 2 Weeks)</h4>
+                <div id="availability-loading" style="display: none; text-align: center; padding: 20px;">
+                    <span class="dashicons dashicons-update dashicons-spin" style="font-size: 24px;"></span>
+                    <p>Loading availability...</p>
+                </div>
+                <div id="availability-calendar" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                    <!-- Availability will be populated here -->
+                </div>
+                <div id="availability-legend" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px;">
+                    <strong>Legend:</strong>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #4caf50; border-radius: 2px; margin-right: 5px;"></span>
+                        Available
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #ff9800; border-radius: 2px; margin-right: 5px;"></span>
+                        Partially Booked
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #f44336; border-radius: 2px; margin-right: 5px;"></span>
+                        Fully Booked
+                    </span>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label>
+                    <input type="checkbox" id="convert-fitting-date-unknown">
+                    Fitting date not yet confirmed
+                </label>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="button button-primary">Convert to Job</button>
+                <button type="button" class="button cancel-convert">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Convert Measure to Job Modal -->
+<div id="convert-measure-to-job-modal" class="wp-staff-diary-modal" style="display: none;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 500px;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2>Convert Measure to Job</h2>
+        <p style="margin: 15px 0; color: #666;">Please provide the fitting details to convert this measure into a job.</p>
+
+        <form id="convert-measure-to-job-form">
+            <input type="hidden" id="convert-measure-id">
+
+            <div class="form-field">
+                <label for="convert-measure-fitting-date">Fitting Date <span class="required">*</span></label>
+                <input type="date" id="convert-measure-fitting-date" required>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-measure-fitting-time-period">Time Period <span class="required">*</span></label>
+                <select id="convert-measure-fitting-time-period" required>
+                    <option value="">Select time period...</option>
+                    <option value="am">Morning (AM)</option>
+                    <option value="pm">Afternoon (PM)</option>
+                    <option value="all-day">All Day</option>
+                </select>
+                <p class="description">Select AM or PM to view availability across all fitters</p>
+            </div>
+
+            <div class="form-field">
+                <label for="convert-measure-fitter">Fitter <span class="required">*</span></label>
+                <select id="convert-measure-fitter" required>
+                    <option value="">Select a fitter...</option>
+                    <?php foreach ($fitters as $fitter_id => $fitter): ?>
+                        <option value="<?php echo esc_attr($fitter_id); ?>">
+                            <?php echo esc_html($fitter['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description">Select a fitter to see their availability</p>
+            </div>
+
+            <!-- Availability Display -->
+            <div id="measure-fitter-availability-display" style="display: none; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 4px;">
+                <h4 style="margin-top: 0;">Fitter Availability (Next 2 Weeks)</h4>
+                <div id="measure-availability-loading" style="display: none; text-align: center; padding: 20px;">
+                    <span class="dashicons dashicons-update dashicons-spin" style="font-size: 24px;"></span>
+                    <p>Loading availability...</p>
+                </div>
+                <div id="measure-availability-calendar" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                    <!-- Availability will be populated here -->
+                </div>
+                <div id="measure-availability-legend" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px;">
+                    <strong>Legend:</strong>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #4caf50; border-radius: 2px; margin-right: 5px;"></span>
+                        Available
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #ff9800; border-radius: 2px; margin-right: 5px;"></span>
+                        Partially Booked
+                    </span>
+                    <span style="display: inline-block; margin-left: 15px;">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #f44336; border-radius: 2px; margin-right: 5px;"></span>
+                        Fully Booked
+                    </span>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label>
+                    <input type="checkbox" id="convert-measure-fitting-date-unknown">
+                    Fitting date not yet confirmed
+                </label>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="button button-primary">Convert to Job</button>
+                <button type="button" class="button cancel-convert-measure">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Quick Add Customer Modal -->
-<div id="quick-add-customer-modal" class="wp-staff-diary-modal" style="display: none;">
+<div id="quick-add-customer-modal" class="wp-staff-diary-modal" style="display: none; z-index: 100002;">
     <div class="wp-staff-diary-modal-content" style="max-width: 500px;">
         <span class="wp-staff-diary-modal-close">&times;</span>
         <h2>Add New Customer</h2>
@@ -467,6 +731,16 @@ $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
                 <button type="button" class="button" id="cancel-quick-customer">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Add/Edit Measure Modal -->
+<div id="measure-modal" class="wp-staff-diary-modal" style="display: none; z-index: 100001;">
+    <div class="wp-staff-diary-modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+        <span class="wp-staff-diary-modal-close">&times;</span>
+        <h2 id="measure-modal-title">Add New Measure</h2>
+
+        <?php include WP_STAFF_DIARY_PATH . 'admin/views/partials/measure-form.php'; ?>
     </div>
 </div>
 

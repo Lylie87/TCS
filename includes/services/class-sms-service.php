@@ -355,6 +355,11 @@ class WP_Staff_Diary_SMS_Service {
      * @return string|false Phone number in E.164 format, or false if invalid
      */
     public static function format_phone_number($phone, $default_country_code = '44') {
+        // Handle null phone number
+        if ($phone === null || $phone === '') {
+            return false;
+        }
+
         // Remove all non-digit characters
         $digits = preg_replace('/\D/', '', $phone);
 

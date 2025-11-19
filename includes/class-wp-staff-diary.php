@@ -119,7 +119,7 @@ class WP_Staff_Diary {
         // Keeping these for backwards compatibility fallback
         // $this->loader->add_action('wp_ajax_save_diary_entry', $plugin_admin, 'save_diary_entry');
         // $this->loader->add_action('wp_ajax_delete_diary_entry', $plugin_admin, 'delete_diary_entry');
-        // $this->loader->add_action('wp_ajax_cancel_diary_entry', $plugin_admin, 'cancel_diary_entry');
+        $this->loader->add_action('wp_ajax_cancel_diary_entry', $plugin_admin, 'cancel_diary_entry');
         // $this->loader->add_action('wp_ajax_get_diary_entry', $plugin_admin, 'get_diary_entry');
 
         // AJAX handlers - Images
@@ -127,12 +127,20 @@ class WP_Staff_Diary {
         // Keeping these for backwards compatibility fallback
         // $this->loader->add_action('wp_ajax_upload_job_image', $plugin_admin, 'upload_job_image');
         // $this->loader->add_action('wp_ajax_delete_diary_image', $plugin_admin, 'delete_diary_image');
+        $this->loader->add_action('wp_ajax_get_entry_photos', $plugin_admin, 'get_entry_photos');
 
         // AJAX handlers - Payments
         // NOTE: Payment handlers now managed by Payments module
         // Keeping these for backwards compatibility fallback
         // $this->loader->add_action('wp_ajax_add_payment', $plugin_admin, 'add_payment');
         // $this->loader->add_action('wp_ajax_delete_payment', $plugin_admin, 'delete_payment');
+
+        // AJAX handlers - Comments
+        $this->loader->add_action('wp_ajax_add_comment', $plugin_admin, 'add_comment');
+        $this->loader->add_action('wp_ajax_update_comment', $plugin_admin, 'update_comment');
+        $this->loader->add_action('wp_ajax_delete_comment', $plugin_admin, 'delete_comment');
+        $this->loader->add_action('wp_ajax_get_comments', $plugin_admin, 'get_comments');
+        $this->loader->add_action('wp_ajax_copy_images', $plugin_admin, 'copy_images');
 
         // AJAX handlers - Statuses
         $this->loader->add_action('wp_ajax_wp_staff_diary_add_status', $plugin_admin, 'add_status');
@@ -153,6 +161,7 @@ class WP_Staff_Diary {
 
         // AJAX handlers - Quotes & Discounts
         $this->loader->add_action('wp_ajax_send_discount_email', $plugin_admin, 'send_discount_email');
+        $this->loader->add_action('wp_ajax_send_discount_offer', $plugin_admin, 'send_discount_email');
 
         // AJAX handlers - WooCommerce Integration
         $this->loader->add_action('wp_ajax_search_woocommerce_products', $plugin_admin, 'search_woocommerce_products');
@@ -167,7 +176,7 @@ class WP_Staff_Diary {
         // Keeping these for backwards compatibility fallback
         // $this->loader->add_action('wp_ajax_search_customers', $plugin_admin, 'search_customers');
         // $this->loader->add_action('wp_ajax_add_customer', $plugin_admin, 'add_customer');
-        // $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer');
+        $this->loader->add_action('wp_ajax_get_customer', $plugin_admin, 'get_customer'); // ACTIVE: Used by measure form
         // $this->loader->add_action('wp_ajax_update_customer', $plugin_admin, 'update_customer');
         // $this->loader->add_action('wp_ajax_delete_customer', $plugin_admin, 'delete_customer');
 
@@ -181,6 +190,7 @@ class WP_Staff_Diary {
 
         // AJAX handlers - Quotes
         $this->loader->add_action('wp_ajax_convert_quote_to_job', $plugin_admin, 'convert_quote_to_job');
+        $this->loader->add_action('wp_ajax_convert_measure_to_job', $plugin_admin, 'convert_measure_to_job');
         $this->loader->add_action('wp_ajax_get_fitter_availability', $plugin_admin, 'get_fitter_availability');
         $this->loader->add_action('wp_ajax_email_quote', $plugin_admin, 'email_quote');
 
