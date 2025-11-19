@@ -170,10 +170,11 @@ jQuery(document).ready(function($) {
             type: 'POST',
             data: {
                 action: 'wp_staff_diary_add_availability',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
                 fitter_id: fitterId,
                 start_date: startDate,
                 end_date: endDate,
-                type: type,
+                availability_type: type,
                 reason: reason
             },
             success: function(response) {
@@ -203,6 +204,7 @@ jQuery(document).ready(function($) {
             type: 'POST',
             data: {
                 action: 'wp_staff_diary_delete_availability',
+                nonce: '<?php echo wp_create_nonce('wp_staff_diary_settings_nonce'); ?>',
                 availability_id: availabilityId
             },
             success: function(response) {
