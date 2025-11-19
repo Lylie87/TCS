@@ -408,14 +408,14 @@ class WP_Staff_Diary_Admin {
             array($this, 'display_quotes_page')
         );
 
-        // Submenu - All Staff Jobs (only for managers/admins)
+        // Submenu - Holidays & Availability
         add_submenu_page(
             'wp-staff-diary',
-            'All Staff Jobs',
-            'All Staff Jobs',
-            'edit_users',
-            'wp-staff-diary-overview',
-            array($this, 'display_overview_page')
+            'Holidays & Availability',
+            'Holidays',
+            'edit_posts',
+            'wp-staff-diary-holidays',
+            array($this, 'display_holidays_page')
         );
 
         // Submenu - Customers (only for staff and above)
@@ -495,6 +495,13 @@ class WP_Staff_Diary_Admin {
      */
     public function display_quotes_page() {
         require_once WP_STAFF_DIARY_PATH . 'admin/views/quotes.php';
+    }
+
+    /**
+     * Display Holidays & Availability page
+     */
+    public function display_holidays_page() {
+        require_once WP_STAFF_DIARY_PATH . 'admin/views/holidays.php';
     }
 
     /**

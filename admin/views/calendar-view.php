@@ -203,6 +203,9 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
             <a href="?page=wp-staff-diary&view=list" class="button">
                 <span class="dashicons dashicons-list-view"></span> List View
             </a>
+            <a href="?page=wp-staff-diary-holidays" class="button" style="background: #f0ad4e; color: white; border-color: #ec971f;">
+                <span class="dashicons dashicons-palmtree"></span> Add Holiday
+            </a>
             <button type="button" class="button" id="add-new-measure" style="background: #9b59b6; color: white; border-color: #8e44ad;">
                 <span class="dashicons dashicons-location"></span> Add Measure
             </button>
