@@ -169,7 +169,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'add_fitter_availability',
+                action: 'wp_staff_diary_add_availability',
                 fitter_id: fitterId,
                 start_date: startDate,
                 end_date: endDate,
@@ -202,7 +202,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'delete_fitter_availability',
+                action: 'wp_staff_diary_delete_availability',
                 availability_id: availabilityId
             },
             success: function(response) {
