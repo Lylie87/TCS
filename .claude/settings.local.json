@@ -10,7 +10,10 @@
       "Bash(git restore:*)",
       "Bash(node -c:*)",
       "WebFetch(domain:tcs-cfs.co.uk)",
-      "WebFetch(domain:ibb.co)"
+      "WebFetch(domain:ibb.co)",
+      "Bash(git fetch:*)",
+      "Bash(git log:*)",
+      "Bash(gh auth:*)"
     ],
     "deny": [],
     "ask": []

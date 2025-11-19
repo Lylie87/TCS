@@ -200,6 +200,9 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
         </div>
 
         <div class="calendar-actions">
+            <button type="button" class="button" id="toggle-calendar-view">
+                <span class="dashicons dashicons-calendar-alt"></span> <span id="view-toggle-text">Day View</span>
+            </button>
             <a href="?page=wp-staff-diary&view=list" class="button">
                 <span class="dashicons dashicons-list-view"></span> List View
             </a>
@@ -377,12 +380,37 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
             $date_key = $current_day->format('Y-m-d');
             $is_today = $current_day->format('Y-m-d') === date('Y-m-d');
             $day_entries = isset($entries_by_date[$date_key]) ? $entries_by_date[$date_key] : array();
+
+            // Get unavailable fitters for this specific day
+            $unavailable_fitters = array();
+            foreach ($fitter_availability as $avail) {
+                if ($date_key >= $avail->start_date && $date_key <= $avail->end_date) {
+                    if (isset($fitters[$avail->fitter_id])) {
+                        $unavailable_fitters[] = array(
+                            'name' => $fitters[$avail->fitter_id]['name'],
+                            'color' => $fitters[$avail->fitter_id]['color'],
+                            'type' => $avail->availability_type
+                        );
+                    }
+                }
+            }
         ?>
-            <div class="calendar-day <?php echo $is_today ? 'today' : ''; ?>">
+            <div class="calendar-day <?php echo $is_today ? 'today' : ''; ?>" data-date="<?php echo $date_key; ?>">
                 <div class="day-header">
                     <div class="day-date-number"><?php echo $current_day->format('d'); ?></div>
                     <?php if (count($day_entries) > 0): ?>
                         <div class="day-job-count"><?php echo count($day_entries); ?> job<?php echo count($day_entries) != 1 ? 's' : ''; ?></div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($unavailable_fitters)): ?>
+                        <div class="day-fitter-availability" style="margin-top: 6px; padding: 4px 0; border-top: 1px solid #e0e0e0;">
+                            <?php foreach ($unavailable_fitters as $unavail): ?>
+                                <div style="display: flex; align-items: center; margin: 2px 0; font-size: 10px;">
+                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr($unavail['color']); ?>; margin-right: 4px; flex-shrink: 0;"></span>
+                                    <span style="color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?php echo esc_html($unavail['name']); ?>: <span style="color: #d32f2f; font-weight: 600;"><?php echo esc_html(ucfirst($unavail['type'])); ?></span></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
                 <div class="day-entries">

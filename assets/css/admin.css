@@ -1538,6 +1538,199 @@
     }
 }
 
+/* Day View Mode Styles */
+.calendar-container.day-view-mode .calendar-weekdays {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+.calendar-container.day-view-mode .calendar-weekdays .weekday-name {
+    display: none;
+}
+
+.calendar-container.day-view-mode .calendar-weekdays .weekday-name.active-day {
+    display: block;
+    background: #1a73e8;
+    color: white;
+    font-size: 16px;
+    padding: 20px;
+}
+
+.calendar-container.day-view-mode .calendar-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+}
+
+.calendar-container.day-view-mode .calendar-day {
+    display: none;
+    min-height: auto;
+}
+
+.calendar-container.day-view-mode .calendar-day.active-day {
+    display: flex;
+}
+
+.calendar-container.day-view-mode .day-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 15px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.calendar-container.day-view-mode .day-date-number {
+    font-size: 24px;
+    width: auto;
+    height: auto;
+    margin-bottom: 8px;
+}
+
+.calendar-container.day-view-mode .day-job-count {
+    font-size: 13px;
+    padding: 4px 12px;
+}
+
+.calendar-container.day-view-mode .day-fitter-availability {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px 0;
+}
+
+.calendar-container.day-view-mode .day-fitter-availability > div {
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+.calendar-container.day-view-mode .calendar-entry {
+    margin: 10px;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+/* Day View Navigation */
+.day-view-navigation {
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.day-view-navigation.active {
+    display: flex;
+}
+
+.day-view-date {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.day-view-nav-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Mobile Responsive - Auto Day View */
+@media screen and (max-width: 767px) {
+    /* Force Day View on mobile */
+    .calendar-container {
+        /* Day view will be activated via JavaScript */
+    }
+
+    .calendar-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .calendar-navigation {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .calendar-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .current-week {
+        width: 100%;
+        min-width: auto;
+    }
+
+    /* Hide week view toggle text on very small screens */
+    #toggle-calendar-view span:not(.dashicons) {
+        display: none;
+    }
+
+    #toggle-calendar-view::after {
+        content: 'Toggle View';
+        margin-left: 5px;
+    }
+
+    /* Better mobile calendar day cards */
+    .calendar-day {
+        min-height: auto;
+    }
+
+    .day-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 12px;
+    }
+
+    .day-date-number {
+        margin-bottom: 5px;
+    }
+
+    .day-fitter-availability {
+        width: 100%;
+    }
+
+    .calendar-entry {
+        padding: 12px;
+        margin: 8px;
+    }
+
+    .entry-order {
+        font-size: 13px;
+    }
+
+    .entry-customer,
+    .entry-product {
+        font-size: 11px;
+    }
+
+    .entry-fitter {
+        font-size: 10px;
+    }
+}
+
+/* Tablet Landscape Adjustments */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+    .calendar-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .calendar-weekdays {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .weekday-name:nth-child(6),
+    .weekday-name:nth-child(7),
+    .calendar-day:nth-child(6),
+    .calendar-day:nth-child(7) {
+        display: none;
+    }
+}
+
 /* Print Styles */
 @media print {
     /* Hide navigation and action buttons when printing */
@@ -1546,7 +1739,8 @@
     .view-actions,
     .modal-footer,
     .button,
-    .wp-staff-diary-modal-close {
+    .wp-staff-diary-modal-close,
+    .day-view-navigation {
         display: none !important;
     }
 
@@ -1563,5 +1757,18 @@
     .unknown-fitting-dates-section,
     .calendar-day {
         page-break-inside: avoid;
+    }
+
+    /* Force week view for print */
+    .calendar-container.day-view-mode .calendar-weekdays {
+        grid-template-columns: repeat(7, 1fr);
+    }
+
+    .calendar-container.day-view-mode .calendar-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+
+    .calendar-container.day-view-mode .calendar-day {
+        display: flex;
     }
 }

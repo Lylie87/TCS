@@ -2855,6 +2855,179 @@
             }
         }
 
+        // ===========================================
+        // DAY VIEW MODE
+        // ===========================================
+
+        let currentDayViewIndex = 0;
+        let isDayViewMode = false;
+        const isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+        /**
+         * Initialize Day View Mode
+         */
+        function initDayView() {
+            // Auto-enable day view on mobile
+            if (isMobile) {
+                enableDayView();
+            }
+
+            // Toggle button click handler
+            $('#toggle-calendar-view').on('click', function() {
+                if (isDayViewMode) {
+                    disableDayView();
+                } else {
+                    enableDayView();
+                }
+            });
+        }
+
+        /**
+         * Enable Day View Mode
+         */
+        function enableDayView() {
+            isDayViewMode = true;
+            const $container = $('.calendar-container');
+            const $days = $('.calendar-day');
+
+            // Find today's index, or default to first day
+            let todayIndex = 0;
+            $days.each(function(index) {
+                if ($(this).hasClass('today')) {
+                    todayIndex = index;
+                }
+            });
+            currentDayViewIndex = todayIndex;
+
+            // Add day-view-mode class
+            $container.addClass('day-view-mode');
+
+            // Show only the current day
+            showDayAtIndex(currentDayViewIndex);
+
+            // Update toggle button text
+            $('#view-toggle-text').text('Week View');
+
+            // Save preference to localStorage
+            if (!isMobile) {
+                localStorage.setItem('calendarViewMode', 'day');
+            }
+        }
+
+        /**
+         * Disable Day View Mode
+         */
+        function disableDayView() {
+            isDayViewMode = false;
+            const $container = $('.calendar-container');
+
+            // Remove day-view-mode class
+            $container.removeClass('day-view-mode');
+
+            // Show all days
+            $('.calendar-day').removeClass('active-day');
+            $('.weekday-name').removeClass('active-day');
+
+            // Update toggle button text
+            $('#view-toggle-text').text('Day View');
+
+            // Save preference to localStorage
+            localStorage.setItem('calendarViewMode', 'week');
+        }
+
+        /**
+         * Show specific day by index
+         */
+        function showDayAtIndex(index) {
+            const $days = $('.calendar-day');
+            const $weekdayNames = $('.weekday-name');
+
+            // Remove active class from all
+            $days.removeClass('active-day');
+            $weekdayNames.removeClass('active-day');
+
+            // Add active class to current day
+            $days.eq(index).addClass('active-day');
+            $weekdayNames.eq(index).addClass('active-day');
+
+            currentDayViewIndex = index;
+        }
+
+        /**
+         * Navigate to previous day
+         */
+        function previousDay() {
+            if (currentDayViewIndex > 0) {
+                showDayAtIndex(currentDayViewIndex - 1);
+            }
+        }
+
+        /**
+         * Navigate to next day
+         */
+        function nextDay() {
+            const $days = $('.calendar-day');
+            if (currentDayViewIndex < $days.length - 1) {
+                showDayAtIndex(currentDayViewIndex + 1);
+            }
+        }
+
+        // Initialize on page load
+        if ($('.calendar-container').length > 0) {
+            initDayView();
+
+            // Restore user preference (but not on mobile - always day view)
+            if (!isMobile) {
+                const savedMode = localStorage.getItem('calendarViewMode');
+                if (savedMode === 'day') {
+                    enableDayView();
+                }
+            }
+
+            // Add keyboard navigation
+            $(document).on('keydown', function(e) {
+                if (isDayViewMode) {
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        previousDay();
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        nextDay();
+                    }
+                }
+            });
+
+            // Add swipe support for mobile
+            if (isMobile) {
+                let touchStartX = 0;
+                let touchEndX = 0;
+
+                $('.calendar-container').on('touchstart', function(e) {
+                    touchStartX = e.changedTouches[0].screenX;
+                });
+
+                $('.calendar-container').on('touchend', function(e) {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                });
+
+                function handleSwipe() {
+                    const swipeThreshold = 50;
+                    const diff = touchStartX - touchEndX;
+
+                    if (Math.abs(diff) > swipeThreshold) {
+                        if (diff > 0) {
+                            // Swiped left - next day
+                            nextDay();
+                        } else {
+                            // Swiped right - previous day
+                            previousDay();
+                        }
+                    }
+                }
+            }
+        }
+
     });
 
 })(jQuery);
