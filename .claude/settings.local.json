@@ -13,7 +13,8 @@
       "WebFetch(domain:ibb.co)",
       "Bash(git fetch:*)",
       "Bash(git log:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

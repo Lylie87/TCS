@@ -2670,6 +2670,33 @@ class WP_Staff_Diary_Admin {
             }
         }
 
+        // Get fitter availability records (holidays, sick days, etc.)
+        $table_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
+        $unavailable_fitters_records = $wpdb->get_results($wpdb->prepare(
+            "SELECT fitter_id, start_date, end_date, availability_type
+             FROM $table_availability
+             WHERE end_date >= %s AND start_date <= %s",
+            $start_date,
+            $end_date
+        ));
+
+        // Track which fitters are unavailable on which dates
+        $unavailable_by_date = array();
+        foreach ($unavailable_fitters_records as $record) {
+            $unavail_start = new DateTime($record->start_date);
+            $unavail_end = new DateTime($record->end_date);
+            $current_unavail = clone $unavail_start;
+
+            while ($current_unavail <= $unavail_end) {
+                $date_key = $current_unavail->format('Y-m-d');
+                if (!isset($unavailable_by_date[$date_key])) {
+                    $unavailable_by_date[$date_key] = array();
+                }
+                $unavailable_by_date[$date_key][] = intval($record->fitter_id);
+                $current_unavail->modify('+1 day');
+            }
+        }
+
         // Get fitter list for auto-assignment if needed
         $fitter_list = null;
         if ($fitter_id === null && $time_period !== null) {
@@ -2680,15 +2707,25 @@ class WP_Staff_Diary_Admin {
             }
         }
 
-        // Determine availability based on how many fitters are booked
+        // Determine availability based on how many fitters are booked OR unavailable
         foreach ($availability as $date_str => &$day) {
-            $am_booked_count = count(array_unique($day['am_booked_fitters']));
-            $pm_booked_count = count(array_unique($day['pm_booked_fitters']));
+            // Get unavailable fitters for this date from holidays/sick table
+            $unavailable_fitters = isset($unavailable_by_date[$date_str]) ? $unavailable_by_date[$date_str] : array();
 
-            // If ALL fitters are booked for a time period, mark as unavailable
+            // Combine job-booked fitters with unavailable fitters (holidays/sick)
+            $day['am_booked_fitters'] = array_unique(array_merge($day['am_booked_fitters'], $unavailable_fitters));
+            $day['pm_booked_fitters'] = array_unique(array_merge($day['pm_booked_fitters'], $unavailable_fitters));
+
+            $am_booked_count = count($day['am_booked_fitters']);
+            $pm_booked_count = count($day['pm_booked_fitters']);
+
+            // If ALL fitters are booked/unavailable for a time period, mark as unavailable
             $day['am_available'] = $am_booked_count < $total_fitters;
             $day['pm_available'] = $pm_booked_count < $total_fitters;
             $day['all_day_booked'] = !$day['am_available'] && !$day['pm_available'];
+
+            // Store unavailable fitters list for filtering
+            $day['unavailable_fitters'] = $unavailable_fitters;
 
             // Find an available fitter for this date/time if checking specific period
             if ($time_period !== null && $fitter_id === null && $fitter_list !== null) {
@@ -2707,6 +2744,42 @@ class WP_Staff_Diary_Admin {
             'fitter_id' => $fitter_id,
             'start_date' => $start_date,
             'end_date' => $end_date
+        ));
+    }
+
+    /**
+     * AJAX: Get unavailable fitters for a specific date
+     * Returns list of fitter IDs that are unavailable (holiday/sick) on the given date
+     */
+    public function get_unavailable_fitters_for_date() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $date = isset($_POST['date']) ? sanitize_text_field($_POST['date']) : null;
+
+        if (!$date) {
+            wp_send_json_error(array('message' => 'Date parameter is required'));
+            return;
+        }
+
+        global $wpdb;
+        $table_availability = $wpdb->prefix . 'staff_diary_fitter_availability';
+
+        // Get all fitter availability records that overlap with this date
+        $unavailable_records = $wpdb->get_results($wpdb->prepare(
+            "SELECT fitter_id, availability_type
+             FROM $table_availability
+             WHERE %s BETWEEN start_date AND end_date",
+            $date
+        ));
+
+        $unavailable_fitter_ids = array();
+        foreach ($unavailable_records as $record) {
+            $unavailable_fitter_ids[] = intval($record->fitter_id);
+        }
+
+        wp_send_json_success(array(
+            'unavailable_fitter_ids' => array_unique($unavailable_fitter_ids),
+            'date' => $date
         ));
     }
 

@@ -218,6 +218,19 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
         </div>
     </div>
 
+    <!-- Day View Navigation (shown only in day view mode) -->
+    <div class="day-view-navigation">
+        <button type="button" class="button" id="day-view-prev">
+            <span class="dashicons dashicons-arrow-left-alt2"></span> Previous Day
+        </button>
+        <span class="day-view-date" id="day-view-current-date">
+            <!-- Will be populated by JavaScript -->
+        </span>
+        <button type="button" class="button" id="day-view-next">
+            Next Day <span class="dashicons dashicons-arrow-right-alt2"></span>
+        </button>
+    </div>
+
     <!-- Fitter Availability Info -->
     <?php if (!empty($fitter_availability)): ?>
         <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 15px; margin: 15px 0; border-radius: 4px;">
@@ -450,10 +463,14 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
                                 </div>
                                 <div class="entry-time">
                                     <?php
-                                    if ($entry->job_time) {
+                                    // For measures, show specific time (job_time)
+                                    // For jobs (including converted measures), prioritize fitting_time_period (AM/PM)
+                                    if ($entry->status === 'measure' && $entry->job_time) {
                                         echo esc_html(date('H:i', strtotime($entry->job_time)));
                                     } elseif (!empty($entry->fitting_time_period)) {
                                         echo '<span style="font-weight: 600;">' . esc_html(strtoupper($entry->fitting_time_period)) . '</span>';
+                                    } elseif ($entry->job_time) {
+                                        echo esc_html(date('H:i', strtotime($entry->job_time)));
                                     } else {
                                         echo '<span style="color: #999;">No time</span>';
                                     }
@@ -769,7 +786,7 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <p class="description">Select a fitter to see their availability</p>
+                <p class="description">Available fitter will be auto-assigned when you select a date</p>
             </div>
 
             <!-- Availability Display -->

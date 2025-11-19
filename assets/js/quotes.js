@@ -31,13 +31,10 @@
         $('.view-quote').on('click', function() {
             viewQuote($(this).data('id'));
         });
-        $(document).on('click', '.convert-to-job', function() {
-            openConvertToJobModal($(this).data('id'));
-        });
+        // Note: convert-to-job handler is registered globally outside initQuotes()
 
         // Form submissions
         $('#quote-entry-form').on('submit', saveQuote);
-        $('#convert-to-job-form').on('submit', convertQuoteToJob);
 
         // Customer operations
         initCustomerSearch();
@@ -1806,7 +1803,13 @@
 
     // Initialize on document ready
     $(document).ready(function() {
-        // Only initialize if we're on the quotes page
+        // Always register convert-to-job handler (needed for calendar view widget)
+        $(document).on('click', '.convert-to-job', function() {
+            openConvertToJobModal($(this).data('id'));
+        });
+        $('#convert-to-job-form').on('submit', convertQuoteToJob);
+
+        // Only initialize full quotes functionality if we're on the quotes page
         if ($('#add-new-quote').length) {
             initQuotes();
 

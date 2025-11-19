@@ -58,6 +58,8 @@
 .calendar-actions {
     display: flex;
     gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 /* Google Calendar Style Grid */
@@ -1634,6 +1636,11 @@
 .day-view-nav-buttons {
     display: flex;
     gap: 10px;
+}
+
+/* Day View - Always show navigation in day view mode */
+.calendar-container.day-view-mode ~ .day-view-navigation {
+    display: flex !important;
 }
 
 /* Mobile Responsive - Auto Day View */

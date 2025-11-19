@@ -2361,12 +2361,11 @@
             // Add time period selection handler to load availability when AM/PM is selected
             $('#convert-measure-fitting-time-period').off('change').on('change', function() {
                 const timePeriod = $(this).val();
-                const fitterId = $('#convert-measure-fitter').val();
 
-                // Only load availability if a time period AND fitter is selected
-                if (timePeriod && fitterId && (timePeriod === 'am' || timePeriod === 'pm')) {
+                // Only load availability if a time period is selected (show ALL fitters like quote conversion)
+                if (timePeriod && (timePeriod === 'am' || timePeriod === 'pm')) {
                     $('#measure-fitter-availability-display').show();
-                    loadMeasureFitterAvailability(fitterId, timePeriod);
+                    loadMeasureFitterAvailability(null, timePeriod); // null = all fitters
                 } else {
                     $('#measure-fitter-availability-display').hide();
                     $('#measure-availability-calendar').empty();
@@ -2856,6 +2855,98 @@
         }
 
         // ===========================================
+        // FITTER AVAILABILITY FILTERING
+        // ===========================================
+
+        /**
+         * Filter fitter dropdown based on unavailable fitters for selected date
+         * @param {string} dateInputSelector - jQuery selector for the date input
+         * @param {string} fitterSelectSelector - jQuery selector for the fitter dropdown
+         */
+        function filterFittersByDate(dateInputSelector, fitterSelectSelector) {
+            const selectedDate = $(dateInputSelector).val();
+            const $fitterSelect = $(fitterSelectSelector);
+
+            if (!selectedDate) {
+                // No date selected, show all fitters
+                $fitterSelect.find('option').prop('disabled', false).show();
+                return;
+            }
+
+            // Call AJAX to get unavailable fitters for this date
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_unavailable_fitters_for_date',
+                    nonce: wpStaffDiary.nonce,
+                    date: selectedDate
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const unavailableFitterIds = response.data.unavailable_fitter_ids;
+
+                        // Reset all fitters first
+                        $fitterSelect.find('option').prop('disabled', false).removeClass('unavailable-fitter');
+
+                        // Disable unavailable fitters
+                        unavailableFitterIds.forEach(function(fitterId) {
+                            $fitterSelect.find('option[value="' + fitterId + '"]')
+                                .prop('disabled', true)
+                                .addClass('unavailable-fitter')
+                                .text(function(i, text) {
+                                    // Add (Unavailable) suffix if not already there
+                                    if (text.indexOf('(Unavailable)') === -1) {
+                                        return text + ' (Unavailable)';
+                                    }
+                                    return text;
+                                });
+                        });
+
+                        // If current selection is unavailable, reset it
+                        const currentValue = $fitterSelect.val();
+                        if (currentValue && unavailableFitterIds.includes(parseInt(currentValue))) {
+                            $fitterSelect.val('');
+                        }
+                    }
+                },
+                error: function() {
+                    console.error('Error checking fitter availability');
+                }
+            });
+        }
+
+        /**
+         * Initialize fitter availability filtering for all forms
+         */
+        function initFitterAvailabilityFiltering() {
+            // Job form (Add/Edit Job)
+            $('#fitting-date').on('change', function() {
+                filterFittersByDate('#fitting-date', '#fitter');
+            });
+
+            // Quote form fitting date (when converting quote to job)
+            $('#convert-fitting-date').on('change', function() {
+                filterFittersByDate('#convert-fitting-date', '#convert-fitter');
+            });
+
+            // Measure conversion form
+            $('#convert-measure-fitting-date').on('change', function() {
+                filterFittersByDate('#convert-measure-fitting-date', '#convert-measure-fitter');
+            });
+
+            // Measure form (if applicable)
+            if ($('#measure-fitting-date').length) {
+                $('#measure-fitting-date').on('change', function() {
+                    filterFittersByDate('#measure-fitting-date', '#measure-fitter');
+                });
+            }
+        }
+
+        // Initialize filtering on page load
+        initFitterAvailabilityFiltering();
+
+        // ===========================================
         // DAY VIEW MODE
         // ===========================================
 
@@ -2908,6 +2999,10 @@
             // Update toggle button text
             $('#view-toggle-text').text('Week View');
 
+            // Show day navigation
+            $('.day-view-navigation').addClass('active');
+            updateDayNavigationDate();
+
             // Save preference to localStorage
             if (!isMobile) {
                 localStorage.setItem('calendarViewMode', 'day');
@@ -2931,6 +3026,9 @@
             // Update toggle button text
             $('#view-toggle-text').text('Day View');
 
+            // Hide day navigation
+            $('.day-view-navigation').removeClass('active');
+
             // Save preference to localStorage
             localStorage.setItem('calendarViewMode', 'week');
         }
@@ -2951,6 +3049,26 @@
             $weekdayNames.eq(index).addClass('active-day');
 
             currentDayViewIndex = index;
+
+            // Update navigation date if in day view mode
+            if (isDayViewMode) {
+                updateDayNavigationDate();
+            }
+        }
+
+        /**
+         * Update day navigation date display
+         */
+        function updateDayNavigationDate() {
+            const $currentDay = $('.calendar-day').eq(currentDayViewIndex);
+            const dateStr = $currentDay.attr('data-date');
+
+            if (dateStr) {
+                const date = new Date(dateStr + 'T00:00:00');
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const formattedDate = date.toLocaleDateString('en-GB', options);
+                $('#day-view-current-date').text(formattedDate);
+            }
         }
 
         /**
@@ -2983,6 +3101,10 @@
                     enableDayView();
                 }
             }
+
+            // Day navigation button handlers
+            $('#day-view-prev').on('click', previousDay);
+            $('#day-view-next').on('click', nextDay);
 
             // Add keyboard navigation
             $(document).on('keydown', function(e) {
