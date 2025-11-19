@@ -22,14 +22,26 @@ $db = new WP_Staff_Diary_Database();
 // Get quotes (status = 'quotation')
 global $wpdb;
 $table_diary = $wpdb->prefix . 'staff_diary_entries';
-$quotes = $wpdb->get_results($wpdb->prepare(
-    "SELECT * FROM $table_diary
-     WHERE user_id = %d
-     AND status = 'quotation'
-     AND is_cancelled = 0
-     ORDER BY created_at DESC",
-    $current_user->ID
-));
+
+if (current_user_can('manage_options')) {
+    // Administrator - show ALL quotes
+    $quotes = $wpdb->get_results(
+        "SELECT * FROM $table_diary
+         WHERE status = 'quotation'
+         AND is_cancelled = 0
+         ORDER BY created_at DESC"
+    );
+} else {
+    // Regular user - show only their quotes
+    $quotes = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_diary
+         WHERE user_id = %d
+         AND status = 'quotation'
+         AND is_cancelled = 0
+         ORDER BY created_at DESC",
+        $current_user->ID
+    ));
+}
 
 // Get statuses for dropdown
 $statuses = get_option('wp_staff_diary_statuses', array(

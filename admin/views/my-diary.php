@@ -24,7 +24,13 @@ $current_month = isset($_GET['month']) ? sanitize_text_field($_GET['month']) : d
 $start_date = $current_month . '-01';
 $end_date = date('Y-m-t', strtotime($start_date));
 
-$entries = $db->get_user_entries($current_user->ID, $start_date, $end_date);
+if (current_user_can('manage_options')) {
+    // Administrator - show ALL entries
+    $entries = $db->get_all_entries($start_date, $end_date, 1000); // High limit for admins
+} else {
+    // Regular user - show only their entries
+    $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date);
+}
 
 // Get statuses for dropdown
 $statuses = get_option('wp_staff_diary_statuses', array(

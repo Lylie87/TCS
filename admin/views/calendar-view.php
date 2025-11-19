@@ -34,25 +34,47 @@ $end_date_str = $end_date->format('Y-m-d');
 
 // Get entries for the current week - filter by FITTING DATE for calendar view
 // Exclude quotes (status = 'quotation') from calendar
+// Administrators see all entries, regular users see only their own
 global $wpdb;
 $table_diary = $wpdb->prefix . 'staff_diary_entries';
-$entries = $wpdb->get_results($wpdb->prepare(
-    "SELECT * FROM $table_diary
-     WHERE user_id = %d
-     AND is_cancelled = 0
-     AND fitting_date_unknown = 0
-     AND status != 'quotation'
-     AND (
-         (fitting_date BETWEEN %s AND %s)
-         OR (fitting_date IS NULL AND job_date BETWEEN %s AND %s)
-     )
-     ORDER BY fitting_date DESC, job_date DESC, created_at DESC",
-    $current_user->ID,
-    $start_date,
-    $end_date_str,
-    $start_date,
-    $end_date_str
-));
+
+if (current_user_can('manage_options')) {
+    // Administrator - show ALL entries
+    $entries = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_diary
+         WHERE is_cancelled = 0
+         AND fitting_date_unknown = 0
+         AND status != 'quotation'
+         AND (
+             (fitting_date BETWEEN %s AND %s)
+             OR (fitting_date IS NULL AND job_date BETWEEN %s AND %s)
+         )
+         ORDER BY fitting_date DESC, job_date DESC, created_at DESC",
+        $start_date,
+        $end_date_str,
+        $start_date,
+        $end_date_str
+    ));
+} else {
+    // Regular user - show only their entries
+    $entries = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_diary
+         WHERE user_id = %d
+         AND is_cancelled = 0
+         AND fitting_date_unknown = 0
+         AND status != 'quotation'
+         AND (
+             (fitting_date BETWEEN %s AND %s)
+             OR (fitting_date IS NULL AND job_date BETWEEN %s AND %s)
+         )
+         ORDER BY fitting_date DESC, job_date DESC, created_at DESC",
+        $current_user->ID,
+        $start_date,
+        $end_date_str,
+        $start_date,
+        $end_date_str
+    ));
+}
 
 error_log('===== CALENDAR VIEW QUERY =====');
 error_log('User ID: ' . $current_user->ID);
@@ -66,27 +88,52 @@ error_log('===== END CALENDAR VIEW QUERY =====');
 // Get ALL jobs with unknown fitting dates (not limited to current week)
 // Exclude quotes from this section as well
 // Order by fitting_date if available, otherwise job_date (soonest first)
-$unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
-    "SELECT * FROM $table_diary
-     WHERE user_id = %d
-     AND fitting_date_unknown = 1
-     AND is_cancelled = 0
-     AND status != 'quotation'
-     ORDER BY
-        CASE WHEN fitting_date IS NOT NULL THEN fitting_date ELSE job_date END ASC",
-    $current_user->ID
-));
+if (current_user_can('manage_options')) {
+    // Administrator - show ALL entries with unknown fitting dates
+    $unknown_fitting_date_entries = $wpdb->get_results(
+        "SELECT * FROM $table_diary
+         WHERE fitting_date_unknown = 1
+         AND is_cancelled = 0
+         AND status != 'quotation'
+         ORDER BY
+            CASE WHEN fitting_date IS NOT NULL THEN fitting_date ELSE job_date END ASC"
+    );
+} else {
+    // Regular user - show only their entries with unknown fitting dates
+    $unknown_fitting_date_entries = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_diary
+         WHERE user_id = %d
+         AND fitting_date_unknown = 1
+         AND is_cancelled = 0
+         AND status != 'quotation'
+         ORDER BY
+            CASE WHEN fitting_date IS NOT NULL THEN fitting_date ELSE job_date END ASC",
+        $current_user->ID
+    ));
+}
 
 // Get outstanding quotes (entries with quote_date that haven't been accepted yet)
-$outstanding_quotes = $wpdb->get_results($wpdb->prepare(
-    "SELECT * FROM $table_diary
-     WHERE user_id = %d
-     AND quote_date IS NOT NULL
-     AND accepted_date IS NULL
-     AND is_cancelled = 0
-     ORDER BY quote_date DESC",
-    $current_user->ID
-));
+if (current_user_can('manage_options')) {
+    // Administrator - show ALL outstanding quotes
+    $outstanding_quotes = $wpdb->get_results(
+        "SELECT * FROM $table_diary
+         WHERE quote_date IS NOT NULL
+         AND accepted_date IS NULL
+         AND is_cancelled = 0
+         ORDER BY quote_date DESC"
+    );
+} else {
+    // Regular user - show only their outstanding quotes
+    $outstanding_quotes = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_diary
+         WHERE user_id = %d
+         AND quote_date IS NOT NULL
+         AND accepted_date IS NULL
+         AND is_cancelled = 0
+         ORDER BY quote_date DESC",
+        $current_user->ID
+    ));
+}
 
 // Organize scheduled entries by date (exclude jobs with unknown fitting dates)
 $entries_by_date = array();
@@ -537,15 +584,27 @@ function is_fitter_unavailable($fitter_id, $date, $availability_records) {
             </div>
             <?php
             // Get recent quotes for the widget (last 10)
-            $recent_quotes = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $table_diary
-                 WHERE user_id = %d
-                 AND status = 'quotation'
-                 AND is_cancelled = 0
-                 ORDER BY created_at DESC
-                 LIMIT 10",
-                $current_user->ID
-            ));
+            if (current_user_can('manage_options')) {
+                // Administrator - show ALL recent quotes
+                $recent_quotes = $wpdb->get_results(
+                    "SELECT * FROM $table_diary
+                     WHERE status = 'quotation'
+                     AND is_cancelled = 0
+                     ORDER BY created_at DESC
+                     LIMIT 10"
+                );
+            } else {
+                // Regular user - show only their recent quotes
+                $recent_quotes = $wpdb->get_results($wpdb->prepare(
+                    "SELECT * FROM $table_diary
+                     WHERE user_id = %d
+                     AND status = 'quotation'
+                     AND is_cancelled = 0
+                     ORDER BY created_at DESC
+                     LIMIT 10",
+                    $current_user->ID
+                ));
+            }
 
             // Enrich quotes with customer data and totals
             foreach ($recent_quotes as $quote) {

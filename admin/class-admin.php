@@ -134,7 +134,13 @@ class WP_Staff_Diary_Admin {
         $end_date->modify('+6 days');
         $end_date_str = $end_date->format('Y-m-d');
 
-        $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date_str);
+        if (current_user_can('manage_options')) {
+            // Administrator - show ALL entries for the week
+            $entries = $db->get_all_entries($start_date, $end_date_str, 1000);
+        } else {
+            // Regular user - show only their entries for the week
+            $entries = $db->get_user_entries($current_user->ID, $start_date, $end_date_str);
+        }
 
         // Organize entries by date
         $entries_by_date = array();
@@ -170,16 +176,28 @@ class WP_Staff_Diary_Admin {
         global $wpdb;
         $table_diary = $wpdb->prefix . 'staff_diary_entries';
 
-        // Get recent quotes for current user (last 10)
-        $quotes = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table_diary
-             WHERE user_id = %d
-             AND status = 'quotation'
-             AND is_cancelled = 0
-             ORDER BY created_at DESC
-             LIMIT 10",
-            $current_user->ID
-        ));
+        // Get recent quotes (last 10)
+        if (current_user_can('manage_options')) {
+            // Administrator - show ALL recent quotes
+            $quotes = $wpdb->get_results(
+                "SELECT * FROM $table_diary
+                 WHERE status = 'quotation'
+                 AND is_cancelled = 0
+                 ORDER BY created_at DESC
+                 LIMIT 10"
+            );
+        } else {
+            // Regular user - show only their recent quotes
+            $quotes = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_diary
+                 WHERE user_id = %d
+                 AND status = 'quotation'
+                 AND is_cancelled = 0
+                 ORDER BY created_at DESC
+                 LIMIT 10",
+                $current_user->ID
+            ));
+        }
 
         // Enrich quotes with customer data and totals
         foreach ($quotes as $quote) {
@@ -217,15 +235,26 @@ class WP_Staff_Diary_Admin {
         $vat_enabled = get_option('wp_staff_diary_vat_enabled', '1');
         $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 
-        // Get all non-cancelled, non-quotation jobs for current user
-        $all_jobs = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table_diary
-             WHERE user_id = %d
-             AND is_cancelled = 0
-             AND status != 'quotation'
-             ORDER BY job_date DESC",
-            $current_user->ID
-        ));
+        // Get all non-cancelled, non-quotation jobs
+        if (current_user_can('manage_options')) {
+            // Administrator - show ALL jobs
+            $all_jobs = $wpdb->get_results(
+                "SELECT * FROM $table_diary
+                 WHERE is_cancelled = 0
+                 AND status != 'quotation'
+                 ORDER BY job_date DESC"
+            );
+        } else {
+            // Regular user - show only their jobs
+            $all_jobs = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_diary
+                 WHERE user_id = %d
+                 AND is_cancelled = 0
+                 AND status != 'quotation'
+                 ORDER BY job_date DESC",
+                $current_user->ID
+            ));
+        }
 
         // Calculate totals and categorize jobs
         $total_outstanding = 0;
@@ -257,15 +286,27 @@ class WP_Staff_Diary_Admin {
         }
 
         // Get recent payments (last 5)
-        $recent_payments = $wpdb->get_results($wpdb->prepare(
-            "SELECT p.*, e.order_number
-             FROM {$wpdb->prefix}staff_diary_payments p
-             JOIN $table_diary e ON p.diary_entry_id = e.id
-             WHERE e.user_id = %d
-             ORDER BY p.recorded_at DESC
-             LIMIT 5",
-            $current_user->ID
-        ));
+        if (current_user_can('manage_options')) {
+            // Administrator - show ALL recent payments
+            $recent_payments = $wpdb->get_results(
+                "SELECT p.*, e.order_number
+                 FROM {$wpdb->prefix}staff_diary_payments p
+                 JOIN $table_diary e ON p.diary_entry_id = e.id
+                 ORDER BY p.recorded_at DESC
+                 LIMIT 5"
+            );
+        } else {
+            // Regular user - show only their recent payments
+            $recent_payments = $wpdb->get_results($wpdb->prepare(
+                "SELECT p.*, e.order_number
+                 FROM {$wpdb->prefix}staff_diary_payments p
+                 JOIN $table_diary e ON p.diary_entry_id = e.id
+                 WHERE e.user_id = %d
+                 ORDER BY p.recorded_at DESC
+                 LIMIT 5",
+                $current_user->ID
+            ));
+        }
 
         // Sort jobs with balance by balance amount (highest first)
         usort($jobs_with_balance, function($a, $b) {
@@ -320,16 +361,29 @@ class WP_Staff_Diary_Admin {
         $vat_rate = get_option('wp_staff_diary_vat_rate', '20');
 
         // Get jobs that are past payment terms
-        $jobs = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table_diary
-             WHERE user_id = %d
-             AND is_cancelled = 0
-             AND status != 'quotation'
-             AND job_date <= %s
-             ORDER BY job_date ASC",
-            $current_user->ID,
-            $overdue_date_str
-        ));
+        if (current_user_can('manage_options')) {
+            // Administrator - show ALL overdue jobs
+            $jobs = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_diary
+                 WHERE is_cancelled = 0
+                 AND status != 'quotation'
+                 AND job_date <= %s
+                 ORDER BY job_date ASC",
+                $overdue_date_str
+            ));
+        } else {
+            // Regular user - show only their overdue jobs
+            $jobs = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table_diary
+                 WHERE user_id = %d
+                 AND is_cancelled = 0
+                 AND status != 'quotation'
+                 AND job_date <= %s
+                 ORDER BY job_date ASC",
+                $current_user->ID,
+                $overdue_date_str
+            ));
+        }
 
         // Filter jobs with outstanding balances
         $overdue_jobs = array();
