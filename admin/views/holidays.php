@@ -181,11 +181,13 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     location.reload();
                 } else {
-                    alert('Error: ' + response.data.message);
+                    var errorMsg = response.data && response.data.message ? response.data.message : 'Unknown error occurred';
+                    alert('Error: ' + errorMsg);
                 }
             },
-            error: function() {
-                alert('Error adding availability record');
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', xhr.responseText);
+                alert('Error adding availability record: ' + error);
             }
         });
     });
@@ -217,11 +219,13 @@ jQuery(document).ready(function($) {
                         }
                     });
                 } else {
-                    alert('Error: ' + response.data.message);
+                    var errorMsg = response.data && response.data.message ? response.data.message : 'Unknown error occurred';
+                    alert('Error: ' + errorMsg);
                 }
             },
-            error: function() {
-                alert('Error removing availability record');
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', xhr.responseText);
+                alert('Error removing availability record: ' + error);
             }
         });
     });
