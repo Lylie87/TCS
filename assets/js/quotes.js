@@ -14,6 +14,8 @@
     let selectedCustomerId = null;
     let selectedWCProductId = null;
     let currentAvailability = []; // Store availability data for conflict checking
+    let quoteProducts = []; // Store products for current quote
+    let editingProductId = null; // Track which product is being edited
 
     /**
      * Initialize quotes page functionality
@@ -74,6 +76,9 @@
                 $('#quote-billing-address-section').slideUp();
             }
         });
+
+        // Product management
+        initProductManagement();
     }
 
     /**
@@ -141,6 +146,9 @@
                 if (response.success) {
                     const quote = response.data.entry || response.data;
                     populateQuoteForm(quote);
+
+                    // Load products for this quote
+                    loadProducts();
 
                     // Check if this is a measure being converted (status=measure)
                     const isConvertingMeasure = quote.status === 'measure';
@@ -1094,12 +1102,8 @@
      * Calculate quote total
      */
     function calculateQuoteTotal() {
-        // Product total (without fitting cost)
-        const qty = parseFloat($('#quote-sq-mtr-qty').val()) || 0;
-        const pricePerUnit = parseFloat($('#quote-price-per-sq-mtr').val()) || 0;
-        const productTotal = qty * pricePerUnit;
-
-        $('#quote-product-total-display').text(productTotal.toFixed(2));
+        // Products subtotal (sum of all products added)
+        const productsSubtotal = parseFloat($('#quote-products-subtotal-display').text()) || 0;
 
         // Accessories total
         let accessoriesTotal = 0;
@@ -1111,11 +1115,11 @@
 
         $('#quote-accessories-total-display').text(accessoriesTotal.toFixed(2));
 
-        // Fitting cost (separate line item)
+        // Fitting cost (manual entry for all products)
         const fittingCost = parseFloat($('#quote-fitting-cost').val()) || 0;
 
-        // Subtotal (product + accessories + fitting)
-        const subtotal = productTotal + accessoriesTotal + fittingCost;
+        // Subtotal (products + accessories + fitting)
+        const subtotal = productsSubtotal + accessoriesTotal + fittingCost;
         $('#quote-subtotal-display').text(subtotal.toFixed(2));
 
         // VAT
@@ -1238,6 +1242,14 @@
 
         // Reset fitting cost
         $('#quote-fitting-cost').val('0.00');
+
+        // Reset products
+        quoteProducts = [];
+        editingProductId = null;
+        clearProductForm();
+        cancelProductEdit();
+        $('#quote-products-list-section').hide();
+        $('#quote-products-subtotal-display').text('0.00');
 
         calculateQuoteTotal();
 
@@ -1848,5 +1860,329 @@
             }
         }
     });
+
+    /**
+     * ================================================
+     * PRODUCT MANAGEMENT FUNCTIONS
+     * ================================================
+     */
+
+    /**
+     * Initialize product management handlers
+     */
+    function initProductManagement() {
+        // Add/Update product button
+        $('#quote-add-product-btn').on('click', handleAddProduct);
+
+        // Cancel edit button
+        $('#quote-cancel-product-edit-btn').on('click', cancelProductEdit);
+
+        // Show product preview as user types
+        $('#quote-product-description, #quote-size, #quote-price-per-sq-mtr').on('input', updateProductPreview);
+    }
+
+    /**
+     * Update product preview text
+     */
+    function updateProductPreview() {
+        const desc = $('#quote-product-description').val().trim();
+        const size = $('#quote-size').val().trim();
+        const price = parseFloat($('#quote-price-per-sq-mtr').val()) || 0;
+        const sqMtr = parseFloat($('#quote-sq-mtr-qty').val()) || 0;
+
+        if (desc || size || price > 0) {
+            const total = sqMtr * price;
+            const preview = `${desc || 'Product'} - ${size || 'No size'} - £${total.toFixed(2)}`;
+            $('#quote-product-preview').text(preview);
+        } else {
+            $('#quote-product-preview').text('');
+        }
+    }
+
+    /**
+     * Handle add/update product
+     */
+    function handleAddProduct() {
+        const description = $('#quote-product-description').val().trim();
+        const size = $('#quote-size').val().trim();
+        const sqMtr = parseFloat($('#quote-sq-mtr-qty').val()) || 0;
+        const pricePerSqMtr = parseFloat($('#quote-price-per-sq-mtr').val()) || 0;
+        const productTotal = sqMtr * pricePerSqMtr;
+
+        // Validation
+        if (!description) {
+            alert('Please enter a product description');
+            return;
+        }
+        if (sqMtr <= 0) {
+            alert('Please enter a valid size');
+            return;
+        }
+        if (pricePerSqMtr <= 0) {
+            alert('Please enter a price per sq.mtr');
+            return;
+        }
+
+        // Check if quote has been saved
+        if (!currentQuoteId) {
+            alert('Please save the quote first before adding products');
+            return;
+        }
+
+        const productData = {
+            product_description: description,
+            size: size,
+            sq_mtr_qty: sqMtr,
+            price_per_sq_mtr: pricePerSqMtr,
+            product_total: productTotal
+        };
+
+        // Check if editing existing product
+        const productId = $('#quote-current-product-id').val();
+
+        if (productId && editingProductId) {
+            // Update existing product
+            updateProduct(productId, productData);
+        } else {
+            // Add new product
+            addProduct(productData);
+        }
+    }
+
+    /**
+     * Add new product to quote
+     */
+    function addProduct(productData) {
+        const $btn = $('#quote-add-product-btn');
+        $btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Adding...');
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'add_product',
+                nonce: wpStaffDiary.nonce,
+                entry_id: currentQuoteId,
+                ...productData
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Reload products list
+                    loadProducts();
+                    clearProductForm();
+                } else {
+                    alert('Error: ' + (response.data.message || 'Failed to add product'));
+                }
+            },
+            error: function() {
+                alert('An error occurred while adding the product');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-plus-alt"></span> Add Product');
+            }
+        });
+    }
+
+    /**
+     * Update existing product
+     */
+    function updateProduct(productId, productData) {
+        const $btn = $('#quote-add-product-btn');
+        $btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Updating...');
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'update_product',
+                nonce: wpStaffDiary.nonce,
+                product_id: productId,
+                ...productData
+            },
+            success: function(response) {
+                if (response.success) {
+                    loadProducts();
+                    clearProductForm();
+                    cancelProductEdit();
+                } else {
+                    alert('Error: ' + (response.data.message || 'Failed to update product'));
+                }
+            },
+            error: function() {
+                alert('An error occurred while updating the product');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-plus-alt"></span> Add Product');
+            }
+        });
+    }
+
+    /**
+     * Load products for current quote
+     */
+    function loadProducts() {
+        if (!currentQuoteId) {
+            return;
+        }
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'get_entry_products',
+                nonce: wpStaffDiary.nonce,
+                entry_id: currentQuoteId
+            },
+            success: function(response) {
+                if (response.success) {
+                    quoteProducts = response.data.products || [];
+                    renderProductsList();
+                    updateProductsSubtotal(response.data.products_total || 0);
+                    calculateQuoteTotal(); // Recalculate grand total
+                }
+            }
+        });
+    }
+
+    /**
+     * Render products list table
+     */
+    function renderProductsList() {
+        const $tbody = $('#quote-products-tbody');
+        $tbody.empty();
+
+        if (quoteProducts.length === 0) {
+            $('#quote-products-list-section').hide();
+            return;
+        }
+
+        $('#quote-products-list-section').show();
+
+        quoteProducts.forEach(function(product) {
+            const row = `
+                <tr data-product-id="${product.id}">
+                    <td>${escapeHtml(product.product_description || '')}</td>
+                    <td>${escapeHtml(product.size || '')}</td>
+                    <td>${parseFloat(product.sq_mtr_qty || 0).toFixed(2)}</td>
+                    <td>£${parseFloat(product.price_per_sq_mtr || 0).toFixed(2)}</td>
+                    <td>£${parseFloat(product.product_total || 0).toFixed(2)}</td>
+                    <td>
+                        <button type="button" class="button button-small edit-product" data-product-id="${product.id}" title="Edit">
+                            <span class="dashicons dashicons-edit"></span>
+                        </button>
+                        <button type="button" class="button button-small delete-product" data-product-id="${product.id}" title="Remove">
+                            <span class="dashicons dashicons-trash"></span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            $tbody.append(row);
+        });
+
+        // Bind edit/delete handlers
+        $('.edit-product').on('click', function() {
+            const productId = $(this).data('product-id');
+            editProduct(productId);
+        });
+
+        $('.delete-product').on('click', function() {
+            const productId = $(this).data('product-id');
+            if (confirm('Are you sure you want to remove this product?')) {
+                deleteProduct(productId);
+            }
+        });
+    }
+
+    /**
+     * Update products subtotal display
+     */
+    function updateProductsSubtotal(total) {
+        $('#quote-products-subtotal-display').text(parseFloat(total).toFixed(2));
+    }
+
+    /**
+     * Edit product - populate form
+     */
+    function editProduct(productId) {
+        const product = quoteProducts.find(p => p.id == productId);
+        if (!product) return;
+
+        // Populate form
+        $('#quote-product-description').val(product.product_description || '');
+        $('#quote-size').val(product.size || '');
+        $('#quote-sq-mtr-qty').val(product.sq_mtr_qty || '');
+        $('#quote-price-per-sq-mtr').val(product.price_per_sq_mtr || '');
+        $('#quote-current-product-id').val(product.id);
+
+        // Change button to Update mode
+        $('#quote-add-product-btn').html('<span class="dashicons dashicons-yes"></span> Update Product');
+        $('#quote-cancel-product-edit-btn').show();
+
+        editingProductId = productId;
+
+        // Scroll to form
+        $('#quote-product-entry-form')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Cancel product edit
+     */
+    function cancelProductEdit() {
+        clearProductForm();
+        $('#quote-add-product-btn').html('<span class="dashicons dashicons-plus-alt"></span> Add Product');
+        $('#quote-cancel-product-edit-btn').hide();
+        $('#quote-current-product-id').val('');
+        editingProductId = null;
+    }
+
+    /**
+     * Delete product
+     */
+    function deleteProduct(productId) {
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'delete_product',
+                nonce: wpStaffDiary.nonce,
+                product_id: productId
+            },
+            success: function(response) {
+                if (response.success) {
+                    loadProducts(); // Reload list
+                } else {
+                    alert('Error: ' + (response.data.message || 'Failed to delete product'));
+                }
+            },
+            error: function() {
+                alert('An error occurred while deleting the product');
+            }
+        });
+    }
+
+    /**
+     * Clear product form
+     */
+    function clearProductForm() {
+        $('#quote-product-description').val('');
+        $('#quote-size').val('');
+        $('#quote-sq-mtr-qty').val('');
+        $('#quote-price-per-sq-mtr').val('');
+        $('#quote-product-preview').text('');
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
 
 })(jQuery);
