@@ -1292,7 +1292,10 @@
      * Reset quote form
      */
     function resetQuoteForm() {
-        $('#quote-entry-form')[0].reset();
+        const form = $('#quote-entry-form')[0];
+        if (form) {
+            form.reset();
+        }
         selectedCustomerId = null;
         selectedWCProductId = null;
         $('#quote-entry-id').val('');
