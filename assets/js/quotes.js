@@ -14,7 +14,6 @@
     let selectedCustomerId = null;
     let selectedWCProductId = null;
     let currentAvailability = []; // Store availability data for conflict checking
-    let fittingCostManualMode = false; // Track if fitting cost is in manual entry mode
 
     /**
      * Initialize quotes page functionality
@@ -1048,13 +1047,7 @@
             if (!isNaN(length) && !isNaN(width) && length > 0 && width > 0) {
                 const sqMeters = length * width;
                 $('#quote-sq-mtr-qty').val(sqMeters.toFixed(2));
-
-                // Trigger fitting cost calculation if in auto mode
-                if (!fittingCostManualMode) {
-                    autoCalculateFittingCost();
-                } else {
-                    calculateQuoteTotal();
-                }
+                calculateQuoteTotal();
                 return;
             }
         }
@@ -1080,25 +1073,8 @@
             }
         });
 
-        // Toggle manual/auto fitting cost mode
-        $('#quote-toggle-manual-fitting-cost').on('click', function() {
-            fittingCostManualMode = !fittingCostManualMode;
-
-            if (fittingCostManualMode) {
-                // Switch to manual mode
-                $('#quote-fitting-cost').prop('readonly', false).css('background', '#fff').focus();
-                $(this).html('<span class="dashicons dashicons-calculator"></span> Use Auto-Calculation');
-                $('#quote-auto-calc-description').hide();
-                $('#quote-manual-calc-description').show();
-            } else {
-                // Switch to auto mode
-                $('#quote-fitting-cost').prop('readonly', true).css('background', '#f0f0f1');
-                $(this).html('<span class="dashicons dashicons-edit"></span> Enter Manual Cost');
-                $('#quote-auto-calc-description').show();
-                $('#quote-manual-calc-description').hide();
-                autoCalculateFittingCost();
-            }
-        });
+        // Fitting cost is now manual entry - add to calculations
+        $('#quote-fitting-cost').on('input', calculateQuoteTotal);
 
         // Accessory calculations
         $('.quote-accessory-checkbox').on('change', function() {
@@ -1112,21 +1088,6 @@
         });
 
         $('.quote-accessory-quantity').on('input', calculateQuoteTotal);
-    }
-
-    /**
-     * Auto-calculate fitting cost based on size × default rate
-     */
-    function autoCalculateFittingCost() {
-        const qty = parseFloat($('#quote-sq-mtr-qty').val()) || 0;
-        const defaultRateText = $('#quote-default-rate-display').text().trim();
-        const defaultRate = parseFloat(defaultRateText) || parseFloat(wpStaffDiary.defaultFittingRate) || 15;
-        const fittingCost = qty * defaultRate;
-
-        console.log('Auto-calculating fitting cost:', {qty, defaultRate, fittingCost});
-
-        $('#quote-fitting-cost').val(fittingCost.toFixed(2));
-        calculateQuoteTotal();
     }
 
     /**
@@ -1275,12 +1236,8 @@
         $('.quote-accessory-checkbox').prop('checked', false);
         $('.quote-accessory-quantity').prop('disabled', true).val(1);
 
-        // Reset fitting cost to auto-calculation mode
-        fittingCostManualMode = false;
-        $('#quote-fitting-cost').prop('readonly', true).css('background', '#f0f0f1').val('0.00');
-        $('#quote-toggle-manual-fitting-cost').html('<span class="dashicons dashicons-edit"></span> Enter Manual Cost');
-        $('#quote-auto-calc-description').show();
-        $('#quote-manual-calc-description').hide();
+        // Reset fitting cost
+        $('#quote-fitting-cost').val('0.00');
 
         calculateQuoteTotal();
 
