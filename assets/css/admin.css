@@ -1362,6 +1362,10 @@
 
     .calendar-actions .button {
         width: 100%;
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
     }
 
     /* Calendar entries - adjust for mobile */
