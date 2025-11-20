@@ -164,6 +164,13 @@ class WP_Staff_Diary {
         $this->loader->add_action('wp_ajax_update_accessory', $plugin_admin, 'update_accessory');
         $this->loader->add_action('wp_ajax_delete_accessory', $plugin_admin, 'delete_accessory');
 
+        // AJAX handlers - Products (Multiple products per quote/job)
+        $this->loader->add_action('wp_ajax_add_product', $plugin_admin, 'add_product');
+        $this->loader->add_action('wp_ajax_get_entry_products', $plugin_admin, 'get_entry_products');
+        $this->loader->add_action('wp_ajax_update_product', $plugin_admin, 'update_product');
+        $this->loader->add_action('wp_ajax_delete_product', $plugin_admin, 'delete_product');
+        $this->loader->add_action('wp_ajax_update_product_orders', $plugin_admin, 'update_product_orders');
+
         // AJAX handlers - Quotes & Discounts
         $this->loader->add_action('wp_ajax_send_discount_email', $plugin_admin, 'send_discount_email');
         $this->loader->add_action('wp_ajax_send_discount_offer', $plugin_admin, 'send_discount_email');

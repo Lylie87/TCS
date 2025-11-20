@@ -1319,6 +1319,181 @@ class WP_Staff_Diary_Admin {
     }
 
     /**
+     * ================================================
+     * PRODUCTS AJAX HANDLERS
+     * ================================================
+     */
+
+    /**
+     * AJAX: Add product to quote/job
+     */
+    public function add_product() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+        $product_description = sanitize_textarea_field($_POST['product_description']);
+        $size = sanitize_text_field($_POST['size']);
+        $sq_mtr_qty = floatval($_POST['sq_mtr_qty']);
+        $price_per_sq_mtr = floatval($_POST['price_per_sq_mtr']);
+        $product_total = floatval($_POST['product_total']);
+
+        if (empty($entry_id)) {
+            wp_send_json_error(array('message' => 'Entry ID is required'));
+            return;
+        }
+
+        // Load repository
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/products/class-products-repository.php';
+        $products_repo = new WP_Staff_Diary_Products_Repository();
+
+        $product_data = array(
+            'product_description' => $product_description,
+            'size' => $size,
+            'sq_mtr_qty' => $sq_mtr_qty,
+            'price_per_sq_mtr' => $price_per_sq_mtr,
+            'product_total' => $product_total
+        );
+
+        $product_id = $products_repo->add_product($entry_id, $product_data);
+
+        if ($product_id) {
+            // Get the newly created product
+            $product = $products_repo->find($product_id);
+
+            wp_send_json_success(array(
+                'message' => 'Product added successfully',
+                'product' => $product
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to add product'));
+        }
+    }
+
+    /**
+     * AJAX: Get all products for an entry
+     */
+    public function get_entry_products() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $entry_id = intval($_POST['entry_id']);
+
+        if (empty($entry_id)) {
+            wp_send_json_error(array('message' => 'Entry ID is required'));
+            return;
+        }
+
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/products/class-products-repository.php';
+        $products_repo = new WP_Staff_Diary_Products_Repository();
+
+        $products = $products_repo->get_entry_products($entry_id);
+        $products_total = $products_repo->calculate_products_total($entry_id);
+
+        wp_send_json_success(array(
+            'products' => $products,
+            'products_total' => $products_total
+        ));
+    }
+
+    /**
+     * AJAX: Update product
+     */
+    public function update_product() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $product_id = intval($_POST['product_id']);
+        $product_description = sanitize_textarea_field($_POST['product_description']);
+        $size = sanitize_text_field($_POST['size']);
+        $sq_mtr_qty = floatval($_POST['sq_mtr_qty']);
+        $price_per_sq_mtr = floatval($_POST['price_per_sq_mtr']);
+        $product_total = floatval($_POST['product_total']);
+
+        if (empty($product_id)) {
+            wp_send_json_error(array('message' => 'Product ID is required'));
+            return;
+        }
+
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/products/class-products-repository.php';
+        $products_repo = new WP_Staff_Diary_Products_Repository();
+
+        $product_data = array(
+            'product_description' => $product_description,
+            'size' => $size,
+            'sq_mtr_qty' => $sq_mtr_qty,
+            'price_per_sq_mtr' => $price_per_sq_mtr,
+            'product_total' => $product_total
+        );
+
+        $result = $products_repo->update_product($product_id, $product_data);
+
+        if ($result !== false) {
+            $product = $products_repo->find($product_id);
+
+            wp_send_json_success(array(
+                'message' => 'Product updated successfully',
+                'product' => $product
+            ));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update product'));
+        }
+    }
+
+    /**
+     * AJAX: Delete product
+     */
+    public function delete_product() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $product_id = intval($_POST['product_id']);
+
+        if (empty($product_id)) {
+            wp_send_json_error(array('message' => 'Product ID is required'));
+            return;
+        }
+
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/products/class-products-repository.php';
+        $products_repo = new WP_Staff_Diary_Products_Repository();
+
+        $result = $products_repo->delete_product($product_id);
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => 'Product deleted successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to delete product'));
+        }
+    }
+
+    /**
+     * AJAX: Update product display orders (for drag-drop reordering)
+     */
+    public function update_product_orders() {
+        check_ajax_referer('wp_staff_diary_nonce', 'nonce');
+
+        $order_map = isset($_POST['order_map']) ? $_POST['order_map'] : array();
+
+        if (empty($order_map)) {
+            wp_send_json_error(array('message' => 'Order map is required'));
+            return;
+        }
+
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/products/class-products-repository.php';
+        $products_repo = new WP_Staff_Diary_Products_Repository();
+
+        // Sanitize the order_map
+        $sanitized_map = array();
+        foreach ($order_map as $product_id => $display_order) {
+            $sanitized_map[intval($product_id)] = intval($display_order);
+        }
+
+        $result = $products_repo->update_display_orders($sanitized_map);
+
+        if ($result) {
+            wp_send_json_success(array('message' => 'Product order updated successfully'));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to update product order'));
+        }
+    }
+
+    /**
      * Get payment with user info
      */
     private function get_payment_with_user_info($payment_id) {
