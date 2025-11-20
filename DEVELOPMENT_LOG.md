@@ -4,7 +4,16 @@
 **Date**: November 2025 (Updated)
 **Branch**: `claude/continue-planner-development-01QTApcJJf3qjycJU2Fdt1ps`
 **Starting Version**: 2.5.0
-**Current Version**: 3.6.3
+**Current Version**: 3.6.4
+
+---
+
+## v3.6.4 - Fix: Force products table creation on upgrade
+
+### Fixes
+- Modified upgrade logic to always check if products table exists
+- Will create table even if version is already past 3.6.0
+- Fixes issue where table wasn't created during version updates
 
 ---
 

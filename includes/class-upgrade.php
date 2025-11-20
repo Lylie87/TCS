@@ -84,7 +84,11 @@ class WP_Staff_Diary_Upgrade {
         }
 
         // Upgrade to v3.6.0 - Create products table for multiple products per quote/job
-        if (version_compare($from_version, '3.6.0', '<')) {
+        // Always check if table exists and create if missing (for users who skipped 3.6.0)
+        $table_products = $wpdb->prefix . 'staff_diary_products';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_products'");
+
+        if (!$table_exists || version_compare($from_version, '3.6.0', '<')) {
             self::upgrade_to_3_6_0();
         }
 
