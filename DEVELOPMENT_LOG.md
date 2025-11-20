@@ -4,7 +4,57 @@
 **Date**: November 2025 (Updated)
 **Branch**: `claude/continue-planner-development-01QTApcJJf3qjycJU2Fdt1ps`
 **Starting Version**: 2.5.0
-**Current Version**: 3.6.0
+**Current Version**: 3.6.1
+
+---
+
+## v3.6.1 - Auto-Save & UX Improvements
+
+### Overview
+Streamlined user experience with auto-save functionality and removed unnecessary alerts.
+
+### Changes
+
+#### Auto-Save Implementation
+**Quotes (quotes.js)**:
+- Added `autoSaveQuoteDraft()` function that creates draft entry immediately when modal opens
+- Removed "Please save the quote first before adding products" prompt
+- Products now auto-trigger save if needed (1 second retry)
+- Added debounced auto-save (2 second delay) for address, fitting cost, notes, and accessory changes
+- Photo upload now auto-saves draft if no entry ID exists
+
+**Jobs (admin.js)**:
+- Added `autoSaveJobDraft()` function that creates draft entry immediately when modal opens
+- Removed "Please save the job first before adding products" prompt
+- Products now auto-trigger save if needed (1 second retry)
+- Added debounced auto-save (2 second delay) for address, fitting cost, notes, and accessory changes
+- Stores draft entry ID in `currentEntryId` and form field `#entry-id`
+
+#### Removed Success Alerts
+**All Forms (quotes, jobs, measures)**:
+- Removed all "successfully saved" alert popups
+- Modal closes and page reloads silently after successful save
+- Only show alerts for errors
+- Changed button text from "Save Quote/Job" to "Save & Close"
+- Changed keepOpen button text to "Save & Close"
+
+#### Dashboard Widget Fix
+**quotes-widget.php**:
+- Fixed non-functional Edit button on Recent Quotes dashboard widget
+- Changed from fake button triggering to proper URL redirect
+- Now redirects to: `admin.php?page=wp-staff-diary-quotes&action=edit&entry_id=X`
+
+**quotes.js**:
+- Added URL parameter handler for direct edit links
+- Checks for `action=edit` and `entry_id` parameters
+- Auto-opens edit modal when these parameters are present
+- Separated from measure conversion logic
+
+### Benefits
+- **Seamless Multi-Product Entry**: Users can add multiple products without modal closing
+- **No Workflow Interruption**: No more save → close → reopen → add cycle
+- **Reduced Alert Fatigue**: Only see errors, not constant success messages
+- **Working Dashboard Actions**: Edit button now functional from dashboard
 
 ---
 
