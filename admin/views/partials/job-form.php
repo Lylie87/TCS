@@ -223,39 +223,73 @@ $accessories = $db->get_all_accessories();
             </div>
             <?php endif; ?>
 
-            <!-- Product Details Fields -->
-            <div id="product-details-fields">
+            <!-- Product Entry Form -->
+            <div id="job-product-entry-form">
                 <div class="form-field">
                     <label for="product-description">Product Description</label>
-                    <textarea id="product-description" name="product_description" rows="1" style="resize: vertical; min-height: 40px;"></textarea>
+                    <textarea id="product-description" rows="1" style="resize: vertical; min-height: 40px;"></textarea>
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
                         <label for="size">Size</label>
-                        <input type="text" id="size" name="size" placeholder="e.g. 4 x 3">
-                        <p class="description">Enter as length x width (e.g. 4 x 3 or 2.5 x 6). Will auto-calculate m².</p>
+                        <input type="text" id="size" placeholder="e.g. 4 x 3">
+                        <p class="description">Enter as length x width (e.g. 4 x 3). Will auto-calculate m².</p>
                     </div>
                     <div class="form-field">
-                        <label for="sq-mtr-qty">Sq.Mtr / Quantity</label>
-                        <input type="number" id="sq-mtr-qty" name="sq_mtr_qty" step="0.01" min="0" readonly style="background: #f0f0f1;">
-                        <p class="description">Auto-calculated from Size field</p>
+                        <label for="sq-mtr-qty">Sq.Mtr</label>
+                        <input type="number" id="sq-mtr-qty" step="0.01" min="0" readonly style="background: #f0f0f1;">
+                        <p class="description">Auto-calculated</p>
                     </div>
-                </div>
-                <div class="form-grid">
                     <div class="form-field">
                         <label for="price-per-sq-mtr">Price per Sq.Mtr (<?php echo esc_html($currency_symbol); ?>)</label>
-                        <input type="number" id="price-per-sq-mtr" name="price_per_sq_mtr" step="0.01" min="0">
+                        <input type="number" id="price-per-sq-mtr" step="0.01" min="0">
                     </div>
                 </div>
+
                 <div class="form-field" style="margin-top: 15px;">
-                    <label for="fitting-cost">Fitting Cost (<?php echo esc_html($currency_symbol); ?>)</label>
-                    <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
-                    <p class="description">Manual entry - cost for fitting all products</p>
+                    <input type="hidden" id="job-current-product-id" value="">
+                    <button type="button" id="job-add-product-btn" class="button button-primary">
+                        <span class="dashicons dashicons-plus-alt"></span> Add Product
+                    </button>
+                    <button type="button" id="job-cancel-product-edit-btn" class="button" style="display: none;">
+                        Cancel
+                    </button>
+                    <span id="job-product-preview" style="margin-left: 15px; color: #666; font-size: 13px;"></span>
                 </div>
             </div>
 
-            <div class="calculation-display">
-                <strong>Product Total:</strong> <?php echo esc_html($currency_symbol); ?><span id="product-total-display">0.00</span>
+            <!-- Products List -->
+            <div id="job-products-list-section" style="display: none; margin-top: 20px;">
+                <h4 style="margin-bottom: 10px;">Products Added</h4>
+                <table class="wp-list-table widefat fixed" id="job-products-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Description</th>
+                            <th style="width: 12%;">Size</th>
+                            <th style="width: 12%;">Sq.Mtr</th>
+                            <th style="width: 14%;">Price/Sq.Mtr</th>
+                            <th style="width: 14%;">Total</th>
+                            <th style="width: 8%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="job-products-tbody">
+                        <!-- Products will be inserted here -->
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: #f9f9f9; font-weight: 600;">
+                            <td colspan="4" style="text-align: right; padding-right: 10px;">Products Subtotal:</td>
+                            <td><?php echo esc_html($currency_symbol); ?><span id="job-products-subtotal-display">0.00</span></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Fitting Cost (after products) -->
+            <div class="form-field" style="margin-top: 20px;">
+                <label for="fitting-cost">Fitting Cost (<?php echo esc_html($currency_symbol); ?>)</label>
+                <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
+                <p class="description">Manual entry - cost for fitting all products</p>
             </div>
         </div>
 
