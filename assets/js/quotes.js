@@ -1443,10 +1443,10 @@
         // Financial Summary
         html += '<h3>Quote Summary</h3>';
         html += '<table style="width: 100%; border-collapse: collapse;">';
-        html += '<tr><td>Subtotal:</td><td style="text-align: right;">£' + (quote.subtotal || quote.total || '0').toFixed(2) + '</td></tr>';
+        html += '<tr><td>Subtotal:</td><td style="text-align: right;">£' + parseFloat(quote.subtotal || quote.total || '0').toFixed(2) + '</td></tr>';
 
         if (vatEnabled == 1) {
-            const vat = quote.vat || (quote.total * (vatRate / (100 + parseFloat(vatRate))));
+            const vat = quote.vat || (parseFloat(quote.total || '0') * (vatRate / (100 + parseFloat(vatRate))));
             html += '<tr><td>VAT (' + vatRate + '%):</td><td style="text-align: right;">£' + parseFloat(vat).toFixed(2) + '</td></tr>';
         }
 
