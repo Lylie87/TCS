@@ -167,6 +167,11 @@
                         View
                     </button>
                     <button type="button"
+                            class="button button-small quote-widget-btn edit-quote-dashboard"
+                            data-quote-id="<?php echo $quote->id; ?>">
+                        Edit
+                    </button>
+                    <button type="button"
                             class="button button-primary button-small quote-widget-btn convert-quote-dashboard"
                             data-quote-id="<?php echo $quote->id; ?>">
                         Convert
@@ -221,6 +226,17 @@ jQuery(document).ready(function($) {
 
         // Simulate clicking the view-entry button which will trigger admin.js handler
         $('<button class="view-entry" data-id="' + quoteId + '" style="display:none;"></button>')
+            .appendTo('body')
+            .trigger('click')
+            .remove();
+    });
+
+    // Edit quote from dashboard - trigger click on hidden edit button
+    $(document).on('click', '.edit-quote-dashboard', function() {
+        var quoteId = $(this).data('quote-id');
+
+        // Trigger the edit button which will be handled by quotes.js
+        $('<button class="edit-quote" data-id="' + quoteId + '" style="display:none;"></button>')
             .appendTo('body')
             .trigger('click')
             .remove();

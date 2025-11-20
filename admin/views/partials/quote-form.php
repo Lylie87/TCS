@@ -155,7 +155,7 @@ $accessories = $db->get_all_accessories();
             <div id="quote-product-details-fields">
                 <div class="form-field">
                     <label for="quote-product-description">Product Description</label>
-                    <textarea id="quote-product-description" name="product_description" rows="3"></textarea>
+                    <textarea id="quote-product-description" name="product_description" rows="1" style="resize: vertical; min-height: 40px;"></textarea>
                 </div>
                 <div class="form-grid">
                     <div class="form-field">

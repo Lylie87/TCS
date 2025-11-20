@@ -1120,6 +1120,43 @@
             parseSizeAndCalculateSqMtr();
         });
 
+        // Job fitting cost manual/auto toggle
+        let jobFittingCostManualMode = false;
+
+        $('#job-toggle-manual-fitting-cost').on('click', function() {
+            jobFittingCostManualMode = !jobFittingCostManualMode;
+
+            if (jobFittingCostManualMode) {
+                // Switch to manual mode
+                $('#fitting-cost').prop('readonly', false).css('background', '#fff').focus();
+                $(this).html('<span class="dashicons dashicons-calculator"></span> Use Auto-Calculation');
+                $('#job-auto-calc-description').hide();
+                $('#job-manual-calc-description').show();
+            } else {
+                // Switch to auto mode
+                $('#fitting-cost').prop('readonly', true).css('background', '#f0f0f1');
+                $(this).html('<span class="dashicons dashicons-edit"></span> Enter Manual Cost');
+                $('#job-auto-calc-description').show();
+                $('#job-manual-calc-description').hide();
+                autoCalculateJobFittingCost();
+            }
+        });
+
+        /**
+         * Auto-calculate fitting cost for jobs
+         */
+        function autoCalculateJobFittingCost() {
+            const qty = parseFloat($('#sq-mtr-qty').val()) || 0;
+            const defaultRateText = $('#job-default-rate-display').text().trim();
+            const defaultRate = parseFloat(defaultRateText) || parseFloat(wpStaffDiary.defaultFittingRate) || 15;
+            const fittingCost = qty * defaultRate;
+
+            console.log('Auto-calculating job fitting cost:', {qty, defaultRate, fittingCost});
+
+            $('#fitting-cost').val(fittingCost.toFixed(2));
+            updateCalculations();
+        }
+
         /**
          * Parse size field and auto-calculate sq.mtr for jobs
          */
@@ -1148,7 +1185,13 @@
                 if (!isNaN(length) && !isNaN(width) && length > 0 && width > 0) {
                     const sqMeters = length * width;
                     $('#sq-mtr-qty').val(sqMeters.toFixed(2));
-                    updateCalculations();
+
+                    // Auto-calculate fitting cost if in auto mode
+                    if (!jobFittingCostManualMode) {
+                        autoCalculateJobFittingCost();
+                    } else {
+                        updateCalculations();
+                    }
                     return;
                 }
             }

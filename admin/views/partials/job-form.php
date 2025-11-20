@@ -227,7 +227,7 @@ $accessories = $db->get_all_accessories();
             <div id="product-details-fields">
                 <div class="form-field">
                     <label for="product-description">Product Description</label>
-                    <textarea id="product-description" name="product_description" rows="3"></textarea>
+                    <textarea id="product-description" name="product_description" rows="1" style="resize: vertical; min-height: 40px;"></textarea>
                 </div>
                 <div class="form-grid">
                     <div class="form-field">
@@ -249,8 +249,16 @@ $accessories = $db->get_all_accessories();
                 </div>
                 <div class="form-field" style="margin-top: 15px;">
                     <label for="fitting-cost">Fitting Cost (<?php echo esc_html($currency_symbol); ?>)</label>
-                    <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00">
-                    <p class="description">Customer cost for fitting the product</p>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number" id="fitting-cost" name="fitting_cost" step="0.01" min="0" value="0.00" readonly style="background: #f0f0f1;">
+                        <button type="button" id="job-toggle-manual-fitting-cost" class="button button-secondary">
+                            <span class="dashicons dashicons-edit"></span> Enter Manual Cost
+                        </button>
+                    </div>
+                    <p class="description">
+                        <span id="job-auto-calc-description">Automatically calculated from size × <?php echo esc_html($currency_symbol); ?><span id="job-default-rate-display"><?php echo get_option('wp_staff_diary_quote_default_fitting_cost', '15'); ?></span>/m²</span>
+                        <span id="job-manual-calc-description" style="display: none;">Manual entry mode - click button to return to auto-calculation</span>
+                    </p>
                 </div>
             </div>
 

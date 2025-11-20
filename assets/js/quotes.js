@@ -92,14 +92,15 @@
         });
 
         // Close modals on background click (but handle customer modal separately)
+        // Note: Quote and view-quote modals should NOT close on background click
         $('.wp-staff-diary-modal').on('click', function(e) {
             if (e.target === this) {
                 // Check if this is the customer modal
                 if ($(this).attr('id') === 'quick-add-customer-modal') {
                     $('#quick-add-customer-modal').fadeOut(200);
-                } else {
-                    closeAllModals();
                 }
+                // Do NOT close quote-modal, view-quote-modal, or convert-to-job-modal on outside click
+                // Only close them via X button or Cancel button
             }
         });
 
@@ -1118,8 +1119,12 @@
      */
     function autoCalculateFittingCost() {
         const qty = parseFloat($('#quote-sq-mtr-qty').val()) || 0;
-        const defaultRate = parseFloat($('#quote-default-rate-display').text()) || 0;
+        const defaultRateText = $('#quote-default-rate-display').text().trim();
+        const defaultRate = parseFloat(defaultRateText) || parseFloat(wpStaffDiary.defaultFittingRate) || 15;
         const fittingCost = qty * defaultRate;
+
+        console.log('Auto-calculating fitting cost:', {qty, defaultRate, fittingCost});
+
         $('#quote-fitting-cost').val(fittingCost.toFixed(2));
         calculateQuoteTotal();
     }
