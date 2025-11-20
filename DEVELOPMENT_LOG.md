@@ -4,7 +4,19 @@
 **Date**: November 2025 (Updated)
 **Branch**: `claude/continue-planner-development-01QTApcJJf3qjycJU2Fdt1ps`
 **Starting Version**: 2.5.0
-**Current Version**: 3.6.1
+**Current Version**: 3.6.2
+
+---
+
+## v3.6.2 - Bugfix: Products Table & Method Name
+
+### Fixes
+- Fixed `add_product` handler calling incorrect method name `find()` → `find_by_id()`
+- Added table existence check before product operations
+- Better error messages if products table doesn't exist
+
+### Notes
+Users upgrading from pre-3.6.0 versions need to deactivate/reactivate plugin to create the products table.
 
 ---
 
