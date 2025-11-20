@@ -211,26 +211,37 @@
      * View quote details
      */
     function viewQuote(quoteId) {
-        $.ajax({
-            url: wpStaffDiary.ajaxUrl,
-            type: 'POST',
-            data: {
-                action: 'get_diary_entry',
-                nonce: wpStaffDiary.nonce,
-                entry_id: quoteId
-            },
-            success: function(response) {
-                if (response.success) {
-                    const quote = response.data.entry || response.data;
-                    displayQuoteDetails(quote);
-                    $('#view-quote-modal').fadeIn(200);
-                } else {
-                    alert('Error loading quote: ' + (response.data.message || 'Unknown error'));
+        // Load both quote data and products
+        $.when(
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_diary_entry',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: quoteId
                 }
-            },
-            error: function() {
-                alert('Failed to load quote data.');
+            }),
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_entry_products',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: quoteId
+                }
+            })
+        ).done(function(quoteResponse, productsResponse) {
+            if (quoteResponse[0].success) {
+                const quote = quoteResponse[0].data.entry || quoteResponse[0].data;
+                const products = productsResponse[0].success ? (productsResponse[0].data.products || []) : [];
+                displayQuoteDetails(quote, products);
+                $('#view-quote-modal').fadeIn(200);
+            } else {
+                alert('Error loading quote: ' + (quoteResponse[0].data.message || 'Unknown error'));
             }
+        }).fail(function() {
+            alert('Failed to load quote data.');
         });
     }
 
@@ -1373,9 +1384,10 @@
     /**
      * Display quote details in view modal
      */
-    function displayQuoteDetails(quote) {
+    function displayQuoteDetails(quote, products) {
         // This would create a detailed view similar to job sheet
         // Showing all quote information in a readable format
+        products = products || [];
         let html = '<div class="quote-details-view">';
 
         // Header with PDF and Email buttons
@@ -1423,11 +1435,35 @@
             html += '</p>';
         }
 
-        html += '<h3>Product Details</h3>';
-        html += '<p>' + (quote.product_description || 'No description') + '</p>';
-        html += '<p>Quantity: ' + (quote.sq_mtr_qty || '0') + ' m² @ £' + (quote.price_per_sq_mtr || '0') + '/m²</p>';
+        // Products
+        html += '<h3>Products</h3>';
+        if (products && products.length > 0) {
+            html += '<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">';
+            html += '<thead><tr style="border-bottom: 2px solid #ddd;">';
+            html += '<th style="text-align: left; padding: 8px;">Description</th>';
+            html += '<th style="text-align: left; padding: 8px;">Size</th>';
+            html += '<th style="text-align: right; padding: 8px;">Sq.Mtr</th>';
+            html += '<th style="text-align: right; padding: 8px;">Price/Sq.Mtr</th>';
+            html += '<th style="text-align: right; padding: 8px;">Total</th>';
+            html += '</tr></thead>';
+            html += '<tbody>';
+            products.forEach(function(product) {
+                html += '<tr style="border-bottom: 1px solid #eee;">';
+                html += '<td style="padding: 8px;">' + escapeHtml(product.product_description || '') + '</td>';
+                html += '<td style="padding: 8px;">' + escapeHtml(product.size || '') + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">' + parseFloat(product.sq_mtr_qty || 0).toFixed(2) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">£' + parseFloat(product.price_per_sq_mtr || 0).toFixed(2) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">£' + parseFloat(product.product_total || 0).toFixed(2) + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            html += '</table>';
+        } else {
+            html += '<p>No products added</p>';
+        }
+
         if (quote.fitting_cost && parseFloat(quote.fitting_cost) > 0) {
-            html += '<p>Fitting Cost: £' + parseFloat(quote.fitting_cost).toFixed(2) + '</p>';
+            html += '<p><strong>Fitting Cost:</strong> £' + parseFloat(quote.fitting_cost).toFixed(2) + '</p>';
         }
 
         // Accessories
