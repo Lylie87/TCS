@@ -1342,6 +1342,16 @@ class WP_Staff_Diary_Admin {
             return;
         }
 
+        // Check if products table exists
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'staff_diary_products';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+
+        if (!$table_exists) {
+            wp_send_json_error(array('message' => 'Products table does not exist. Please deactivate and reactivate the plugin.'));
+            return;
+        }
+
         // Load repository
         require_once WP_STAFF_DIARY_PATH . 'includes/modules/products/class-products-repository.php';
         $products_repo = new WP_Staff_Diary_Products_Repository();
@@ -1358,7 +1368,7 @@ class WP_Staff_Diary_Admin {
 
         if ($product_id) {
             // Get the newly created product
-            $product = $products_repo->find($product_id);
+            $product = $products_repo->find_by_id($product_id);
 
             wp_send_json_success(array(
                 'message' => 'Product added successfully',
