@@ -1959,6 +1959,16 @@
                 // Clean up URL
                 const cleanUrl = window.location.pathname + '?page=wp-staff-diary-quotes';
                 window.history.replaceState({}, document.title, cleanUrl);
+            } else if (urlParams.get('action') === 'view') {
+                // View quote modal
+                const entryId = urlParams.get('entry_id');
+                if (entryId) {
+                    viewQuote(entryId);
+
+                    // Clean up URL
+                    const cleanUrl = window.location.pathname + '?page=wp-staff-diary-quotes';
+                    window.history.replaceState({}, document.title, cleanUrl);
+                }
             }
         }
     });

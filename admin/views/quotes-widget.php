@@ -220,15 +220,12 @@
 jQuery(document).ready(function($) {
     var currentDiscountQuoteId = null;
 
-    // View quote from dashboard - trigger click on hidden view button
+    // View quote from dashboard - redirect to quotes page
     $(document).on('click', '.view-quote-dashboard', function() {
         var quoteId = $(this).data('quote-id');
 
-        // Simulate clicking the view-entry button which will trigger admin.js handler
-        $('<button class="view-entry" data-id="' + quoteId + '" style="display:none;"></button>')
-            .appendTo('body')
-            .trigger('click')
-            .remove();
+        // Redirect to quotes page with view parameter
+        window.location.href = '<?php echo admin_url('admin.php?page=wp-staff-diary-quotes'); ?>&action=view&entry_id=' + quoteId;
     });
 
     // Edit quote from dashboard - redirect to quotes page with edit action
