@@ -1484,17 +1484,42 @@
             html += '</ul>';
         }
 
-        // Financial Summary
+        // Financial Summary - Calculate from products
         html += '<h3>Quote Summary</h3>';
         html += '<table style="width: 100%; border-collapse: collapse;">';
-        html += '<tr><td>Subtotal:</td><td style="text-align: right;">£' + parseFloat(quote.subtotal || quote.total || '0').toFixed(2) + '</td></tr>';
 
-        if (vatEnabled == 1) {
-            const vat = quote.vat || (parseFloat(quote.total || '0') * (vatRate / (100 + parseFloat(vatRate))));
-            html += '<tr><td>VAT (' + vatRate + '%):</td><td style="text-align: right;">£' + parseFloat(vat).toFixed(2) + '</td></tr>';
+        // Calculate products total
+        let productsTotal = 0;
+        if (products && products.length > 0) {
+            products.forEach(function(product) {
+                productsTotal += parseFloat(product.product_total || 0);
+            });
         }
 
-        html += '<tr style="font-weight: bold; font-size: 16px; border-top: 2px solid #ddd;"><td>Total:</td><td style="text-align: right;">£' + parseFloat(quote.total || '0').toFixed(2) + '</td></tr>';
+        // Calculate accessories total
+        let accessoriesTotal = 0;
+        if (quote.accessories && quote.accessories.length > 0) {
+            quote.accessories.forEach(function(acc) {
+                accessoriesTotal += parseFloat(acc.total_price || 0);
+            });
+        }
+
+        // Fitting cost
+        const fittingCost = parseFloat(quote.fitting_cost || 0);
+
+        // Subtotal
+        const subtotal = productsTotal + accessoriesTotal + fittingCost;
+        html += '<tr><td>Subtotal:</td><td style="text-align: right;">£' + subtotal.toFixed(2) + '</td></tr>';
+
+        // VAT
+        let total = subtotal;
+        if (vatEnabled == 1) {
+            const vatAmount = subtotal * (vatRate / 100);
+            html += '<tr><td>VAT (' + vatRate + '%):</td><td style="text-align: right;">£' + vatAmount.toFixed(2) + '</td></tr>';
+            total = subtotal + vatAmount;
+        }
+
+        html += '<tr style="font-weight: bold; font-size: 16px; border-top: 2px solid #ddd;"><td>Total:</td><td style="text-align: right;">£' + total.toFixed(2) + '</td></tr>';
         html += '</table>';
 
         // Internal Notes
