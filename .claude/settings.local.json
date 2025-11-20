@@ -14,7 +14,11 @@
       "Bash(git fetch:*)",
       "Bash(git log:*)",
       "Bash(gh auth:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(if [ -d \"C:\\Users\\alexl\\TCS Git\\TCS\\includes\\modules\\products\" ])",
+      "Bash(then echo \"Directory exists\")",
+      "Bash(else echo \"Directory does not exist\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

@@ -4,7 +4,120 @@
 **Date**: November 2025 (Updated)
 **Branch**: `claude/continue-planner-development-01QTApcJJf3qjycJU2Fdt1ps`
 **Starting Version**: 2.5.0
-**Current Version**: 3.5.6
+**Current Version**: 3.6.0
+
+---
+
+## v3.6.0 - Multiple Products Feature
+
+### Overview
+Major feature: Support for multiple products per quote/job with individual line items, editing, and removal capabilities.
+
+### Database Changes
+
+#### New Table: `wp_staff_diary_products`
+Created in `includes/class-upgrade.php` (lines 614-646):
+- `id` - Primary key
+- `diary_entry_id` - Foreign key to diary entries
+- `product_description` - Text field for product details
+- `size` - varchar(50) for dimensions (e.g., "4 x 3")
+- `sq_mtr_qty` - decimal(10,2) for calculated square meters
+- `price_per_sq_mtr` - decimal(10,2) for unit price
+- `product_total` - decimal(10,2) for calculated total
+- `display_order` - int(11) for ordering products
+- `created_at` - timestamp
+
+### Repository Layer
+
+#### New File: `includes/modules/products/class-products-repository.php`
+Complete repository class with methods:
+- `add_product($diary_entry_id, $data)` - Add product with auto-increment display_order
+- `get_entry_products($diary_entry_id)` - Get all products for entry, ordered by display_order
+- `update_product($product_id, $data)` - Update existing product
+- `delete_product($product_id)` - Delete product by ID
+- `calculate_products_total($diary_entry_id)` - Calculate sum of all product totals
+- `update_display_orders($orders_array)` - Batch update display orders for drag-drop
+
+### AJAX Endpoints
+
+#### New Handlers in `admin/class-admin.php`:
+1. `add_product()` (lines 1330-1370) - Add new product to entry
+2. `get_entry_products()` (lines 1372-1402) - Get products list and subtotal
+3. `update_product()` (lines 1404-1444) - Update existing product
+4. `delete_product()` (lines 1446-1475) - Delete product
+5. `update_product_orders()` (lines 1477-1509) - Update display orders
+
+All registered in `includes/class-wp-staff-diary.php` (lines 167-172)
+
+### UI Changes
+
+#### `admin/views/partials/quote-form.php`
+Complete restructure of product section (lines 115-222):
+- Product entry form with description, size, sq.mtr, price per sq.mtr
+- Size auto-calculation (length x width = sq.mtr)
+- Add/Edit/Cancel buttons
+- Products list table showing all added products
+- Edit/Delete buttons per product
+- Products subtotal in table footer
+- Fitting cost moved after products (manual entry only)
+
+#### `admin/views/partials/job-form.php`
+Identical product section implementation with `job-` prefixes
+
+### JavaScript Implementation
+
+#### `assets/js/quotes.js` (345 new lines)
+Complete product management system:
+
+**Global State**:
+- `quoteProducts` array - Stores products for current quote
+- `editingProductId` - Tracks which product is being edited
+
+**Key Functions**:
+- `initProductManagement()` - Initialize event handlers
+- `handleAddProduct()` - Validate and trigger add/update
+- `addProduct(data)` - AJAX call to add product
+- `updateProduct(productId, data)` - AJAX call to update product
+- `loadProducts(entryId)` - Load products from database
+- `renderProductsList()` - Render products table with edit/delete buttons
+- `editProduct(productId)` - Load product into form for editing
+- `deleteProduct(productId)` - Delete product with confirmation
+- `clearProductForm()` - Reset form after add/edit
+- `updateProductPreview()` - Show real-time calculation preview
+- `updateQuoteProductsSubtotal(total)` - Update subtotal display
+
+**Size Calculation** (lines 1877-1906):
+- Parses "length x width" format
+- Auto-calculates square meters
+- Updates sq.mtr field in real-time
+
+**Updated `calculateQuoteTotal()`**:
+- Changed from single product calculation to products subtotal
+- Flow: Products Subtotal + Accessories + Fitting Cost + VAT = Total
+
+#### `assets/js/admin.js` (330 new lines, 3259-3591)
+Identical product management for jobs with `job-` prefixes:
+- Same functions as quotes.js but for job context
+- `initJobProductManagement()`, `loadJobProducts()`, etc.
+- Updated `updateCalculations()` to use job products subtotal
+
+### Fitting Cost Simplification
+Removed auto-calculation complexity:
+- Now manual entry only (no toggle)
+- Applies to all products collectively
+- Simpler user experience
+
+### Other Fixes in v3.5.7
+1. **Dashboard Recent Quotes Widget** - Added Edit button
+2. **Quote Modal** - Prevented closing on outside click
+3. **Product Description** - Reduced from 3 rows to 1 row
+4. **Fitting Cost Toggle** - Fixed recalculation bugs
+
+### Security Features
+- XSS protection via `escapeHtml()` in JavaScript rendering
+- Input sanitization in all AJAX handlers
+- Nonce verification on all endpoints
+- SQL injection prevention via prepared statements
 
 ---
 

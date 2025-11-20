@@ -1161,12 +1161,8 @@
          * Update all calculations
          */
         function updateCalculations() {
-            // Product total
-            const sqMtrQty = parseFloat($('#sq-mtr-qty').val()) || 0;
-            const pricePerSqMtr = parseFloat($('#price-per-sq-mtr').val()) || 0;
-            const productTotal = sqMtrQty * pricePerSqMtr;
-
-            $('#product-total-display').text(productTotal.toFixed(2));
+            // Products subtotal (sum of all products added)
+            const productsSubtotal = parseFloat($('#job-products-subtotal-display').text()) || 0;
 
             // Accessories total
             let accessoriesTotal = 0;
@@ -1179,11 +1175,11 @@
 
             $('#accessories-total-display').text(accessoriesTotal.toFixed(2));
 
-            // Fitting cost
+            // Fitting cost (manual entry for all products)
             const fittingCost = parseFloat($('#fitting-cost').val()) || 0;
 
-            // Subtotal
-            const subtotal = productTotal + fittingCost + accessoriesTotal;
+            // Subtotal (products + accessories + fitting)
+            const subtotal = productsSubtotal + accessoriesTotal + fittingCost;
             $('#subtotal-display').text(subtotal.toFixed(2));
 
             // VAT
@@ -3255,6 +3251,336 @@
                 }
             });
         }
+
+        // ===========================================
+        // PRODUCT MANAGEMENT (JOBS)
+        // ===========================================
+
+        // Global variables for job products
+        let jobProducts = [];
+        let editingJobProductId = null;
+
+        // Initialize product management for jobs
+        function initJobProductManagement() {
+            // Add/Update product button
+            $('#job-add-product-btn').on('click', handleAddJobProduct);
+
+            // Cancel edit button
+            $('#job-cancel-product-edit-btn').on('click', cancelJobProductEdit);
+
+            // Show product preview as user types
+            $('#product-description, #size, #price-per-sq-mtr').on('input', updateJobProductPreview);
+        }
+
+        // Initialize if job modal exists
+        if ($('#job-add-product-btn').length) {
+            initJobProductManagement();
+        }
+
+        /**
+         * Update job product preview text
+         */
+        function updateJobProductPreview() {
+            const desc = $('#product-description').val().trim();
+            const size = $('#size').val().trim();
+            const price = parseFloat($('#price-per-sq-mtr').val()) || 0;
+            const sqMtr = parseFloat($('#sq-mtr-qty').val()) || 0;
+
+            if (desc || size || price > 0) {
+                const total = sqMtr * price;
+                const preview = `${desc || 'Product'} - ${size || 'No size'} - £${total.toFixed(2)}`;
+                $('#job-product-preview').text(preview);
+            } else {
+                $('#job-product-preview').text('');
+            }
+        }
+
+        /**
+         * Handle add/update job product
+         */
+        function handleAddJobProduct() {
+            const description = $('#product-description').val().trim();
+            const size = $('#size').val().trim();
+            const sqMtr = parseFloat($('#sq-mtr-qty').val()) || 0;
+            const pricePerSqMtr = parseFloat($('#price-per-sq-mtr').val()) || 0;
+            const productTotal = sqMtr * pricePerSqMtr;
+
+            // Validation
+            if (!description) {
+                alert('Please enter a product description');
+                return;
+            }
+            if (sqMtr <= 0) {
+                alert('Please enter a valid size');
+                return;
+            }
+            if (pricePerSqMtr <= 0) {
+                alert('Please enter a price per sq.mtr');
+                return;
+            }
+
+            // Get current entry ID
+            const entryId = $('#entry-id').val();
+            if (!entryId) {
+                alert('Please save the job first before adding products');
+                return;
+            }
+
+            const productData = {
+                product_description: description,
+                size: size,
+                sq_mtr_qty: sqMtr,
+                price_per_sq_mtr: pricePerSqMtr,
+                product_total: productTotal
+            };
+
+            // Check if editing existing product
+            const productId = $('#job-current-product-id').val();
+
+            if (productId && editingJobProductId) {
+                updateJobProduct(productId, productData);
+            } else {
+                addJobProduct(entryId, productData);
+            }
+        }
+
+        /**
+         * Add new product to job
+         */
+        function addJobProduct(entryId, productData) {
+            const $btn = $('#job-add-product-btn');
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Adding...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'add_product',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId,
+                    ...productData
+                },
+                success: function(response) {
+                    if (response.success) {
+                        loadJobProducts(entryId);
+                        clearJobProductForm();
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to add product'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while adding the product');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-plus-alt"></span> Add Product');
+                }
+            });
+        }
+
+        /**
+         * Update existing job product
+         */
+        function updateJobProduct(productId, productData) {
+            const $btn = $('#job-add-product-btn');
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> Updating...');
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'update_product',
+                    nonce: wpStaffDiary.nonce,
+                    product_id: productId,
+                    ...productData
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const entryId = $('#entry-id').val();
+                        loadJobProducts(entryId);
+                        clearJobProductForm();
+                        cancelJobProductEdit();
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to update product'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while updating the product');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-plus-alt"></span> Add Product');
+                }
+            });
+        }
+
+        /**
+         * Load products for current job
+         */
+        function loadJobProducts(entryId) {
+            if (!entryId) return;
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'get_entry_products',
+                    nonce: wpStaffDiary.nonce,
+                    entry_id: entryId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        jobProducts = response.data.products || [];
+                        renderJobProductsList();
+                        updateJobProductsSubtotal(response.data.products_total || 0);
+                        updateCalculations(); // Recalculate grand total
+                    }
+                }
+            });
+        }
+
+        /**
+         * Render job products list table
+         */
+        function renderJobProductsList() {
+            const $tbody = $('#job-products-tbody');
+            $tbody.empty();
+
+            if (jobProducts.length === 0) {
+                $('#job-products-list-section').hide();
+                return;
+            }
+
+            $('#job-products-list-section').show();
+
+            jobProducts.forEach(function(product) {
+                const row = `
+                    <tr data-product-id="${product.id}">
+                        <td>${escapeHtml(product.product_description || '')}</td>
+                        <td>${escapeHtml(product.size || '')}</td>
+                        <td>${parseFloat(product.sq_mtr_qty || 0).toFixed(2)}</td>
+                        <td>£${parseFloat(product.price_per_sq_mtr || 0).toFixed(2)}</td>
+                        <td>£${parseFloat(product.product_total || 0).toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="button button-small edit-job-product" data-product-id="${product.id}" title="Edit">
+                                <span class="dashicons dashicons-edit"></span>
+                            </button>
+                            <button type="button" class="button button-small delete-job-product" data-product-id="${product.id}" title="Remove">
+                                <span class="dashicons dashicons-trash"></span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                $tbody.append(row);
+            });
+
+            // Bind edit/delete handlers
+            $('.edit-job-product').on('click', function() {
+                const productId = $(this).data('product-id');
+                editJobProduct(productId);
+            });
+
+            $('.delete-job-product').on('click', function() {
+                const productId = $(this).data('product-id');
+                if (confirm('Are you sure you want to remove this product?')) {
+                    deleteJobProduct(productId);
+                }
+            });
+        }
+
+        /**
+         * Update job products subtotal display
+         */
+        function updateJobProductsSubtotal(total) {
+            $('#job-products-subtotal-display').text(parseFloat(total).toFixed(2));
+        }
+
+        /**
+         * Edit job product - populate form
+         */
+        function editJobProduct(productId) {
+            const product = jobProducts.find(p => p.id == productId);
+            if (!product) return;
+
+            // Populate form
+            $('#product-description').val(product.product_description || '');
+            $('#size').val(product.size || '');
+            $('#sq-mtr-qty').val(product.sq_mtr_qty || '');
+            $('#price-per-sq-mtr').val(product.price_per_sq_mtr || '');
+            $('#job-current-product-id').val(product.id);
+
+            // Change button to Update mode
+            $('#job-add-product-btn').html('<span class="dashicons dashicons-yes"></span> Update Product');
+            $('#job-cancel-product-edit-btn').show();
+
+            editingJobProductId = productId;
+
+            // Scroll to form
+            $('#job-product-entry-form')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        /**
+         * Cancel job product edit
+         */
+        function cancelJobProductEdit() {
+            clearJobProductForm();
+            $('#job-add-product-btn').html('<span class="dashicons dashicons-plus-alt"></span> Add Product');
+            $('#job-cancel-product-edit-btn').hide();
+            $('#job-current-product-id').val('');
+            editingJobProductId = null;
+        }
+
+        /**
+         * Delete job product
+         */
+        function deleteJobProduct(productId) {
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'delete_product',
+                    nonce: wpStaffDiary.nonce,
+                    product_id: productId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        const entryId = $('#entry-id').val();
+                        loadJobProducts(entryId);
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Failed to delete product'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the product');
+                }
+            });
+        }
+
+        /**
+         * Clear job product form
+         */
+        function clearJobProductForm() {
+            $('#product-description').val('');
+            $('#size').val('');
+            $('#sq-mtr-qty').val('');
+            $('#price-per-sq-mtr').val('');
+            $('#job-product-preview').text('');
+        }
+
+        /**
+         * Escape HTML to prevent XSS
+         */
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Expose loadJobProducts globally for when jobs are loaded/edited
+        window.loadJobProducts = loadJobProducts;
 
     });
 
