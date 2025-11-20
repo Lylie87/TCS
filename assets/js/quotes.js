@@ -45,14 +45,15 @@
         // Photo upload
         $('#quote-upload-photo-btn').on('click', function() {
             if (!currentQuoteId) {
-                if (confirm('The quote needs to be saved before you can upload photos. Would you like to save it now?')) {
-                    // Save the quote, then trigger photo upload
-                    saveQuote(function(savedQuoteId) {
-                        // After successful save, trigger photo upload
-                        currentQuoteId = savedQuoteId;
+                // Auto-save draft first, then upload photo
+                autoSaveQuoteDraft();
+                setTimeout(function() {
+                    if (currentQuoteId) {
                         $('#quote-photo-upload-input').click();
-                    }, true); // true = don't close modal after save
-                }
+                    } else {
+                        alert('Please wait a moment and try again');
+                    }
+                }, 1000);
                 return;
             }
 
@@ -79,6 +80,23 @@
 
         // Product management
         initProductManagement();
+
+        // Auto-save on key field changes (debounced to avoid excessive saves)
+        let autoSaveTimeout;
+        function debouncedAutoSave() {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(function() {
+                if (currentQuoteId) {
+                    autoSaveQuoteDraft();
+                }
+            }, 2000); // Save 2 seconds after user stops typing
+        }
+
+        // Auto-save when these fields change
+        $('#quote-fitting-address-line-1, #quote-fitting-address-line-2, #quote-fitting-address-line-3, #quote-fitting-postcode').on('input', debouncedAutoSave);
+        $('#quote-billing-address-line-1, #quote-billing-address-line-2, #quote-billing-address-line-3, #quote-billing-postcode').on('input', debouncedAutoSave);
+        $('#quote-fitting-cost, #quote-notes').on('input', debouncedAutoSave);
+        $('.quote-accessory-checkbox, .quote-accessory-quantity').on('change', debouncedAutoSave);
     }
 
     /**
@@ -125,6 +143,9 @@
         $('#quote-modal-title').text('Add New Quote');
         $('#quote-number-display').hide();
         $('#quote-modal').fadeIn(200);
+
+        // Auto-create draft quote immediately so products can be added
+        autoSaveQuoteDraft();
     }
 
     /**
@@ -209,6 +230,41 @@
             },
             error: function() {
                 alert('Failed to load quote data.');
+            }
+        });
+    }
+
+    /**
+     * Auto-save quote draft silently (for new quotes)
+     */
+    function autoSaveQuoteDraft() {
+        if (currentQuoteId) {
+            // Already has an ID, just save silently
+            saveQuote(function() {}, true);
+            return;
+        }
+
+        // Create minimal draft entry
+        const formData = new FormData();
+        formData.append('action', 'save_diary_entry');
+        formData.append('nonce', wpStaffDiary.nonce);
+        formData.append('entry_id', 0);
+        formData.append('order_number', '');
+        formData.append('status', 'quotation');
+        formData.append('job_date', $('#quote-job-date').val() || new Date().toISOString().split('T')[0]);
+        formData.append('customer_id', selectedCustomerId || '');
+        formData.append('fitting_cost', '0');
+        formData.append('accessories', '[]');
+
+        $.ajax({
+            url: wpStaffDiary.ajaxUrl,
+            type: 'POST',
+            data: Object.fromEntries(formData),
+            success: function(response) {
+                if (response.success && response.data.entry_id) {
+                    currentQuoteId = response.data.entry_id;
+                    console.log('Draft quote created: ' + currentQuoteId);
+                }
             }
         });
     }
@@ -327,18 +383,13 @@
 
                     if (keepOpen) {
                         // Keep modal open and call callback if provided
-                        $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Update Quote');
+                        $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save & Close');
 
                         if (callback && typeof callback === 'function') {
                             callback(entryId);
                         }
-                    } else if (isNewQuote) {
-                        // New quote created - keep modal open for photo uploads by default
-                        alert('Quote saved successfully! You can now add photos to this quote.');
-                        $('#save-quote-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Update Quote');
                     } else {
-                        // Existing quote updated - close and reload with clean URL
-                        alert('Quote updated successfully!');
+                        // Close modal and reload page (no alerts, everything auto-saves)
                         closeAllModals();
                         // Clean URL to prevent modal reopening
                         window.location.href = window.location.pathname + window.location.search.split('&entry_id=')[0].split('?entry_id=')[0].replace(/[\?&]action=edit/g, '').replace(/[\?&]from_measure=\d+/g, '') || window.location.pathname;
@@ -1923,9 +1974,17 @@
             return;
         }
 
-        // Check if quote has been saved
+        // If no quote ID yet, auto-save first then add product
         if (!currentQuoteId) {
-            alert('Please save the quote first before adding products');
+            autoSaveQuoteDraft();
+            // Wait a moment for the draft to save, then try again
+            setTimeout(function() {
+                if (currentQuoteId) {
+                    handleAddProduct();
+                } else {
+                    alert('Please wait a moment and try again');
+                }
+            }, 1000);
             return;
         }
 

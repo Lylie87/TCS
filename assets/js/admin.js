@@ -184,6 +184,23 @@
             saveMeasure();
         });
 
+        // Auto-save on key field changes for Jobs (debounced to avoid excessive saves)
+        let jobAutoSaveTimeout;
+        function debouncedJobAutoSave() {
+            clearTimeout(jobAutoSaveTimeout);
+            jobAutoSaveTimeout = setTimeout(function() {
+                if (currentEntryId) {
+                    autoSaveJobDraft();
+                }
+            }, 2000); // Save 2 seconds after user stops typing
+        }
+
+        // Auto-save when these job fields change
+        $('#billing-address-line-1, #billing-address-line-2, #billing-address-line-3, #billing-postcode').on('input', debouncedJobAutoSave);
+        $('#fitting-address-line-1, #fitting-address-line-2, #fitting-address-line-3, #fitting-postcode').on('input', debouncedJobAutoSave);
+        $('#fitting-cost, #notes').on('input', debouncedJobAutoSave);
+        $('.accessory-checkbox, .accessory-quantity').on('change', debouncedJobAutoSave);
+
         /**
          * Open modal for new entry
          */
@@ -208,6 +225,9 @@
             updateCalculations();
 
             $('#entry-modal').fadeIn();
+
+            // Auto-create draft job immediately so products can be added
+            autoSaveJobDraft();
         }
 
         /**
@@ -434,6 +454,45 @@
         }
 
         /**
+         * Auto-save job draft silently (for new jobs)
+         */
+        function autoSaveJobDraft() {
+            if (currentEntryId) {
+                // Already has an ID, just save silently
+                saveEntry(function() {}, true);
+                return;
+            }
+
+            // Create minimal draft entry
+            const formData = {
+                action: 'save_diary_entry',
+                nonce: wpStaffDiary.nonce,
+                entry_id: 0,
+                customer_id: selectedCustomerId || '',
+                fitter_id: $('#fitter').val() || '',
+                job_date: $('#job-date').val() || new Date().toISOString().split('T')[0],
+                fitting_date: $('#fitting-date').val() || new Date().toISOString().split('T')[0],
+                fitting_time_period: $('#fitting-time-period').val() || 'AM',
+                status: $('#status').val() || 'pending',
+                fitting_cost: '0',
+                accessories: '[]'
+            };
+
+            $.ajax({
+                url: wpStaffDiary.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success && response.data.entry_id) {
+                        currentEntryId = response.data.entry_id;
+                        $('#entry-id').val(currentEntryId);
+                        console.log('Draft job created: ' + currentEntryId);
+                    }
+                }
+            });
+        }
+
+        /**
          * Save entry (job)
          * @param {Function} callback - Optional callback function to run after successful save
          * @param {Boolean} keepOpen - If true, don't reload page/close modal after save
@@ -497,14 +556,15 @@
                         const entryId = response.data.entry_id;
 
                         if (!keepOpen) {
-                            alert(response.data.message);
+                            // Just close and reload - no success alert
                             location.reload();
                         } else {
                             // Update the entry ID in the form
                             $('#entry-id').val(entryId);
+                            currentEntryId = entryId;
 
                             // Re-enable save button
-                            $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Job');
+                            $('#save-entry-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save & Close');
 
                             // Call callback if provided
                             if (callback && typeof callback === 'function') {
@@ -565,16 +625,16 @@
                 success: function(response) {
                     if (response.success) {
                         if (keepOpen) {
-                            // Show success message without alert
+                            // Keep modal open for photo uploads etc
                             console.log('Measure saved successfully:', response.data.entry_id);
-                            $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save Measure');
+                            $('#save-measure-btn').prop('disabled', false).html('<span class="dashicons dashicons-yes"></span> Save & Close');
 
                             // Call callback if provided
                             if (callback && typeof callback === 'function') {
                                 callback(response.data.entry_id);
                             }
                         } else {
-                            alert(response.data.message);
+                            // Just close and reload - no success alert
                             location.reload();
                         }
                     } else {
@@ -3319,10 +3379,19 @@
                 return;
             }
 
-            // Get current entry ID
-            const entryId = $('#entry-id').val();
+            // Get current entry ID - if none, auto-save first
+            let entryId = $('#entry-id').val();
             if (!entryId) {
-                alert('Please save the job first before adding products');
+                autoSaveJobDraft();
+                // Wait a moment for the draft to save, then try again
+                setTimeout(function() {
+                    entryId = $('#entry-id').val();
+                    if (entryId) {
+                        handleAddJobProduct();
+                    } else {
+                        alert('Please wait a moment and try again');
+                    }
+                }, 1000);
                 return;
             }
 
