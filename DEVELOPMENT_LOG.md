@@ -1,10 +1,10 @@
 # Development Log - Staff Daily Job Planner
 
 ## Session Overview
-**Date**: Current Session (Continuation)
-**Branch**: `claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM`
+**Date**: November 2025 (Updated)
+**Branch**: `claude/continue-planner-development-01QTApcJJf3qjycJU2Fdt1ps`
 **Starting Version**: 2.5.0
-**Current Version**: 2.6.0
+**Current Version**: 3.5.6
 
 ---
 
@@ -1804,7 +1804,144 @@ echo "Test: " . $stats['test']['count'];
 
 ## Version History
 
-### v2.7.0 (Current)
+### v3.5.6 (Current)
+- Center align all action buttons on mobile
+- Desktop calendar always defaults to week view
+- Comprehensive mobile UX improvements for calendar view
+
+### v3.5.3
+- Clean up settings menu in WordPress sidebar
+- Improved navigation structure
+
+### v3.5.2
+- Multiple UI/UX improvements
+- Date format validation fixes
+
+### v3.5.1
+- Changed job type from 'Residential' to 'Domestic'
+- Better terminology for UK flooring business
+
+### v3.5.0
+- Mobile improvements: Add Quote button, fix button spacing
+- Enable week view scrolling on mobile devices
+- Global data visibility for WordPress administrators
+- Reorganize settings into logical grouped pages
+
+### v3.4.1
+- Implement currency and date format settings across all forms
+- Consistent formatting throughout plugin
+
+### v3.4.0
+- Delete all jobs feature with proper cascading
+- Holiday deletion improvements
+- Note transfer functionality
+- Mobile navigation fixes
+
+### v3.3.9
+- Mobile Day View navigation
+- Button alignment improvements
+- Fitter availability filtering
+
+### v3.3.8
+- Add setting to show/hide Discount button on Quotes dashboard
+- Enhanced customization options
+
+### v3.3.0 - v3.3.7
+- Mobile-optimized Day View mode
+- Fitter availability badges on calendar
+- Holidays page replacing 'All Staff Jobs'
+- Auto-calculate Sq.Mtr from Size field (length × width)
+- Comprehensive mobile and tablet responsive optimization
+- Multiple bug fixes and AJAX improvements
+
+### v3.2.2
+- Fitting cost auto-calculation system
+- Fitter availability system integration
+- Mark Job Complete button in view modal
+
+### v3.2.1
+- Fitter availability display on measure→job conversion
+- Improved conversion workflow
+
+### v3.2.0
+- Measure address pre-fill improvements
+- Fix duplicate order numbers on conversion
+- Enhanced measure-to-job conversion
+
+### v3.1.3 - v3.1.8
+- Auto-update plugin with Clear Cache button
+- PDF improvements: logo display, spacing, layout
+- Delete all jobs now includes customers option
+- Transfer images when converting measure→quote
+- Preserve order numbers across conversions
+- Standardize address fields - Fitting Address primary
+- PHP 8.1+ deprecation warning fixes
+- Multiple PDF quote layout improvements
+
+### v3.0.1
+- Prompt-to-save for photo uploads on jobs and quotes
+- Comments system with edit/delete functionality
+- Auto-refresh for photo uploads in measure form
+
+### v2.9.9
+- Fix cancelled measures showing on calendar
+- PDF layout improvements with company logo
+- Measure functionality improvements
+
+### v2.8.3
+- Measure background color distinction
+- Customer creation debugging improvements
+
+### v2.8.1 - v2.8.2
+- Complete Measure functionality
+- Measure calendar display with time-based sorting
+- Rename 'Notes' to 'Internal Notes'
+- Form reorganization and cleanup
+
+### v2.8.0
+- Add New Job button fixes on calendar dashboard
+- Filter fitter dropdown to show only available fitters
+- Quotes widget on calendar dashboard
+- Better error messages for availability loading
+
+### v2.7.9
+- Quotes widget to calendar dashboard
+- Improved error messages
+
+### v2.7.8
+- Availability loading fixes
+- Clickable quote photos
+
+### v2.7.7
+- Photo upload improvements
+- Enhanced categorization
+
+### v2.7.6
+- Enhanced dashboard quotes widget
+- Discount functionality improvements
+
+### v2.7.5
+- Quote form improvements
+- Fitter availability enhancements
+
+### v2.7.4
+- Customer address field fixes
+- Availability loading improvements
+
+### v2.7.3
+- Move Send Discount Offer from Jobs to Quotes
+- Better feature organization
+
+### v2.7.2
+- Force cache refresh
+- Restore response.data.entry handling for order sheets
+
+### v2.7.1
+- PHP 8.1+ compatibility fixes
+- Resolve deprecation warnings for null parameters in Quotes section
+- Complete null handling for customer fields
+
+### v2.7.0
 - Email Templates System
 - SMS Notifications (Twilio)
 - Variable Replacement Engine
@@ -1813,7 +1950,7 @@ echo "Test: " . $stats['test']['count'];
 - Test Mode for SMS
 - Cost Tracking
 
-### v2.6.0 (Previous)
+### v2.6.0
 - Before/After Photo Gallery System
 - Payment Progress Visualization
 - Critical security fixes (XSS)
@@ -1835,7 +1972,7 @@ echo "Test: " . $stats['test']['count'];
 
 ## End of Development Log
 
-**Last Updated**: Phase 2 completion (v2.7.0)
-**Branch**: `claude/work-on-master-01NamkLhSA2hUnsVz57p5SaM`
-**Status**: Ready for testing & deployment
-**Next Steps**: Manual testing checklist, then merge to master
+**Last Updated**: November 2025 (v3.5.6)
+**Branch**: `claude/continue-planner-development-01QTApcJJf3qjycJU2Fdt1ps`
+**Status**: Production - Active Development
+**Next Steps**: Continue mobile optimization and UX improvements
