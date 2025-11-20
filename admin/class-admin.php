@@ -1337,6 +1337,8 @@ class WP_Staff_Diary_Admin {
         $price_per_sq_mtr = floatval($_POST['price_per_sq_mtr']);
         $product_total = floatval($_POST['product_total']);
 
+        error_log('Add product called with entry_id: ' . $entry_id);
+
         if (empty($entry_id)) {
             wp_send_json_error(array('message' => 'Entry ID is required'));
             return;
@@ -1366,9 +1368,13 @@ class WP_Staff_Diary_Admin {
 
         $product_id = $products_repo->add_product($entry_id, $product_data);
 
+        error_log('Product added with ID: ' . $product_id . ' for entry_id: ' . $entry_id);
+
         if ($product_id) {
             // Get the newly created product
             $product = $products_repo->find_by_id($product_id);
+
+            error_log('Product retrieved: ' . print_r($product, true));
 
             wp_send_json_success(array(
                 'message' => 'Product added successfully',
@@ -1387,6 +1393,8 @@ class WP_Staff_Diary_Admin {
 
         $entry_id = intval($_POST['entry_id']);
 
+        error_log('Get products called with entry_id: ' . $entry_id);
+
         if (empty($entry_id)) {
             wp_send_json_error(array('message' => 'Entry ID is required'));
             return;
@@ -1397,6 +1405,9 @@ class WP_Staff_Diary_Admin {
 
         $products = $products_repo->get_entry_products($entry_id);
         $products_total = $products_repo->calculate_products_total($entry_id);
+
+        error_log('Products found: ' . count($products) . ' - Total: ' . $products_total);
+        error_log('Products data: ' . print_r($products, true));
 
         wp_send_json_success(array(
             'products' => $products,
