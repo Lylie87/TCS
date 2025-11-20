@@ -83,6 +83,11 @@ class WP_Staff_Diary_Upgrade {
             self::upgrade_to_3_5_1();
         }
 
+        // Upgrade to v3.6.0 - Create products table for multiple products per quote/job
+        if (version_compare($from_version, '3.6.0', '<')) {
+            self::upgrade_to_3_6_0();
+        }
+
         // Legacy upgrades for older versions
         // Add job_time column if it doesn't exist (only if table exists)
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_diary LIKE 'job_time'");
@@ -604,5 +609,39 @@ Best regards,
         }
 
         error_log('WP Staff Diary: Completed upgrade to version 3.5.1');
+    }
+
+    /**
+     * Upgrade to version 3.6.0
+     * Create products table for multiple products per quote/job
+     */
+    private static function upgrade_to_3_6_0() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+
+        error_log('WP Staff Diary: Starting upgrade to version 3.6.0');
+
+        // Create products table
+        $table_products = $wpdb->prefix . 'staff_diary_products';
+        $sql_products = "CREATE TABLE $table_products (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            diary_entry_id bigint(20) UNSIGNED NOT NULL,
+            product_description text DEFAULT NULL,
+            size varchar(50) DEFAULT NULL,
+            sq_mtr_qty decimal(10,2) DEFAULT NULL,
+            price_per_sq_mtr decimal(10,2) DEFAULT NULL,
+            product_total decimal(10,2) DEFAULT NULL,
+            display_order int(11) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY diary_entry_id (diary_entry_id),
+            KEY display_order (display_order)
+        ) $charset_collate;";
+
+        dbDelta($sql_products);
+
+        error_log('WP Staff Diary: Created products table');
+        error_log('WP Staff Diary: Completed upgrade to version 3.6.0');
     }
 }
