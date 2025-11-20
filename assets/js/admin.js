@@ -1435,28 +1435,60 @@
                 html += '</div>';
             }
 
-            // Financial Summary
+            // Financial Summary - Calculate from products
             html += '<div class="detail-section">';
             html += '<h3>Financial Summary</h3>';
             html += '<table class="financial-summary-table">';
-            html += `<tr><td><strong>Subtotal:</strong></td><td class="amount">£${parseFloat(entry.subtotal).toFixed(2)}</td></tr>`;
-            if (entry.vat_amount > 0) {
-                html += `<tr><td><strong>VAT (${entry.vat_rate}%):</strong></td><td class="amount">£${parseFloat(entry.vat_amount).toFixed(2)}</td></tr>`;
+
+            // Calculate products total
+            let productsTotal = 0;
+            if (products && products.length > 0) {
+                products.forEach(function(product) {
+                    productsTotal += parseFloat(product.product_total || 0);
+                });
             }
-            html += `<tr class="total-row"><td><strong>Total:</strong></td><td class="amount"><strong>£${parseFloat(entry.total).toFixed(2)}</strong></td></tr>`;
+
+            // Calculate accessories total
+            let accessoriesTotal = 0;
+            if (entry.accessories && entry.accessories.length > 0) {
+                entry.accessories.forEach(function(acc) {
+                    accessoriesTotal += parseFloat(acc.total_price || 0);
+                });
+            }
+
+            // Fitting cost
+            const fittingCost = parseFloat(entry.fitting_cost || 0);
+
+            // Subtotal
+            const subtotal = productsTotal + accessoriesTotal + fittingCost;
+            html += `<tr><td><strong>Subtotal:</strong></td><td class="amount">£${subtotal.toFixed(2)}</td></tr>`;
+
+            // VAT
+            let total = subtotal;
+            if (entry.vat_amount > 0 || (entry.vat_rate && parseFloat(entry.vat_rate) > 0)) {
+                const vatRate = parseFloat(entry.vat_rate || 20);
+                const vatAmount = subtotal * (vatRate / 100);
+                html += `<tr><td><strong>VAT (${vatRate}%):</strong></td><td class="amount">£${vatAmount.toFixed(2)}</td></tr>`;
+                total = subtotal + vatAmount;
+            }
+
+            html += `<tr class="total-row"><td><strong>Total:</strong></td><td class="amount"><strong>£${total.toFixed(2)}</strong></td></tr>`;
 
             // Payments
+            let totalPaid = 0;
             if (entry.payments && entry.payments.length > 0) {
                 entry.payments.forEach(function(payment) {
+                    const paymentAmount = parseFloat(payment.amount || 0);
+                    totalPaid += paymentAmount;
                     html += `<tr class="payment-row">
                         <td>${payment.payment_type} (${payment.payment_method}) - Recorded by ${payment.recorded_by_name} on ${payment.recorded_at_formatted}</td>
-                        <td class="amount">-£${parseFloat(payment.amount).toFixed(2)}</td>
+                        <td class="amount">-£${paymentAmount.toFixed(2)}</td>
                     </tr>`;
                 });
             }
 
-            // Balance
-            const balance = parseFloat(entry.balance);
+            // Balance - recalculate from new total
+            const balance = total - totalPaid;
             const balanceClass = balance > 0 ? 'balance-due' : 'balance-paid';
             const balanceLabel = balance > 0 ? 'Balance Due:' : 'PAID IN FULL';
             const balanceAmount = balance > 0 ? `£${balance.toFixed(2)}` : '£0.00';
