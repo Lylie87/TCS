@@ -1292,33 +1292,46 @@
          * View entry details
          */
         function viewEntryDetails(entryId) {
-            $.ajax({
-                url: wpStaffDiary.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'get_diary_entry',
-                    nonce: wpStaffDiary.nonce,
-                    entry_id: entryId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Data is wrapped in response.data.entry by the modular jobs controller
-                        const entry = response.data.entry || response.data;
-                        displayEntryDetails(entry);
-                    } else {
-                        alert('Error loading entry: ' + response.data.message);
+            // Load both entry data and products in parallel
+            $.when(
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'get_diary_entry',
+                        nonce: wpStaffDiary.nonce,
+                        entry_id: entryId
                     }
-                },
-                error: function() {
-                    alert('An error occurred while loading the entry.');
+                }),
+                $.ajax({
+                    url: wpStaffDiary.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'get_entry_products',
+                        nonce: wpStaffDiary.nonce,
+                        entry_id: entryId
+                    }
+                })
+            ).done(function(entryResponse, productsResponse) {
+                if (entryResponse[0].success) {
+                    // Data is wrapped in response.data.entry by the modular jobs controller
+                    const entry = entryResponse[0].data.entry || entryResponse[0].data;
+                    const products = productsResponse[0].success ? (productsResponse[0].data.products || []) : [];
+                    displayEntryDetails(entry, products);
+                } else {
+                    alert('Error loading entry: ' + (entryResponse[0].data.message || 'Unknown error'));
                 }
+            }).fail(function() {
+                alert('An error occurred while loading the entry.');
             });
         }
 
         /**
          * Display entry details in view modal
          */
-        function displayEntryDetails(entry) {
+        function displayEntryDetails(entry, products) {
+            products = products || [];
+
             // Check if this is a measure - display simpler view
             if (entry.status === 'measure') {
                 displayMeasureDetails(entry);
@@ -1369,21 +1382,24 @@
             html += '</div>';
 
             // Product Section
-            if (entry.product_description || entry.sq_mtr_qty) {
+            if (products.length > 0 || (entry.fitting_cost && parseFloat(entry.fitting_cost) > 0) || (entry.accessories && entry.accessories.length > 0)) {
                 html += '<div class="detail-section">';
                 html += '<h3>Product & Services</h3>';
                 html += '<table class="financial-table">';
-                html += '<thead><tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>';
+                html += '<thead><tr><th>Description</th><th>Size</th><th>Qty (m²)</th><th>Price/m²</th><th>Total</th></tr></thead>';
                 html += '<tbody>';
 
-                if (entry.product_description) {
-                    const productTotal = (entry.sq_mtr_qty || 0) * (entry.price_per_sq_mtr || 0);
-                    html += `<tr>
-                        <td>${entry.product_description.replace(/\n/g, '<br>')}</td>
-                        <td>${entry.sq_mtr_qty || '-'}</td>
-                        <td>£${entry.price_per_sq_mtr ? parseFloat(entry.price_per_sq_mtr).toFixed(2) : '-'}</td>
-                        <td>£${productTotal.toFixed(2)}</td>
-                    </tr>`;
+                // Multiple products
+                if (products.length > 0) {
+                    products.forEach(function(product) {
+                        html += `<tr>
+                            <td>${escapeHtml(product.product_description || '')}</td>
+                            <td>${escapeHtml(product.size || '-')}</td>
+                            <td>${parseFloat(product.sq_mtr_qty || 0).toFixed(2)}</td>
+                            <td>£${parseFloat(product.price_per_sq_mtr || 0).toFixed(2)}</td>
+                            <td>£${parseFloat(product.product_total || 0).toFixed(2)}</td>
+                        </tr>`;
+                    });
                 }
 
                 // Fitting cost row
@@ -1392,14 +1408,17 @@
                         <td>Fitting Cost</td>
                         <td>-</td>
                         <td>-</td>
+                        <td>-</td>
                         <td>£${parseFloat(entry.fitting_cost).toFixed(2)}</td>
                     </tr>`;
                 }
 
+                // Accessories
                 if (entry.accessories && entry.accessories.length > 0) {
                     entry.accessories.forEach(function(acc) {
                         html += `<tr>
                             <td>${acc.accessory_name}</td>
+                            <td>-</td>
                             <td>${parseFloat(acc.quantity).toFixed(2)}</td>
                             <td>£${parseFloat(acc.price_per_unit).toFixed(2)}</td>
                             <td>£${parseFloat(acc.total_price).toFixed(2)}</td>
