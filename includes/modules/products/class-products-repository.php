@@ -27,7 +27,7 @@ class WP_Staff_Diary_Products_Repository extends WP_Staff_Diary_Base_Repository 
     public function add_product($diary_entry_id, $data) {
         // Get the next display_order value
         $max_order = $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT MAX(display_order) FROM {$this->table_name} WHERE diary_entry_id = %d",
+            "SELECT MAX(display_order) FROM {$this->table} WHERE diary_entry_id = %d",
             $diary_entry_id
         ));
 
@@ -55,7 +55,7 @@ class WP_Staff_Diary_Products_Repository extends WP_Staff_Diary_Base_Repository 
      */
     public function get_entry_products($diary_entry_id) {
         $sql = $this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE diary_entry_id = %d ORDER BY display_order ASC, id ASC",
+            "SELECT * FROM {$this->table} WHERE diary_entry_id = %d ORDER BY display_order ASC, id ASC",
             $diary_entry_id
         );
 
@@ -116,7 +116,7 @@ class WP_Staff_Diary_Products_Repository extends WP_Staff_Diary_Base_Repository 
      */
     public function calculate_products_total($diary_entry_id) {
         $sql = $this->wpdb->prepare(
-            "SELECT SUM(product_total) FROM {$this->table_name} WHERE diary_entry_id = %d",
+            "SELECT SUM(product_total) FROM {$this->table} WHERE diary_entry_id = %d",
             $diary_entry_id
         );
 
@@ -133,7 +133,7 @@ class WP_Staff_Diary_Products_Repository extends WP_Staff_Diary_Base_Repository 
     public function update_display_orders($order_map) {
         foreach ($order_map as $product_id => $display_order) {
             $this->wpdb->update(
-                $this->table_name,
+                $this->table,
                 array('display_order' => (int) $display_order),
                 array('id' => (int) $product_id),
                 array('%d'),
@@ -151,7 +151,7 @@ class WP_Staff_Diary_Products_Repository extends WP_Staff_Diary_Base_Repository 
      */
     public function delete_entry_products($diary_entry_id) {
         return $this->wpdb->delete(
-            $this->table_name,
+            $this->table,
             array('diary_entry_id' => $diary_entry_id),
             array('%d')
         );
