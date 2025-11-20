@@ -581,9 +581,14 @@ class WP_Staff_Diary_Database {
 
         $entry = $this->get_entry($diary_entry_id);
 
-        // Calculate product total
+        // Calculate products total from products table
         $product_total = 0;
-        if ($entry && $entry->sq_mtr_qty && $entry->price_per_sq_mtr) {
+        $products_repo = new WP_Staff_Diary_Products_Repository();
+        $products_total = $products_repo->calculate_products_total($diary_entry_id);
+        $product_total = $products_total;
+
+        // Fallback to old single product fields if no products in new table
+        if ($product_total == 0 && $entry && $entry->sq_mtr_qty && $entry->price_per_sq_mtr) {
             $product_total = $entry->sq_mtr_qty * $entry->price_per_sq_mtr;
         }
 
