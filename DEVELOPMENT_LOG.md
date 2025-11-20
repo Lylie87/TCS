@@ -4,7 +4,14 @@
 **Date**: November 2025 (Updated)
 **Branch**: `claude/continue-planner-development-01QTApcJJf3qjycJU2Fdt1ps`
 **Starting Version**: 2.5.0
-**Current Version**: 3.6.2
+**Current Version**: 3.6.3
+
+---
+
+## v3.6.3 - Debug: Product Operations Logging
+
+### Changes
+- Added detailed console logging for product add/load operations to debug display issues
 
 ---
 
