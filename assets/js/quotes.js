@@ -2033,6 +2033,7 @@
                 ...productData
             },
             success: function(response) {
+                console.log('Add product response:', response);
                 if (response.success) {
                     // Reload products list
                     loadProducts();
@@ -2041,7 +2042,8 @@
                     alert('Error: ' + (response.data.message || 'Failed to add product'));
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('Add product error:', xhr, status, error);
                 alert('An error occurred while adding the product');
             },
             complete: function() {
@@ -2101,12 +2103,19 @@
                 entry_id: currentQuoteId
             },
             success: function(response) {
+                console.log('Load products response:', response);
                 if (response.success) {
                     quoteProducts = response.data.products || [];
+                    console.log('Products loaded:', quoteProducts);
                     renderProductsList();
                     updateProductsSubtotal(response.data.products_total || 0);
                     calculateQuoteTotal(); // Recalculate grand total
+                } else {
+                    console.error('Failed to load products:', response);
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('Load products error:', xhr, status, error);
             }
         });
     }
