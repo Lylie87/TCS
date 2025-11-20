@@ -447,8 +447,13 @@
                 $('#payment-section').hide();
             }
 
-            // Update calculations
-            updateCalculations();
+            // Load products for this entry
+            if (entry.id && entry.id > 0) {
+                loadJobProducts(entry.id);
+            } else {
+                // New entry - just update calculations with empty products
+                updateCalculations();
+            }
 
             $('#entry-modal').fadeIn();
         }
