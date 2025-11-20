@@ -1170,6 +1170,7 @@
     function calculateQuoteTotal() {
         // Products subtotal (sum of all products added)
         const productsSubtotal = parseFloat($('#quote-products-subtotal-display').text()) || 0;
+        console.log('calculateQuoteTotal - productsSubtotal:', productsSubtotal);
 
         // Accessories total
         let accessoriesTotal = 0;
@@ -2226,7 +2227,9 @@
      * Update products subtotal display
      */
     function updateProductsSubtotal(total) {
+        console.log('Updating products subtotal to:', total);
         $('#quote-products-subtotal-display').text(parseFloat(total).toFixed(2));
+        console.log('Products subtotal display now shows:', $('#quote-products-subtotal-display').text());
     }
 
     /**
