@@ -232,9 +232,13 @@
                 }
             })
         ).done(function(quoteResponse, productsResponse) {
+            console.log('Quote Response:', quoteResponse);
+            console.log('Products Response:', productsResponse);
             if (quoteResponse[0].success) {
                 const quote = quoteResponse[0].data.entry || quoteResponse[0].data;
                 const products = productsResponse[0].success ? (productsResponse[0].data.products || []) : [];
+                console.log('Parsed products:', products);
+                console.log('Number of products:', products.length);
                 displayQuoteDetails(quote, products);
                 $('#view-quote-modal').fadeIn(200);
             } else {
