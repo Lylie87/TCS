@@ -1837,8 +1837,16 @@
         if ($('#add-new-quote').length) {
             initQuotes();
 
-            // Check for URL parameters to pre-fill from measure conversion
+            // Check for URL parameters to pre-fill from measure conversion or direct edit
             const urlParams = new URLSearchParams(window.location.search);
+
+            // Handle direct edit from URL (e.g., from dashboard widget)
+            if (urlParams.get('action') === 'edit' && urlParams.get('entry_id') && !urlParams.get('from_measure')) {
+                const entryId = urlParams.get('entry_id');
+                editQuote(entryId);
+                return;
+            }
+
             // Handle converting measure to quote (action=edit with from_measure param)
             if ((urlParams.get('action') === 'new' || urlParams.get('action') === 'edit') && urlParams.get('from_measure')) {
                 // Store measure ID - when action=edit, we're updating the measure entry to quotation status

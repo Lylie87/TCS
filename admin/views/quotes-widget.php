@@ -231,15 +231,12 @@ jQuery(document).ready(function($) {
             .remove();
     });
 
-    // Edit quote from dashboard - trigger click on hidden edit button
+    // Edit quote from dashboard - redirect to quotes page with edit action
     $(document).on('click', '.edit-quote-dashboard', function() {
         var quoteId = $(this).data('quote-id');
 
-        // Trigger the edit button which will be handled by quotes.js
-        $('<button class="edit-quote" data-id="' + quoteId + '" style="display:none;"></button>')
-            .appendTo('body')
-            .trigger('click')
-            .remove();
+        // Redirect to quotes page with edit parameter
+        window.location.href = '<?php echo admin_url('admin.php?page=wp-staff-diary-quotes'); ?>&action=edit&entry_id=' + quoteId;
     });
 
     // Convert quote to job from dashboard - open the convert modal
