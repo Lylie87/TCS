@@ -102,6 +102,9 @@ class WP_Staff_Diary {
         $images_module = new WP_Staff_Diary_Images_Module();
         $this->module_registry->register($images_module);
 
+        // Load Products module
+        require_once WP_STAFF_DIARY_PATH . 'includes/modules/products/class-products-repository.php';
+
         // Initialize all modules
         $this->module_registry->init_all();
     }
